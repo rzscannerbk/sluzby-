@@ -129,12 +129,12 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .aside b{font-weight:600}
 .spacer{pointer-events:none}
 .card{cursor:pointer}
-.full{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;background:var(--paper);padding:calc(env(safe-area-inset-top,0px) + 10px) 12px calc(env(safe-area-inset-bottom,0px) + 12px);overflow-y:auto;overscroll-behavior:contain;animation:fullIn .16s ease-out}
+.full{position:fixed;top:0;left:0;right:0;height:100vh;height:100lvh;z-index:30;display:flex;flex-direction:column;background:var(--paper);padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 6px;overflow-y:auto;overscroll-behavior:contain;animation:fullIn .16s ease-out}
 .full[hidden]{display:none}
 @keyframes fullIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion: reduce){.full{animation:none}}
 #fullBody{flex:1 0 auto;display:flex;flex-direction:column}
-.full .card{flex:1 0 auto;margin:0;padding:20px 20px 96px;font-size:18px;cursor:default;border-radius:16px}
+.full .card{flex:1 0 auto;margin:0;padding:20px 20px calc(env(safe-area-inset-bottom,0px) + 90px);font-size:18px;cursor:default;border-radius:16px}
 .full .card h2{font-size:26px;padding-right:120px}
 .full .card .when{position:absolute;top:20px;right:20px;font-family:var(--f-cond);font-weight:600;font-size:26px;line-height:1.15;white-space:nowrap}
 .full .time{font-size:37px;text-align:center;margin:18px 0 18px}
@@ -169,7 +169,7 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .pname.me{font-weight:600;text-decoration:underline solid;text-decoration-thickness:2px;text-decoration-color:currentColor}
 .cal{z-index:35}
 .cal .full-close{z-index:36}
-.cal-sheet{flex:1 0 auto;background:var(--sheet);border:1.5px solid var(--ink);border-radius:16px;padding:20px 16px 100px}
+.cal-sheet{flex:1 0 auto;background:var(--sheet);border:1.5px solid var(--ink);border-radius:16px;padding:20px 16px calc(env(safe-area-inset-bottom,0px) + 90px)}
 .cal-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .cal-head h2{font-family:var(--f-cond);font-weight:600;font-size:26px;line-height:1.15;margin:0}
 .cal-head span{font-family:var(--f-cond);font-weight:600;font-size:22px;color:var(--ink2);white-space:nowrap}
@@ -193,7 +193,7 @@ button.cal-day{cursor:pointer}
 .cal-sum .k-s{background:var(--hl);border-radius:50%}
 .cal-day.today{outline:2.5px solid var(--now);outline-offset:2px}
 .cal-day.past{opacity:.55}
-.full-close{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 28px);right:28px;z-index:31;width:60px;height:60px;border-radius:50%;border:0;background:var(--ink);color:var(--paper);box-shadow:0 6px 18px rgba(0,0,0,.3);font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.full-close{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);right:26px;z-index:31;width:60px;height:60px;border-radius:50%;border:0;background:var(--ink);color:var(--paper);box-shadow:0 6px 18px rgba(0,0,0,.3);font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
 .full.is-night .full-close{background:var(--night-ink);color:var(--night)}
 
 .bottom{display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1.5px solid var(--ink);font-size:14px}
@@ -228,10 +228,10 @@ button.cal-day{cursor:pointer}
 .badge{position:absolute;top:-7px;right:-7px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#D04848;color:#fff;font:600 12px/19px var(--f-body);text-align:center}
 .badge[hidden]{display:none}
 .tag.sw{border-style:dashed}
-.swap-open{position:fixed;left:24px;bottom:calc(env(safe-area-inset-bottom,0px) + 34px);z-index:31;font-family:var(--f-cond);font-weight:700;font-size:19px;padding:12px 18px;border:0;border-radius:999px;background:var(--hl);color:var(--hl-ink);box-shadow:0 6px 18px rgba(0,0,0,.3);cursor:pointer}
+.swap-open{position:fixed;left:24px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);z-index:31;font-family:var(--f-cond);font-weight:700;font-size:19px;padding:12px 18px;border:0;border-radius:999px;background:var(--hl);color:var(--hl-ink);box-shadow:0 6px 18px rgba(0,0,0,.3);cursor:pointer}
 .vym{z-index:38}.vym .full-close{z-index:39}
 .swp{z-index:40}.swp .full-close{z-index:41}
-.sheet{flex:1 0 auto;background:var(--sheet);border:1.5px solid var(--ink);border-radius:16px;padding:20px 16px 110px}
+.sheet{flex:1 0 auto;background:var(--sheet);border:1.5px solid var(--ink);border-radius:16px;padding:20px 16px calc(env(safe-area-inset-bottom,0px) + 100px)}
 .sheet h2{font-family:var(--f-cond);font-weight:600;font-size:26px;line-height:1.15;margin:0}
 .sheet .sub{color:var(--ink2);margin:4px 0 0;font-size:15px}
 .sheet h3{font-family:var(--f-cond);font-weight:600;font-size:20px;margin:22px 0 8px}
@@ -296,7 +296,7 @@ button.cal-day{cursor:pointer}
     <select id="me"></select>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v3.7</span>
+      <span class="ver">v3.8</span>
     </div>
   </div>
 </header>
