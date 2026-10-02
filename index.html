@@ -144,6 +144,34 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .full .prog .bar{height:12px}
 .full .prog .pl{font-size:15px}
 .full .aside{font-size:15px}
+.pname{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;text-decoration:underline dotted;text-decoration-thickness:1px;text-underline-offset:4px;text-decoration-color:color-mix(in srgb,currentColor 45%,transparent)}
+.pname.me{font-weight:600;text-decoration:underline solid;text-decoration-thickness:2px;text-decoration-color:currentColor}
+.cal{z-index:35}
+.cal .full-close{z-index:36}
+.cal-sheet{flex:1 0 auto;background:var(--sheet);border:1.5px solid var(--ink);border-radius:16px;padding:20px 16px 100px}
+.cal-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.cal-head h2{font-family:var(--f-cond);font-weight:600;font-size:26px;line-height:1.15;margin:0}
+.cal-head span{font-family:var(--f-cond);font-weight:600;font-size:22px;color:var(--ink2);white-space:nowrap}
+.cal-sum{display:flex;flex-wrap:wrap;gap:6px 14px;margin:12px 0 16px;font-size:15px;color:var(--ink2)}
+.cal-sum span{display:inline-flex;align-items:center;gap:6px}
+.cal-sum b{color:var(--ink);font-weight:600}
+.cal-sum i{width:12px;height:12px;border-radius:4px;display:inline-block}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.cal-dow{font-size:13px;color:var(--ink2);text-align:center;padding-bottom:2px}
+.cal-day{position:relative;aspect-ratio:1/1.12;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0;border-radius:9px;padding:0;background:var(--paper);color:var(--ink);font-family:var(--f-cond);font-size:19px;font-weight:700;line-height:1}
+.cal-day small{font-family:var(--f-body);font-size:11px;font-weight:600;line-height:1;opacity:.9}
+button.cal-day{cursor:pointer}
+.cal-day.we{color:var(--ink2)}
+.k-d,.cal-sum .k-d{background:#2E9E5B;color:#fff}
+.k-n,.cal-sum .k-n{background:#D04848;color:#fff}
+.k-p,.cal-sum .k-p{background:#3B6FD6;color:#fff}
+.cal-day.k-d,.cal-day.k-n,.cal-day.k-p,.cal-day.k-pn{color:#fff}
+.k-pn{background:linear-gradient(to bottom,#3B6FD6 0 50%,#D04848 50% 100%)}
+.cal-day.abs small{color:var(--ink2)}
+.cal-day.stala::after{content:"";position:absolute;top:5px;right:5px;width:9px;height:9px;border-radius:50%;background:var(--hl);box-shadow:0 0 0 1.5px rgba(0,0,0,.3)}
+.cal-sum .k-s{background:var(--hl);border-radius:50%}
+.cal-day.today{outline:2.5px solid var(--now);outline-offset:2px}
+.cal-day.past{opacity:.55}
 .full-close{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 28px);right:28px;z-index:31;width:60px;height:60px;border-radius:50%;border:0;background:var(--ink);color:var(--paper);box-shadow:0 6px 18px rgba(0,0,0,.3);font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
 .full.is-night .full-close{background:var(--night-ink);color:var(--night)}
 
@@ -208,13 +236,21 @@ ul.h li::before{content:"–";color:var(--ink2)}
     <select id="me"></select>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v2.6</span>
+      <span class="ver">v2.7</span>
     </div>
   </div>
 </header>
 <div class="full" id="full" role="dialog" aria-modal="true" aria-label="Detail služby" hidden>
   <button class="full-close" id="fullClose" type="button" aria-label="Zavřít">✕</button>
   <div id="fullBody"></div>
+</div>
+<div class="full cal" id="cal" role="dialog" aria-modal="true" aria-labelledby="calName" hidden>
+  <button class="full-close" id="calClose" type="button" aria-label="Zavřít kalendář">✕</button>
+  <div class="cal-sheet">
+    <div class="cal-head"><h2 id="calName"></h2><span id="calMonth"></span></div>
+    <div class="cal-sum" id="calSum"></div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
 </div>
 <main class="split">
   <div class="left" id="left" aria-label="Služby"></div>
@@ -311,11 +347,14 @@ function progressHTML([s,e], now){
 const stateOf = ([s,e], now) => now < s ? "future" : now >= e ? "past" : "now";
 let ME = "";
 try { ME = localStorage.getItem(STORE_KEY) || ""; } catch(e) {}
+function nameBtn(n){
+  return `<button type="button" class="pname${n === ME ? " me" : ""}" data-name="${esc(n)}">${esc(n)}</button>`;
+}
 function person(p, base){
   const me = p.name === ME ? "me" : "";
   const c = CODES[p.code], b = CODES[base];
   const tag = c && b && (c.e[0] !== b.e[0] || c.e[1] !== b.e[1]) ? ` <span class="tag">do ${tPlain(c.e)}</span>` : "";
-  return `<span class="${me}">${esc(p.name)}</span>${tag}`;
+  return `${nameBtn(p.name)}${tag}`;
 }
 
 /* ---------- vykreslení ---------- */
@@ -343,8 +382,8 @@ function cardHTML(kind, g, slot, now){
   let aside = "";
   if (kind === "D"){
     const parts = [];
-    if (slot.P && slot.P.length) parts.push(`<p><b>Porada ${tPlain(CODES.D2.s)}–${tPlain(CODES.D2.e)}:</b> ${slot.P.map(p => `<span class="${p.name===ME?"me":""}">${esc(p.name)}</span>`).join(", ")}</p>`);
-    for (const [code, names] of Object.entries(slot.A || {})) parts.push(`<p><b>${CODES[code].label}:</b> ${names.map(n => `<span class="${n===ME?"me":""}">${esc(n)}</span>`).join(", ")}</p>`);
+    if (slot.P && slot.P.length) parts.push(`<p><b>Porada ${tPlain(CODES.D2.s)}–${tPlain(CODES.D2.e)}:</b> ${slot.P.map(p => nameBtn(p.name)).join(", ")}</p>`);
+    for (const [code, names] of Object.entries(slot.A || {})) parts.push(`<p><b>${CODES[code].label}:</b> ${names.map(n => nameBtn(n)).join(", ")}</p>`);
     if (parts.length) aside = `<div class="aside">${parts.join("")}</div>`;
   }
   if (slot.note) aside += `<div class="aside"><p>${esc(slot.note)}</p></div>`;
@@ -395,6 +434,7 @@ function render(){
   left.scrollTop = keep;
   active = -1; update();
   if (fullRef) fillFull();
+  if (calName) fillCal();
 }
 
 /* ---------- synchronizace sloupců ---------- */
@@ -619,13 +659,81 @@ function closeFull(){
   if (fullReturn && document.contains(fullReturn)) fullReturn.focus({preventScroll:true});
   fullReturn = null;
 }
-left.addEventListener("click", e => { const c = e.target.closest(".card"); if (c) openFull(c); });
+left.addEventListener("click", e => {
+  const nb = e.target.closest(".pname"); if (nb){ e.stopPropagation(); openCal(nb.dataset.name); return; }
+  const c = e.target.closest(".card"); if (c) openFull(c);
+});
+fullBody.addEventListener("click", e => { const nb = e.target.closest(".pname"); if (nb) openCal(nb.dataset.name); });
 left.addEventListener("keydown", e => {
   if ((e.key === "Enter" || e.key === " ") && e.target.classList?.contains("card")){ e.preventDefault(); openFull(e.target); }
 });
 document.getElementById("fullClose").addEventListener("click", closeFull);
 full.addEventListener("click", e => { if (e.target === full) closeFull(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && !full.hidden) closeFull(); });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (!cal.hidden) closeCal(); else if (!full.hidden) closeFull();
+});
+
+/* měsíční kalendář strážníka */
+const cal = document.getElementById("cal");
+let calName = null;
+const NIGHT = ["N12","N13","Nz7","Nk8"];
+function fillCal(){
+  if (!calName || !PLAN) return;
+  const toks = String(PLAN[calName] || "").trim().split(/\s+/);
+  const n = new Date(YEAR, MONTH + 1, 0).getDate();
+  const offset = (new Date(YEAR, MONTH, 1).getDay() + 6) % 7;
+  const now = getNow(), today = new Date(now); today.setHours(0,0,0,0);
+  let cD = 0, cN = 0, cP = 0, cS = 0, cA = 0;
+  let html = ["Po","Út","St","Čt","Pá","So","Ne"].map(d => `<div class="cal-dow">${d}</div>`).join("");
+  for (let i = 0; i < offset; i++) html += `<div></div>`;
+  for (let d = 1; d <= n; d++){
+    const tok = toks[d-1] || ".";
+    const parts = tok === "." ? [] : tok.split("+").map(c => ({code: c.replace(/\*$/, ""), st: c.endsWith("*")}));
+    const hasD = parts.some(p => p.code === "D12");
+    const hasN = parts.some(p => NIGHT.includes(p.code));
+    const hasP = parts.some(p => p.code === "D2");
+    const abs = parts.find(p => p.code === "DOV" || p.code === "ZdV");
+    const st = parts.some(p => p.st);
+    if (hasD) cD++; if (hasN && !parts.every(p => p.code === "Nk8")) cN++; if (hasP) cP++; if (st) cS++; if (abs) cA++;
+    const date = new Date(YEAR, MONTH, d), wd = date.getDay();
+    const cls = ["cal-day"];
+    if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
+    if (st) cls.push("stala");
+    if (wd === 0 || wd === 6) cls.push("we");
+    if (date < today) cls.push("past");
+    if (date.getTime() === today.getTime()) cls.push("today");
+    const label = parts.map(p => p.code).join("+");
+    const work = hasD || hasN || hasP;
+    const aria = `${d}. ${MONTH+1}.${label ? ", " + label : ", volno"}${st ? ", stálá služba" : ""}`;
+    html += work
+      ? `<button type="button" class="${cls.join(" ")}" data-day="${d}" aria-label="${aria}">${d}<small>${label}</small></button>`
+      : `<div class="${cls.join(" ")}" aria-label="${aria}">${d}${label ? `<small>${label}</small>` : ""}</div>`;
+  }
+  document.getElementById("calGrid").innerHTML = html;
+  document.getElementById("calName").textContent = calName;
+  document.getElementById("calMonth").textContent = `${cap(MONTHS[MONTH])} ${YEAR}`;
+  const sum = [`<span><i class="k-d"></i>Denní <b>${cD}</b></span>`, `<span><i class="k-n"></i>Noční <b>${cN}</b></span>`];
+  if (cP) sum.push(`<span><i class="k-p"></i>Porada <b>${cP}</b></span>`);
+  if (cS) sum.push(`<span><i class="k-s"></i>Stálá <b>${cS}</b></span>`);
+  if (cA) sum.push(`<span>Volno z plánu <b>${cA}</b></span>`);
+  document.getElementById("calSum").innerHTML = sum.join("");
+}
+function openCal(name){
+  calName = name; fillCal();
+  cal.hidden = false; cal.scrollTop = 0;
+  document.getElementById("calClose").focus();
+}
+function closeCal(){ cal.hidden = true; calName = null; }
+document.getElementById("calClose").addEventListener("click", closeCal);
+document.getElementById("calGrid").addEventListener("click", e => {
+  const b = e.target.closest("button.cal-day"); if (!b) return;
+  const d = +b.dataset.day;
+  const gi = GROUPS.findIndex(g => !g.prev && g.date.getDate() === d);
+  closeCal(); if (!full.hidden) closeFull();
+  const g = left.querySelectorAll(".group")[gi];
+  if (g) scrollLeftTo(g.offsetTop, true);
+});
 
 /* menu */
 const menu = document.getElementById("menu"), btnMenu = document.getElementById("btnMenu");
