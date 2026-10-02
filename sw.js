@@ -1,16 +1,16 @@
 // Služby MP Blansko – service worker
 // Při každé změně souborů zvyš verzi, aby se stará cache smazala.
-const VERSION = "sluzby-v2";
+const VERSION = "sluzby-v3";
 const LIB_CACHE = "sluzby-knihovny";
 const CORE = [
   "./",
   "./index.html",
   "./firebase-config.js",
   "./manifest.webmanifest",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/maskable-512.png",
-  "./icons/apple-touch-icon.png"
+  "./icon-192.png",
+  "./icon-512.png",
+  "./maskable-512.png",
+  "./apple-touch-icon.png"
 ];
 // písma a knihovny Firebase – z cache, na pozadí obnovit
 const LIB_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com", "www.gstatic.com"];
