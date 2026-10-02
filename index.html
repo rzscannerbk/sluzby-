@@ -144,7 +144,12 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .full .prog .bar{height:12px}
 .full .prog .pl{font-size:15px}
 .full .aside{font-size:15px}
-.pname{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;text-decoration:underline dotted;text-decoration-thickness:1px;text-underline-offset:4px;text-decoration-color:color-mix(in srgb,currentColor 45%,transparent)}
+.swp .cal-day.off{opacity:.38}
+.swp .cal-day.giv{outline:2.5px dashed var(--hl);outline-offset:2px}
+.cal-day.pick{cursor:pointer}
+.swp .cal-day.sel{outline:3.5px solid var(--hl);outline-offset:2px;transform:scale(1.05);z-index:1}
+.pick-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
+.pname{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;text-decoration:none}
 .pname.me{font-weight:600;text-decoration:underline solid;text-decoration-thickness:2px;text-decoration-color:currentColor}
 .cal{z-index:35}
 .cal .full-close{z-index:36}
@@ -275,7 +280,7 @@ button.cal-day{cursor:pointer}
     <select id="me"></select>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v3.0</span>
+      <span class="ver">v3.2</span>
     </div>
   </div>
 </header>
@@ -1011,6 +1016,43 @@ function colleagueShifts(name){
   });
   return out;
 }
+function swapCalHTML(name, mine){
+  const toks = EFF_T[name] || [];
+  const n = new Date(YEAR, MONTH + 1, 0).getDate();
+  const offset = (new Date(YEAR, MONTH, 1).getDay() + 6) % 7;
+  const now = getNow(), today = new Date(now); today.setHours(0,0,0,0);
+  let html = ["Po","Út","St","Čt","Pá","So","Ne"].map(d => `<div class="cal-dow">${d}</div>`).join("");
+  for (let i = 0; i < offset; i++) html += `<div></div>`;
+  let any = false;
+  for (let d = 1; d <= n; d++){
+    const tok = toks[d-1] || ".";
+    const parts = tok === "." ? [] : tok.split("+");
+    const codes = parts.map(p => p.replace(/\*$/, ""));
+    const hasD = codes.includes("D12"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.includes("D2");
+    const abs = codes.find(c => c === "DOV" || c === "ZdV");
+    const shift = parts.find(p => kindOf(p));
+    const kind = shift ? kindOf(shift) : null;
+    const date = new Date(YEAR, MONTH, d), wd = date.getDay();
+    const cls = ["cal-day"];
+    if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
+    if (parts.some(p => p.endsWith("*"))) cls.push("stala");
+    if (wd === 0 || wd === 6) cls.push("we");
+    if (date.getTime() === today.getTime()) cls.push("today");
+    if (d === mine.den) cls.push("giv");
+    const label = codes.join("+");
+    const pickable = shift && windowOf(date, shift.replace(/\*$/, ""))[0] > now && !(d === mine.den && kind === mine.kind);
+    if (pickable){
+      any = true;
+      const sel = SW.target && SW.target.den === d && SW.target.kind === kind;
+      if (sel) cls.push("sel");
+      html += `<button type="button" class="${cls.join(" ")} pick" data-den="${d}" data-kind="${kind}" data-kod="${shift}" aria-pressed="${!!sel}" aria-label="${d}. ${MONTH+1}. ${KIND_LBL[kind]} ${label}">${d}<small>${label}</small></button>`;
+    } else {
+      if (shift || date < today) cls.push("off");
+      html += `<div class="${cls.join(" ")}">${d}${label ? `<small>${label}</small>` : ""}</div>`;
+    }
+  }
+  return any ? `<div class="cal-grid">${html}</div><p class="pick-hint">Klepni na službu, kterou vezmeš. Žlutý čárkovaný rámeček je den tvé služby.</p>` : "";
+}
 function buildReq(){
   const id = docId(YEAR, MONTH);
   const r = {typ:SW.typ, mesic:id, od:{jmeno:SELF, cislo:SELF_NO, ...SW.mine}, za:null};
@@ -1028,7 +1070,6 @@ function renderSwp(){
   if (SW.kolega && !OFFICERS[SW.kolega]) checks.e.push(`${SW.kolega} nemá v systému služební číslo, takže žádost nemůže přijmout.`);
   if (ready && !checks.e.length){ const [y, m] = [YEAR, MONTH]; checks = simulate(EFF_T, buildReq(), null, y, m); }
   if (SW.typ === "nabidka" && /\*$/.test(mine.kod)) checks.i.push("Kdo nabídku vezme, převezme i stálou službu.");
-  const targets = SW.typ === "vymena" && SW.kolega ? colleagueShifts(SW.kolega).filter(t => !(t.den === mine.den && t.kind === mine.kind)) : [];
   swpBody.innerHTML = `<h2 id="swpTitle">Vyměnit službu</h2>
     <p class="sub">Tvoje ${fmtS(id, mine)}</p>
     <div class="seg" role="group" aria-label="Typ žádosti">
@@ -1037,7 +1078,7 @@ function renderSwp(){
     ${SW.typ !== "nabidka" ? `<label class="f" for="swKolega">Kolega</label>
       <select id="swKolega"><option value="">Vyber kolegu</option>${colleagues.map(n => `<option ${n === SW.kolega ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>` : ""}
     ${SW.typ === "vymena" && SW.kolega ? `<label class="f">Jeho služba, kterou vezmeš</label>
-      ${targets.length ? `<div class="opts">${targets.map(t => `<button type="button" class="opt" data-den="${t.den}" data-kind="${t.kind}" data-kod="${t.kod}" aria-pressed="${!!SW.target && SW.target.den === t.den && SW.target.kind === t.kind}">${fmtS(id, t)}<small>${t.kod.replace("*", "")}</small></button>`).join("")}</div>` : `<p class="empty-s">${esc(SW.kolega)} nemá v tomto měsíci žádnou budoucí službu.</p>`}` : ""}
+      ${swapCalHTML(SW.kolega, mine) || `<p class="empty-s">${esc(SW.kolega)} nemá v tomto měsíci žádnou budoucí službu.</p>`}${SW.target ? `<p class="sub">Vybráno: jeho ${fmtS(id, SW.target)}</p>` : ""}` : ""}
     <label class="f" for="swPozn">Poznámka (nepovinné)</label>
     <input type="text" id="swPozn" maxlength="140" value="${esc(SW.pozn)}">
     <div class="checks">${checksHTML(checks)}</div>
@@ -1054,7 +1095,7 @@ swpBody.addEventListener("input", e => { if (e.target.id === "swPozn") SW.pozn =
 swpBody.addEventListener("change", e => { if (e.target.id === "swKolega"){ SW.kolega = e.target.value; SW.target = null; renderSwp(); } });
 swpBody.addEventListener("click", async e => {
   const t = e.target.closest("[data-typ]"); if (t){ SW.typ = t.dataset.typ; SW.target = null; renderSwp(); return; }
-  const o = e.target.closest(".opt"); if (o){ SW.target = {den:+o.dataset.den, kind:o.dataset.kind, kod:o.dataset.kod}; renderSwp(); return; }
+  const o = e.target.closest(".pick"); if (o){ SW.target = {den:+o.dataset.den, kind:o.dataset.kind, kod:o.dataset.kod}; renderSwp(); return; }
   if (e.target.id === "swSend"){
     const btn = e.target; btn.disabled = true;
     const r = buildReq();
