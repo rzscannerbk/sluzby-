@@ -298,7 +298,7 @@ button.cal-day{cursor:pointer}
     <select id="me"></select>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v3.9</span>
+      <span class="ver">v3.10</span>
     </div>
   </div>
 </header>
@@ -791,7 +791,7 @@ function fillCal(){
     const work = hasD || hasN || hasP;
     const aria = `${d}. ${MONTH+1}.${label ? ", " + label : ", volno"}${st ? ", stálá služba" : ""}`;
     html += work
-      ? `<button type="button" class="${cls.join(" ")}" data-day="${d}" aria-label="${aria}">${d}<small>${label}</small></button>`
+      ? `<button type="button" class="${cls.join(" ")}" data-day="${d}" data-kind="${hasN && !hasD ? "N" : "D"}" aria-label="${aria}">${d}<small>${label}</small></button>`
       : `<div class="${cls.join(" ")}" aria-label="${aria}">${d}${label ? `<small>${label}</small>` : ""}</div>`;
   }
   document.getElementById("calGrid").innerHTML = html;
@@ -816,7 +816,10 @@ document.getElementById("calGrid").addEventListener("click", e => {
   const gi = GROUPS.findIndex(g => !g.prev && g.date.getDate() === d);
   closeCal(); if (!full.hidden) closeFull();
   const g = left.querySelectorAll(".group")[gi];
-  if (g) scrollLeftTo(g.offsetTop, true);
+  if (!g) return;
+  // noční služba → na noční kartu, jinak na začátek dne
+  const target = (b.dataset.kind === "N" && g.querySelector(".card.night")) || g;
+  scrollLeftTo(target.offsetTop, true);
 });
 
 /* ================= výměny služeb ================= */
