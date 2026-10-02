@@ -19,7 +19,6 @@
 :root{
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
-  padding-bottom:env(safe-area-inset-bottom,0px);
   --paper:#E6EAE4; --sheet:#FAFBF7; --ink:#1D2A4D; --ink2:#5A6480; --line:#B9C0B4;
   --hl:#F2E443; --hl-ink:#1D2A4D;
   --night:#1F2846; --night-ink:#EEF0F7; --night2:#A9B2CE; --night-line:#1F2846;
@@ -47,10 +46,19 @@ html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);background:var(
 body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.4;display:flex;flex-direction:column;overflow:hidden;-webkit-text-size-adjust:100%}
 :focus-visible{outline:3px solid var(--now);outline-offset:2px}
 
-.top{display:flex;align-items:center;gap:12px;padding:10px 14px 9px;border-bottom:1.5px solid var(--ink)}
-.top h1{font-family:var(--f-cond);font-weight:700;font-size:28px;line-height:1;margin:0}
-.top p{font-size:13px;color:var(--ink2);margin:3px 0 0}
-.btn-now{margin-left:auto;font-family:var(--f-cond);font-weight:700;font-size:18px;background:var(--ink);color:var(--paper);border:0;padding:8px 16px;border-radius:6px 10px 7px 11px/10px 6px 11px 7px;cursor:pointer}
+.top{position:relative;display:flex;align-items:center;gap:8px;padding:2px 10px 5px 4px;border-bottom:1.5px solid var(--ink)}
+.top h1{font-family:var(--f-cond);font-weight:700;font-size:24px;line-height:1;margin:0;white-space:nowrap}
+.top-main{min-width:0}
+#sub{font-size:12px;color:var(--ink2);margin:0 0 0 34px;line-height:1.2}
+#sub[hidden]{display:none}
+.btn-now{font-family:var(--f-cond);font-weight:700;font-size:17px;background:var(--ink);color:var(--paper);border:0;padding:6px 14px;border-radius:6px 10px 7px 11px/10px 6px 11px 7px;cursor:pointer}
+.btn-menu{margin-left:auto;width:36px;height:34px;display:inline-flex;align-items:center;justify-content:center;background:transparent;color:var(--ink);border:1.5px solid var(--ink);border-radius:6px 9px 7px 10px/9px 6px 10px 7px;cursor:pointer;padding:0}
+.btn-menu svg{width:18px;height:18px}
+.menu{position:absolute;right:10px;top:calc(100% + 6px);z-index:15;width:min(300px,calc(100vw - 20px));background:var(--sheet);color:var(--ink);border:1.5px solid var(--ink);border-radius:5px 11px 6px 13px/11px 5px 13px 6px;padding:12px 14px 14px;box-shadow:0 10px 30px rgba(0,0,0,.28)}
+.menu[hidden]{display:none}
+.menu label{display:block;font-size:13px;color:var(--ink2);margin:0 0 4px}
+.menu select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1.5px solid var(--ink);border-radius:6px;padding:7px 8px}
+.menu .mrow{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
 
 .split{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 92px}
 .left{position:relative;overflow-y:auto;overscroll-behavior:contain;padding:14px 10px 0 12px;-webkit-overflow-scrolling:touch}
@@ -117,7 +125,7 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .bottom select{flex:1;min-width:0;font:inherit;color:var(--ink);background:var(--sheet);border:1.5px solid var(--ink);border-radius:6px;padding:6px 8px}
 .ver{font-size:11px;color:var(--ink2)}
 .mnav{display:flex;align-items:center;gap:4px}
-.mnav button{font-family:var(--f-cond);font-weight:700;font-size:26px;line-height:1;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;background:transparent;color:var(--ink);border:1.5px solid transparent;border-radius:8px;cursor:pointer;padding:0}
+.mnav button{font-family:var(--f-cond);font-weight:700;font-size:26px;line-height:1;width:30px;height:34px;display:inline-flex;align-items:center;justify-content:center;background:transparent;color:var(--ink);border:1.5px solid transparent;border-radius:8px;cursor:pointer;padding:0}
 .mnav button:hover{border-color:var(--ink)}
 .top h1{min-width:0}
 .empty{max-width:320px;margin:18vh auto 0;text-align:center;color:var(--ink2)}
@@ -156,26 +164,31 @@ ul.h li::before{content:"–";color:var(--ink2)}
 </div>
 
 <header class="top">
-  <div>
+  <div class="top-main">
     <div class="mnav">
       <button id="prevM" type="button" aria-label="Předchozí měsíc">‹</button>
       <h1 id="title">Načítám…</h1>
       <button id="nextM" type="button" aria-label="Následující měsíc">›</button>
     </div>
-    <p id="sub">Plán služeb MP Blansko</p>
+    <p id="sub" role="status" hidden></p>
   </div>
+  <button class="btn-menu" id="btnMenu" type="button" aria-label="Nastavení" aria-expanded="false" aria-controls="menu">
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+  </button>
   <button class="btn-now" id="btnNow" type="button">Teď</button>
+  <div class="menu" id="menu" hidden>
+    <label for="me">Zvýraznit strážníka</label>
+    <select id="me"></select>
+    <div class="mrow">
+      <button class="btn-out" id="logout" type="button">Odhlásit</button>
+      <span class="ver">v2.1</span>
+    </div>
+  </div>
 </header>
 <main class="split">
   <div class="left" id="left" aria-label="Služby"></div>
   <nav class="right" id="right" aria-label="Dny"><div class="track" id="track"></div></nav>
 </main>
-<footer class="bottom">
-  <label for="me">Zvýraznit</label>
-  <select id="me"></select>
-  <button class="btn-out" id="logout" type="button">Odhlásit</button>
-  <span class="ver">v2.0</span>
-</footer>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -474,6 +487,8 @@ document.getElementById("resetBtn").addEventListener("click", async () => {
 });
 document.getElementById("logout").addEventListener("click", () => auth && auth.signOut());
 
+let offlineTimer = null, lastJSON = "";
+function setStatus(t){ subEl.textContent = t; subEl.hidden = !t; }
 let unsubMonth = null, unsubOfficers = null, viewY = 0, viewM = 0, pendingScroll = null;
 const docId = (y, m) => `${y}-${String(m+1).padStart(2,"0")}`;
 
@@ -481,9 +496,16 @@ function loadMonth(y, m, scrollMode){
   if (unsubMonth) unsubMonth();
   viewY = y; viewM = m; pendingScroll = scrollMode;
   titleEl.textContent = `${cap(MONTHS[m])} ${y}`;
-  subEl.textContent = "Načítám plán…";
-  unsubMonth = db.collection(COLLECTION).doc(docId(y, m)).onSnapshot({includeMetadataChanges:false}, snap => {
-    subEl.textContent = snap.metadata.fromCache ? "Bez připojení – uložená verze" : "Plán služeb MP Blansko";
+  setStatus("");
+  let shown = false;
+  unsubMonth = db.collection(COLLECTION).doc(docId(y, m)).onSnapshot({includeMetadataChanges:true}, snap => {
+    if (snap.metadata.fromCache){
+      clearTimeout(offlineTimer);
+      offlineTimer = setTimeout(() => setStatus("Bez připojení – uložená verze"), 2500);
+    } else { clearTimeout(offlineTimer); setStatus(""); }
+    // jen změna metadat (potvrzení ze serveru) – nic nepřekreslovat
+    if (shown && snap.metadata.hasPendingWrites === false && snap.metadata.fromCache === false && lastJSON === JSON.stringify(snap.data() || null)) return;
+    shown = true; lastJSON = JSON.stringify(snap.data() || null);
     if (!snap.exists){
       PLAN = null; fillSelect();
       renderEmpty(`Plán na ${MONTHS[m]} zatím není`, snap.metadata.fromCache
@@ -498,7 +520,7 @@ function loadMonth(y, m, scrollMode){
     else if (pendingScroll === "top") left.scrollTop = 0;
     pendingScroll = null;
   }, err => {
-    subEl.textContent = "Plán služeb MP Blansko";
+    clearTimeout(offlineTimer); setStatus("");
     renderEmpty("Plán se nepodařilo načíst", err.code === "permission-denied"
       ? "Účet nemá oprávnění číst plán. Zkontroluj pravidla ve Firestore."
       : "Zkontroluj připojení a zkus to znovu. (" + err.code + ")");
@@ -526,6 +548,14 @@ if (auth){
     else { gate.hidden = false; stop(); }
   });
 }
+
+/* menu */
+const menu = document.getElementById("menu"), btnMenu = document.getElementById("btnMenu");
+const setMenu = open => { menu.hidden = !open; btnMenu.setAttribute("aria-expanded", String(open)); };
+btnMenu.addEventListener("click", e => { e.stopPropagation(); setMenu(menu.hidden); });
+document.addEventListener("click", e => { if (!menu.hidden && !menu.contains(e.target)) setMenu(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") setMenu(false); });
+document.getElementById("logout").addEventListener("click", () => setMenu(false));
 
 /* navigace */
 const shift = d => { if (!db) return; const t = new Date(viewY, viewM + d, 1); loadMonth(t.getFullYear(), t.getMonth(), "top"); };
