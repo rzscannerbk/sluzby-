@@ -127,13 +127,18 @@ function parseAll(){
     if (k < 1 || !(day >= 1 && day <= days) || !text) errors.push(`Událost na řádku ${li+1} nemá tvar „den: text“.`);
     else udalosti[String(day)] = text;
   });
-  return {id: y && m ? `${y}-${String(m).padStart(2,"0")}` : "", plan, udalosti, errors, warns};
+  const counts = Object.entries(plan).map(([name, str]) => {
+    let c = 0; str.split(" ").forEach(t => t.split("+").forEach(x => { if (["D12","N12","N13","Nz7"].includes(x.replace(/\*$/, ""))) c++; }));
+    return [name, c];
+  });
+  return {counts, id: y && m ? `${y}-${String(m).padStart(2,"0")}` : "", plan, udalosti, errors, warns};
 }
 function report(el, r, okText){
   let h = "";
   if (r.errors.length) h += `<div class="err"><b>Chyby – plán nejde uložit:</b><ul>${r.errors.map(e => `<li>${esc(e)}</li>`).join("")}</ul></div>`;
   if (r.warns.length) h += `<div class="warn"><b>Upozornění:</b><ul>${r.warns.map(e => `<li>${esc(e)}</li>`).join("")}</ul></div>`;
   if (!r.errors.length) h += `<p class="ok">${esc(okText)}</p>`;
+  if (r.counts && r.counts.length) h += `<details open><summary>Počet služeb – porovnej se sloupcem „Směn“</summary><ul>${r.counts.map(([n, c]) => `<li>${esc(n)}: <b>${c}</b></li>`).join("")}</ul><p class="hint">Počítají se D12, N12, N13 a Nz7. Porada (D2) a dojezd noci (Nk8) se nepočítají.</p></details>`;
   el.innerHTML = h;
 }
 

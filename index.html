@@ -128,6 +128,23 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .aside p{margin:0 0 3px}
 .aside b{font-weight:600}
 .spacer{pointer-events:none}
+.card{cursor:pointer}
+.full{position:fixed;inset:0;z-index:30;background:var(--paper);padding:calc(env(safe-area-inset-top,0px) + 10px) 12px calc(env(safe-area-inset-bottom,0px) + 12px);overflow-y:auto;overscroll-behavior:contain;animation:fullIn .16s ease-out}
+.full[hidden]{display:none}
+@keyframes fullIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.full{animation:none}}
+.full .card{min-height:100%;margin:0;padding:20px 20px 24px;font-size:18px;cursor:default;border-radius:16px}
+.full .card h2{font-size:26px;padding-right:56px}
+.full .card .when{position:static;display:block;font-size:16px;margin-top:4px}
+.full .time{font-size:56px;margin:12px 0 16px}
+.full .lbl{font-size:15px;margin-top:16px}
+.full ul.h li{padding:5px 0}
+.full .hl{padding:3px 12px 3px 10px}
+.full .prog .bar{height:12px}
+.full .prog .pl{font-size:15px}
+.full .aside{font-size:15px}
+.full-close{position:fixed;top:calc(env(safe-area-inset-top,0px) + 20px);right:24px;z-index:31;width:44px;height:44px;border-radius:50%;border:1.5px solid currentColor;background:transparent;color:var(--ink);font-size:24px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.full.is-night .full-close{color:var(--night-ink)}
 
 .bottom{display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1.5px solid var(--ink);font-size:14px}
 .bottom label{white-space:nowrap}
@@ -190,10 +207,14 @@ ul.h li::before{content:"–";color:var(--ink2)}
     <select id="me"></select>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v2.3</span>
+      <span class="ver">v2.4</span>
     </div>
   </div>
 </header>
+<div class="full" id="full" role="dialog" aria-modal="true" aria-label="Detail služby" hidden>
+  <button class="full-close" id="fullClose" type="button" aria-label="Zavřít">✕</button>
+  <div id="fullBody"></div>
+</div>
 <main class="split">
   <div class="left" id="left" aria-label="Služby"></div>
   <nav class="right" id="right" aria-label="Dny"><div class="track" id="track"></div></nav>
@@ -326,7 +347,7 @@ function cardHTML(kind, g, slot, now){
     if (parts.length) aside = `<div class="aside">${parts.join("")}</div>`;
   }
   if (slot.note) aside += `<div class="aside"><p>${esc(slot.note)}</p></div>`;
-  return `<article class="card ${kind==="D"?"day":"night"} ${st}" data-start="${win[0].getTime()}" data-end="${win[1].getTime()}">
+  return `<article class="card ${kind==="D"?"day":"night"} ${st}" tabindex="0" data-k="${kind}" data-start="${win[0].getTime()}" data-end="${win[1].getTime()}">
     <h2>${title}${chip}${live}</h2><span class="when">${when}</span>
     <div class="time">${t2(c.s)} – ${t2(c.e)}</div>${st === "now" ? progressHTML(win, now) : ""}
     <span class="lbl">Stálá služba</span>${stala}
@@ -372,6 +393,7 @@ function render(){
   measure();
   left.scrollTop = keep;
   active = -1; update();
+  if (fullRef) fillFull();
 }
 
 /* ---------- synchronizace sloupců ---------- */
@@ -569,6 +591,40 @@ if (auth){
     else { gate.hidden = false; stop(); }
   });
 }
+
+/* karta přes celý displej */
+const full = document.getElementById("full"), fullBody = document.getElementById("fullBody");
+let fullRef = null, fullReturn = null; // {g: index skupiny, k: "D"/"N"}
+function fillFull(){
+  if (!fullRef) return;
+  const g = left.querySelectorAll(".group")[fullRef.g];
+  const card = g && g.querySelector(`.card[data-k="${fullRef.k}"]`);
+  if (!card){ closeFull(); return; }
+  fullBody.innerHTML = card.outerHTML;
+  const c = fullBody.firstElementChild; c.removeAttribute("tabindex");
+  full.classList.toggle("is-night", fullRef.k === "N");
+}
+function openFull(card){
+  const g = card.closest(".group");
+  fullRef = {g: +g.dataset.i, k: card.dataset.k};
+  fullReturn = card;
+  fillFull();
+  full.hidden = false;
+  full.scrollTop = 0;
+  document.getElementById("fullClose").focus();
+}
+function closeFull(){
+  full.hidden = true; fullRef = null; fullBody.innerHTML = "";
+  if (fullReturn && document.contains(fullReturn)) fullReturn.focus({preventScroll:true});
+  fullReturn = null;
+}
+left.addEventListener("click", e => { const c = e.target.closest(".card"); if (c) openFull(c); });
+left.addEventListener("keydown", e => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.classList?.contains("card")){ e.preventDefault(); openFull(e.target); }
+});
+document.getElementById("fullClose").addEventListener("click", closeFull);
+full.addEventListener("click", e => { if (e.target === full) closeFull(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !full.hidden) closeFull(); });
 
 /* menu */
 const menu = document.getElementById("menu"), btnMenu = document.getElementById("btnMenu");
