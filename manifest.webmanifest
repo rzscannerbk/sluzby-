@@ -1,0 +1,17 @@
+{
+  "name": "Služby MP Blansko",
+  "short_name": "Služby",
+  "description": "Plán služeb Městské policie Blansko jako dvě časové osy.",
+  "lang": "cs",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E6EAE4",
+  "theme_color": "#1D2A4D",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

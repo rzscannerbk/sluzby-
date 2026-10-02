@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1D2A4D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Služby">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Služby MP Blansko – říjen 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#E6EAE4; --sheet:#FAFBF7; --ink:#1D2A4D; --ink2:#5A6480; --line:#B9C0B4;
+  --hl:#F2E443; --hl-ink:#1D2A4D;
+  --night:#1F2846; --night-ink:#EEF0F7; --night2:#A9B2CE; --night-line:#1F2846;
+  --now:#2C64DD; --now-n:#9BB7FF; --pink:#E7A3BE;
+  --f-body:"Barlow","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --f-cond:"Barlow Condensed","Arial Narrow","Roboto Condensed","Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#10141D; --sheet:#1A2030; --ink:#E4E8F1; --ink2:#97A1B8; --line:#2E3750;
+    --night:#0A0E1A; --night-ink:#E4E8F1; --night2:#8A94AE; --night-line:#3A4566;
+    --now:#6E9BFF; --now-n:#8FB0FF; --pink:#B5577D;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#10141D; --sheet:#1A2030; --ink:#E4E8F1; --ink2:#97A1B8; --line:#2E3750;
+  --night:#0A0E1A; --night-ink:#E4E8F1; --night2:#8A94AE; --night-line:#3A4566;
+  --now:#6E9BFF; --now-n:#8FB0FF; --pink:#B5577D;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);background:var(--paper)}
+body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.4;display:flex;flex-direction:column;overflow:hidden;-webkit-text-size-adjust:100%}
+:focus-visible{outline:3px solid var(--now);outline-offset:2px}
+
+.top{display:flex;align-items:center;gap:12px;padding:10px 14px 9px;border-bottom:1.5px solid var(--ink)}
+.top h1{font-family:var(--f-cond);font-weight:700;font-size:28px;line-height:1;margin:0}
+.top p{font-size:13px;color:var(--ink2);margin:3px 0 0}
+.btn-now{margin-left:auto;font-family:var(--f-cond);font-weight:700;font-size:18px;background:var(--ink);color:var(--paper);border:0;padding:8px 16px;border-radius:6px 10px 7px 11px/10px 6px 11px 7px;cursor:pointer}
+
+.split{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 92px}
+.left{position:relative;overflow-y:auto;overscroll-behavior:contain;padding:14px 10px 0 12px;-webkit-overflow-scrolling:touch}
+.right{position:relative;overflow:hidden;border-left:1.5px solid var(--ink);touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.right.dragging{cursor:grabbing}
+.track{position:absolute;left:0;right:0;top:0;padding:0 10px;will-change:transform}
+
+.tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:100%;height:70px;margin:0 0 14px;padding:4px 2px;background:var(--sheet);color:var(--ink);border:1.5px solid var(--ink);border-radius:4px 9px 5px 10px/9px 4px 10px 5px;font-family:var(--f-cond);position:relative;cursor:pointer;transition:background-color .15s,color .15s}
+.tile .dow{font-weight:600;font-size:16px;line-height:1}
+.tile .dt{font-weight:700;font-size:21px;line-height:1.05;font-variant-numeric:tabular-nums}
+.tile .ev{font-family:var(--f-body);font-size:11px;line-height:1.1;color:var(--ink2)}
+.tile.we{box-shadow:inset 0 -5px 0 var(--pink)}
+.tile.past{opacity:.5}
+.tile.prev{border-style:dashed}
+.tile.today{outline:2px solid var(--now);outline-offset:3px}
+.tile.active{border-width:3px}
+.tile.active.part-night{background:var(--night);color:var(--night-ink);border-color:var(--night-line)}
+.tile.active.part-night .ev{color:var(--night2)}
+.tile.active.past{opacity:.85}
+.marks{position:absolute;top:4px;right:4px;display:flex;gap:2px}
+.marks i{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--ink)}
+.marks .d{background:var(--sheet)}
+.marks .n{background:var(--ink)}
+.marks .s{background:var(--hl)}
+
+.group{margin:0 0 22px}
+.card{background:var(--sheet);border:1.5px solid var(--ink);border-radius:5px 11px 6px 13px/11px 5px 13px 6px;padding:12px 14px 14px;margin:0 0 10px;position:relative}
+.card.night{background:var(--night);color:var(--night-ink);border-color:var(--night-line)}
+.card.past{opacity:.55}
+.card.now{box-shadow:0 0 0 3px var(--now)}
+.card.night.now{box-shadow:0 0 0 3px var(--now-n)}
+.card h2{font-family:var(--f-cond);font-weight:600;font-size:19px;line-height:1.15;margin:0;padding-right:70px}
+.card .when{position:absolute;top:13px;right:14px;font-size:13px;color:var(--ink2)}
+.card.night .when,.card.night .lbl,.card.night .no,.card.night li::before,.card.night .aside{color:var(--night2)}
+.time{font-family:var(--f-cond);font-weight:700;font-size:32px;line-height:1;margin:6px 0 10px;font-variant-numeric:tabular-nums}
+.time sup{font-size:.5em;line-height:0;vertical-align:.85em;margin-left:1px}
+.chip{display:inline-block;font-family:var(--f-body);font-weight:500;font-size:12px;line-height:1.5;padding:0 7px;border:1px solid currentColor;border-radius:999px;margin-left:6px;vertical-align:2px}
+.live{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-body);font-size:12px;font-weight:600;color:var(--now);margin-left:6px;vertical-align:2px}
+.card.night .live{color:var(--now-n)}
+.live::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+@media (prefers-reduced-motion: reduce){.live::before{animation:none}.tile{transition:none}}
+
+.lbl{display:block;font-size:13px;color:var(--ink2);margin-top:8px}
+.stala{margin:2px 0 0}
+.hl{display:inline-block;color:var(--hl-ink);font-weight:600;padding:1px 9px 1px 7px;margin-left:-4px;background:linear-gradient(176deg,transparent 8%,var(--hl) 9%,var(--hl) 90%,transparent 91%);border-radius:3px 8px 2px 10px}
+.hl .no{color:var(--hl-ink);opacity:.7}
+.none{color:var(--ink2);font-style:italic}
+.card.night .none{color:var(--night2)}
+ul.h{list-style:none;margin:2px 0 0;padding:0}
+ul.h li{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 7px;padding:2px 0}
+ul.h li::before{content:"–";color:var(--ink2)}
+.no{font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.tag{font-size:12px;border:1px solid currentColor;border-radius:4px;padding:0 5px;opacity:.85}
+.me{font-weight:600;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+.aside{font-size:13px;color:var(--ink2);border-top:1px dashed var(--line);margin-top:12px;padding-top:8px}
+.card.night .aside{border-color:var(--night2)}
+.aside p{margin:0 0 3px}
+.aside b{font-weight:600}
+.spacer{pointer-events:none}
+
+.bottom{display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1.5px solid var(--ink);font-size:14px}
+.bottom label{white-space:nowrap}
+.bottom select{flex:1;min-width:0;font:inherit;color:var(--ink);background:var(--sheet);border:1.5px solid var(--ink);border-radius:6px;padding:6px 8px}
+.ver{font-size:11px;color:var(--ink2)}
+.mnav{display:flex;align-items:center;gap:4px}
+.mnav button{font-family:var(--f-cond);font-weight:700;font-size:26px;line-height:1;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;background:transparent;color:var(--ink);border:1.5px solid transparent;border-radius:8px;cursor:pointer;padding:0}
+.mnav button:hover{border-color:var(--ink)}
+.top h1{min-width:0}
+.empty{max-width:320px;margin:18vh auto 0;text-align:center;color:var(--ink2)}
+.empty h2{font-family:var(--f-cond);font-weight:600;font-size:22px;color:var(--ink);margin:0 0 6px}
+.empty p{margin:0}
+.btn-out{font:inherit;font-size:13px;color:var(--ink);background:transparent;border:1.5px solid var(--ink);border-radius:6px;padding:5px 9px;cursor:pointer}
+.gate{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:var(--paper);padding:calc(env(safe-area-inset-top,0px) + 24px) 20px calc(env(safe-area-inset-bottom,0px) + 24px)}
+.gate[hidden]{display:none}
+.gate form{width:100%;max-width:340px;background:var(--sheet);border:1.5px solid var(--ink);border-radius:5px 11px 6px 13px/11px 5px 13px 6px;padding:22px 20px}
+.gate h1{font-family:var(--f-cond);font-weight:700;font-size:28px;line-height:1.1;margin:0 0 4px}
+.gate p{margin:0 0 16px;color:var(--ink2);font-size:14px}
+.gate label{display:block;font-size:13px;color:var(--ink2);margin:10px 0 4px}
+.gate input{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1.5px solid var(--ink);border-radius:6px;padding:9px 10px}
+.gate .go{width:100%;margin-top:16px;font-family:var(--f-cond);font-weight:700;font-size:19px;background:var(--ink);color:var(--paper);border:0;border-radius:6px 10px 7px 11px/10px 6px 11px 7px;padding:10px;cursor:pointer}
+.gate .go:disabled{opacity:.6}
+.gate .link{display:block;margin:12px auto 0;font:inherit;font-size:14px;color:var(--ink);background:none;border:0;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.msg{min-height:1.4em;margin:10px 0 0;font-size:14px}
+.msg.err{color:#B4232F}
+:root[data-theme="dark"] .msg.err{color:#FF8A8A}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .msg.err{color:#FF8A8A}}
+</style>
+</head>
+<body>
+<div class="gate" id="gate" hidden>
+  <form id="loginForm" novalidate>
+    <h1>Služby MP Blansko</h1>
+    <p>Přihlas se stejným účtem jako do RZ Scanneru.</p>
+    <label for="email">E-mail</label>
+    <input id="email" type="email" autocomplete="username" inputmode="email" required>
+    <label for="pass">Heslo</label>
+    <input id="pass" type="password" autocomplete="current-password" required>
+    <button class="go" id="loginBtn" type="submit">Přihlásit</button>
+    <button class="link" id="resetBtn" type="button">Zapomenuté heslo</button>
+    <p class="msg" id="loginMsg" role="status"></p>
+  </form>
+</div>
+
+<header class="top">
+  <div>
+    <div class="mnav">
+      <button id="prevM" type="button" aria-label="Předchozí měsíc">‹</button>
+      <h1 id="title">Načítám…</h1>
+      <button id="nextM" type="button" aria-label="Následující měsíc">›</button>
+    </div>
+    <p id="sub">Plán služeb MP Blansko</p>
+  </div>
+  <button class="btn-now" id="btnNow" type="button">Teď</button>
+</header>
+<main class="split">
+  <div class="left" id="left" aria-label="Služby"></div>
+  <nav class="right" id="right" aria-label="Dny"><div class="track" id="track"></div></nav>
+</main>
+<footer class="bottom">
+  <label for="me">Zvýraznit</label>
+  <select id="me"></select>
+  <button class="btn-out" id="logout" type="button">Odhlásit</button>
+  <span class="ver">v2.0</span>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+const COLLECTION = "planSluzeb";
+const MONTHS = ["leden","únor","březen","duben","květen","červen","červenec","srpen","září","říjen","listopad","prosinec"];
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const CODES = {
+  D12:{k:"D", s:[7,0],  e:[19,0]},
+  N13:{k:"N", s:[19,0], e:[8,0]},
+  N12:{k:"N", s:[19,0], e:[7,0]},
+  Nz7:{k:"N", s:[19,0], e:[24,0]},
+  Nk8:{k:"K", s:[0,0],  e:[8,0]},
+  D2: {k:"P", s:[8,0],  e:[10,0]},
+  DOV:{k:"A", label:"Dovolená"},
+  ZdV:{k:"A", label:"Zdravotní volno"}
+};
+const DOW = ["ne","po","út","st","čt","pá","so"];
+const DOW_T = ["Ne","Po","Út","St","Čt","Pá","So"];
+const FOCAL = 0.3;
+const STORE_KEY = "sluzby-osa-zvyraznit";
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const qNow = new URLSearchParams(location.search).get("now");
+const getNow = () => qNow ? new Date(qNow) : new Date();
+
+let PLAN = null, EVENTS = {}, OFFICERS = {}, YEAR = 0, MONTH = 0, GROUPS = [];
+
+/* ---------- data ---------- */
+function parsePlan(){
+  const n = new Date(YEAR, MONTH + 1, 0).getDate();
+  const days = Array.from({length:n}, () => ({D:{stala:null,hl:[]}, N:{stala:null,hl:[]}, P:[], K:[], A:{}}));
+  for (const [name, str] of Object.entries(PLAN)){
+    String(str).trim().split(/\s+/).forEach((tok, i) => {
+      if (tok === "." || !days[i]) return;
+      tok.split("+").forEach(c => {
+        const st = c.endsWith("*"), code = st ? c.slice(0,-1) : c, def = CODES[code];
+        if (!def) return;
+        const day = days[i], p = {name, code};
+        if (def.k === "D" || def.k === "N"){ if (st) day[def.k].stala = p; else day[def.k].hl.push(p); }
+        else if (def.k === "P") day.P.push(p);
+        else if (def.k === "K") day.K.push(p);
+        else (day.A[code] ||= []).push(name);
+      });
+    });
+  }
+  const cmp = (a,b) => a.name.localeCompare(b.name, "cs");
+  days.forEach(d => { d.D.hl.sort(cmp); d.N.hl.sort(cmp); d.P.sort(cmp); d.K.sort(cmp); });
+  const groups = [];
+  if (days[0] && days[0].K.length){
+    const prevName = MONTHS[(MONTH + 11) % 12], curName = MONTHS[MONTH];
+    groups.push({date:new Date(YEAR, MONTH, 0), prev:true, prevName, day:null,
+      night:{stala:null, hl:days[0].K.map(p => ({name:p.name, code:"N13"})), note:`Z plánu na ${prevName} – plán na ${curName} uvádí jen konec služby do 8:00.`}});
+  }
+  days.forEach((d, i) => groups.push({date:new Date(YEAR, MONTH, i+1), day:{...d.D, P:d.P, A:d.A, ev:EVENTS[i+1] || EVENTS[String(i+1)]}, night:d.N}));
+  return groups;
+}
+
+/* ---------- pomocné ---------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const t2 = ([h,m]) => `${h}<sup>${String(m).padStart(2,"0")}</sup>`;
+const tPlain = ([h,m]) => `${h}:${String(m).padStart(2,"0")}`;
+function baseCode(slot, kind){
+  if (slot.stala) return slot.stala.code;
+  const cnt = {}; slot.hl.forEach(p => cnt[p.code] = (cnt[p.code]||0) + 1);
+  const best = Object.entries(cnt).sort((a,b) => b[1]-a[1])[0];
+  return best ? best[0] : (kind === "D" ? "D12" : "N13");
+}
+function windowOf(date, code){
+  const c = CODES[code];
+  const s = new Date(date); s.setHours(c.s[0], c.s[1], 0, 0);
+  const e = new Date(date); e.setHours(c.e[0], c.e[1], 0, 0);
+  if (e <= s) e.setDate(e.getDate() + 1);
+  return [s, e];
+}
+const stateOf = ([s,e], now) => now < s ? "future" : now >= e ? "past" : "now";
+let ME = "";
+try { ME = localStorage.getItem(STORE_KEY) || ""; } catch(e) {}
+function person(p, base){
+  const me = p.name === ME ? "me" : "";
+  const c = CODES[p.code], b = CODES[base];
+  const tag = c && b && (c.e[0] !== b.e[0] || c.e[1] !== b.e[1]) ? ` <span class="tag">do ${tPlain(c.e)}</span>` : "";
+  return `<span class="${me}">${esc(p.name)}</span> <span class="no">${esc(OFFICERS[p.name]||"")}</span>${tag}`;
+}
+
+/* ---------- vykreslení ---------- */
+const left = document.getElementById("left");
+const right = document.getElementById("right");
+const track = document.getElementById("track");
+const titleEl = document.getElementById("title");
+const subEl = document.getElementById("sub");
+
+function cardHTML(kind, g, slot, now){
+  const base = baseCode(slot, kind);
+  const win = windowOf(g.date, base);
+  const st = stateOf(win, now);
+  const c = CODES[base];
+  const when = `${DOW[g.date.getDay()]} ${g.date.getDate()}. ${g.date.getMonth()+1}.`;
+  const title = kind === "D" ? "Denní služba" : "Noční služba";
+  const chip = kind === "D" && slot.ev ? `<span class="chip">${esc(slot.ev)}</span>` : "";
+  const live = st === "now" ? `<span class="live">Probíhá</span>` : "";
+  const stala = slot.stala
+    ? `<div class="stala"><span class="hl">${person(slot.stala, base)}</span></div>`
+    : `<div class="stala none">V plánu není</div>`;
+  const hl = slot.hl.length
+    ? `<ul class="h">${slot.hl.map(p => `<li>${person(p, base)}</li>`).join("")}</ul>`
+    : `<div class="none">Nikdo další</div>`;
+  let aside = "";
+  if (kind === "D"){
+    const parts = [];
+    if (slot.P && slot.P.length) parts.push(`<p><b>Porada ${tPlain(CODES.D2.s)}–${tPlain(CODES.D2.e)}:</b> ${slot.P.map(p => `<span class="${p.name===ME?"me":""}">${esc(p.name)}</span>`).join(", ")}</p>`);
+    for (const [code, names] of Object.entries(slot.A || {})) parts.push(`<p><b>${CODES[code].label}:</b> ${names.map(n => `<span class="${n===ME?"me":""}">${esc(n)}</span>`).join(", ")}</p>`);
+    if (parts.length) aside = `<div class="aside">${parts.join("")}</div>`;
+  }
+  if (slot.note) aside += `<div class="aside"><p>${esc(slot.note)}</p></div>`;
+  return `<article class="card ${kind==="D"?"day":"night"} ${st}" data-start="${win[0].getTime()}" data-end="${win[1].getTime()}">
+    <h2>${title}${chip}${live}</h2><span class="when">${when}</span>
+    <div class="time">${t2(c.s)} – ${t2(c.e)}</div>
+    <span class="lbl">Stálá služba</span>${stala}
+    <span class="lbl">Hlídka</span>${hl}${aside}
+  </article>`;
+}
+
+function renderEmpty(head, text){
+  GROUPS = []; L = [];
+  track.innerHTML = "";
+  track.style.transform = "";
+  left.innerHTML = `<div class="empty"><h2>${esc(head)}</h2><p>${esc(text)}</p></div>`;
+}
+
+function render(){
+  if (!GROUPS.length) return;
+  const now = getNow();
+  const keep = left.scrollTop;
+  left.innerHTML = GROUPS.map((g, i) =>
+    `<section class="group" data-i="${i}">${g.day ? cardHTML("D", g, g.day, now) : ""}${cardHTML("N", g, g.night, now)}</section>`
+  ).join("") + `<div class="spacer" id="spacer"></div>`;
+
+  const today = new Date(now); today.setHours(0,0,0,0);
+  track.innerHTML = GROUPS.map((g, i) => {
+    const d = g.date, wd = d.getDay();
+    const end = new Date(d); end.setDate(end.getDate()+1); end.setHours(8,0,0,0);
+    const cls = ["tile"];
+    if (wd === 0 || wd === 6) cls.push("we");
+    if (g.prev) cls.push("prev");
+    if (now >= end) cls.push("past");
+    if (d.getTime() === today.getTime()) cls.push("today");
+    let marks = "";
+    if (ME){
+      const on = slot => slot && (slot.stala?.name === ME ? "s" : slot.hl.some(p => p.name === ME) ? "x" : "");
+      const dm = on(g.day), nm = on(g.night);
+      if (dm || nm) marks = `<span class="marks" aria-hidden="true">${dm ? `<i class="${dm==="s"?"s":"d"}"></i>` : ""}${nm ? `<i class="${nm==="s"?"s":"n"}"></i>` : ""}</span>`;
+    }
+    const ev = g.day?.ev || (g.prev ? g.prevName : "");
+    const label = `${DOW_T[wd]} ${d.getDate()}. ${d.getMonth()+1}.${ev ? ", " + ev : ""}`;
+    return `<button type="button" class="${cls.join(" ")}" data-i="${i}" aria-label="${esc(label)}">${marks}
+      <span class="dow">${DOW_T[wd]}</span><span class="dt">${d.getDate()}. ${d.getMonth()+1}.</span>${ev ? `<span class="ev">${esc(ev)}</span>` : ""}</button>`;
+  }).join("");
+  measure();
+  left.scrollTop = keep;
+  active = -1; update();
+}
+
+/* ---------- synchronizace sloupců ---------- */
+let L = [], NT = [], R = [], active = -1, activePart = "";
+function measure(){
+  const sp = document.getElementById("spacer");
+  if (!sp){ L = []; return; }
+  sp.style.height = Math.round(left.clientHeight * (1 - FOCAL)) + "px";
+  const groups = left.querySelectorAll(".group");
+  const tiles = track.querySelectorAll(".tile");
+  L = []; NT = []; R = [];
+  groups.forEach(g => { L.push(g.offsetTop); const n = g.querySelector(".card.night"); NT.push(n ? n.offsetTop : g.offsetTop); });
+  L.push(sp.offsetTop);
+  tiles.forEach(t => R.push(t.offsetTop));
+  const step = tiles.length > 1 ? R[1] - R[0] : 84;
+  R.push(R[R.length-1] + step);
+}
+const ratio = () => L.length > 1 ? (L[L.length-1] - L[0]) / (R[R.length-1] - R[0]) : 1;
+function update(){
+  if (L.length < 2) return;
+  const f = left.scrollTop + left.clientHeight * FOCAL;
+  const n = L.length - 1;
+  let i = 0; while (i < n - 1 && f >= L[i+1]) i++;
+  const t = Math.min(1, (f - L[i]) / (L[i+1] - L[i]));
+  const r = R[i] + t * (R[i+1] - R[i]);
+  track.style.transform = `translate3d(0,${(right.clientHeight * FOCAL - r).toFixed(1)}px,0)`;
+  const part = f >= NT[i] ? "night" : "day";
+  if (i !== active || part !== activePart){
+    const tiles = track.children;
+    if (tiles[active]){ tiles[active].classList.remove("active","part-day","part-night"); tiles[active].removeAttribute("aria-current"); }
+    tiles[i].classList.add("active", "part-" + part);
+    tiles[i].setAttribute("aria-current","true");
+    active = i; activePart = part;
+  }
+}
+let ticking = false;
+left.addEventListener("scroll", () => {
+  if (ticking) return; ticking = true;
+  requestAnimationFrame(() => { ticking = false; update(); });
+}, {passive:true});
+
+function scrollLeftTo(y, smooth){
+  left.scrollTo({top: Math.max(0, y - left.clientHeight * FOCAL + 1), behavior: smooth && !reduceMotion ? "smooth" : "auto"});
+}
+function goNow(smooth){
+  const now = getNow().getTime();
+  const cards = [...left.querySelectorAll(".card")];
+  const target = cards.find(c => +c.dataset.start <= now && now < +c.dataset.end)
+              || cards.find(c => +c.dataset.start > now)
+              || cards[cards.length-1];
+  if (target) scrollLeftTo(target.offsetTop, smooth);
+}
+
+/* klepnutí na den / tažení pravým sloupcem */
+let drag = null, suppressClick = false;
+right.addEventListener("pointerdown", e => { drag = {y:e.clientY, top:left.scrollTop, id:e.pointerId, moved:false}; });
+right.addEventListener("pointermove", e => {
+  if (!drag) return;
+  const dy = e.clientY - drag.y;
+  if (!drag.moved && Math.abs(dy) > 6){ drag.moved = true; right.setPointerCapture(drag.id); right.classList.add("dragging"); }
+  if (drag.moved) left.scrollTop = drag.top - dy * ratio();
+});
+const endDrag = () => {
+  if (drag && drag.moved){ suppressClick = true; setTimeout(() => suppressClick = false, 60); }
+  drag = null; right.classList.remove("dragging");
+};
+right.addEventListener("pointerup", endDrag);
+right.addEventListener("pointercancel", endDrag);
+right.addEventListener("wheel", e => { e.preventDefault(); left.scrollTop += e.deltaY * ratio(); }, {passive:false});
+track.addEventListener("click", e => {
+  if (suppressClick) return;
+  const t = e.target.closest(".tile"); if (!t) return;
+  const g = left.querySelectorAll(".group")[+t.dataset.i];
+  if (g) scrollLeftTo(g.offsetTop, true);
+});
+
+/* výběr strážníka */
+const sel = document.getElementById("me");
+function fillSelect(){
+  const names = new Set([...Object.keys(OFFICERS), ...Object.keys(PLAN || {})]);
+  sel.innerHTML = `<option value="">Nikoho</option>` + [...names].sort((a,b) => a.localeCompare(b,"cs")).map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
+  sel.value = names.has(ME) ? ME : "";
+}
+sel.addEventListener("change", () => {
+  ME = sel.value;
+  try { localStorage.setItem(STORE_KEY, ME); } catch(e) {}
+  render();
+});
+
+/* ---------- Firebase ---------- */
+const gate = document.getElementById("gate");
+const loginMsg = document.getElementById("loginMsg");
+const showMsg = (t, err) => { loginMsg.textContent = t; loginMsg.className = "msg" + (err ? " err" : ""); };
+const cfg = window.FIREBASE_CONFIG;
+const configOk = cfg && cfg.apiKey && cfg.apiKey !== "DOPLNIT";
+let auth = null, db = null;
+if (configOk){
+  firebase.initializeApp(cfg);
+  auth = firebase.auth(); auth.languageCode = "cs";
+  db = firebase.firestore();
+  db.enablePersistence({synchronizeTabs:true}).catch(() => {});
+} else {
+  gate.hidden = false;
+  showMsg("Chybí nastavení Firebase. Doplň údaje v souboru firebase-config.js.", true);
+  document.getElementById("loginBtn").disabled = true;
+}
+
+function authError(code){
+  switch (code){
+    case "auth/invalid-credential": case "auth/wrong-password": case "auth/user-not-found": case "auth/invalid-login-credentials":
+      return "Nesprávný e-mail nebo heslo.";
+    case "auth/invalid-email": return "E-mail nemá správný tvar.";
+    case "auth/too-many-requests": return "Příliš mnoho pokusů. Zkus to znovu za chvíli.";
+    case "auth/network-request-failed": return "Chybí připojení k internetu.";
+    case "auth/user-disabled": return "Účet je zablokovaný.";
+    default: return "Přihlášení se nepovedlo (" + code + ").";
+  }
+}
+document.getElementById("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!auth) return;
+  const btn = document.getElementById("loginBtn");
+  btn.disabled = true; showMsg("Přihlašuji…");
+  try { await auth.signInWithEmailAndPassword(document.getElementById("email").value.trim(), document.getElementById("pass").value); showMsg(""); }
+  catch (err) { showMsg(authError(err.code), true); }
+  finally { btn.disabled = false; }
+});
+document.getElementById("resetBtn").addEventListener("click", async () => {
+  if (!auth) return;
+  const email = document.getElementById("email").value.trim();
+  if (!email){ showMsg("Nejdřív vyplň e-mail.", true); return; }
+  try { await auth.sendPasswordResetEmail(email); showMsg("Odkaz pro změnu hesla jsme poslali na " + email + "."); }
+  catch (err) { showMsg(authError(err.code), true); }
+});
+document.getElementById("logout").addEventListener("click", () => auth && auth.signOut());
+
+let unsubMonth = null, unsubOfficers = null, viewY = 0, viewM = 0, pendingScroll = null;
+const docId = (y, m) => `${y}-${String(m+1).padStart(2,"0")}`;
+
+function loadMonth(y, m, scrollMode){
+  if (unsubMonth) unsubMonth();
+  viewY = y; viewM = m; pendingScroll = scrollMode;
+  titleEl.textContent = `${cap(MONTHS[m])} ${y}`;
+  subEl.textContent = "Načítám plán…";
+  unsubMonth = db.collection(COLLECTION).doc(docId(y, m)).onSnapshot({includeMetadataChanges:false}, snap => {
+    subEl.textContent = snap.metadata.fromCache ? "Bez připojení – uložená verze" : "Plán služeb MP Blansko";
+    if (!snap.exists){
+      PLAN = null; fillSelect();
+      renderEmpty(`Plán na ${MONTHS[m]} zatím není`, snap.metadata.fromCache
+        ? "Bez připojení ho nejde načíst. Zkus to znovu, až budeš online."
+        : "Jakmile ho správce nahraje, objeví se tady.");
+      return;
+    }
+    const d = snap.data();
+    PLAN = d.plan || {}; EVENTS = d.udalosti || {}; YEAR = y; MONTH = m;
+    GROUPS = parsePlan(); fillSelect(); render();
+    if (pendingScroll === "now") goNow(false);
+    else if (pendingScroll === "top") left.scrollTop = 0;
+    pendingScroll = null;
+  }, err => {
+    subEl.textContent = "Plán služeb MP Blansko";
+    renderEmpty("Plán se nepodařilo načíst", err.code === "permission-denied"
+      ? "Účet nemá oprávnění číst plán. Zkontroluj pravidla ve Firestore."
+      : "Zkontroluj připojení a zkus to znovu. (" + err.code + ")");
+  });
+}
+function start(){
+  if (!unsubOfficers){
+    unsubOfficers = db.collection(COLLECTION).doc("straznici").onSnapshot(s => {
+      OFFICERS = (s.exists && s.data().cisla) || {};
+      fillSelect(); render();
+    }, () => {});
+  }
+  const n = getNow();
+  loadMonth(n.getFullYear(), n.getMonth(), "now");
+}
+function stop(){
+  if (unsubMonth){ unsubMonth(); unsubMonth = null; }
+  if (unsubOfficers){ unsubOfficers(); unsubOfficers = null; }
+  PLAN = null; OFFICERS = {};
+  renderEmpty("Odhlášeno", "Přihlas se pro zobrazení plánu.");
+}
+if (auth){
+  auth.onAuthStateChanged(u => {
+    if (u){ gate.hidden = true; start(); }
+    else { gate.hidden = false; stop(); }
+  });
+}
+
+/* navigace */
+const shift = d => { if (!db) return; const t = new Date(viewY, viewM + d, 1); loadMonth(t.getFullYear(), t.getMonth(), "top"); };
+document.getElementById("prevM").addEventListener("click", () => shift(-1));
+document.getElementById("nextM").addEventListener("click", () => shift(1));
+document.getElementById("btnNow").addEventListener("click", () => {
+  if (!db) return;
+  const n = getNow();
+  if (n.getFullYear() !== viewY || n.getMonth() !== viewM) loadMonth(n.getFullYear(), n.getMonth(), "now");
+  else goNow(true);
+});
+
+new ResizeObserver(() => { measure(); update(); }).observe(left);
+if (document.fonts) document.fonts.ready.then(() => { measure(); update(); });
+setInterval(render, 60000);
+
+/* service worker – offline režim a instalace na plochu */
+if ("serviceWorker" in navigator){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(err => console.warn("Service worker se nezaregistroval:", err));
+  });
+}
+</script>
+</body>
+</html>

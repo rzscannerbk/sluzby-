@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1D2A4D">
+<title>Nahrání plánu – Služby MP Blansko</title>
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#E6EAE4;--sheet:#FAFBF7;--ink:#1D2A4D;--ink2:#5A6480;--ok:#1E7A46;--err:#B4232F;--warn:#8A5A00;
+  --f-body:"Barlow","Segoe UI",Roboto,Arial,sans-serif;--f-cond:"Barlow Condensed","Arial Narrow","Segoe UI",sans-serif;color-scheme:light}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--paper:#10141D;--sheet:#1A2030;--ink:#E4E8F1;--ink2:#97A1B8;--ok:#5FD08E;--err:#FF8A8A;--warn:#F2C14E;color-scheme:dark}}
+:root[data-theme="dark"]{--paper:#10141D;--sheet:#1A2030;--ink:#E4E8F1;--ink2:#97A1B8;--ok:#5FD08E;--err:#FF8A8A;--warn:#F2C14E;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+main{max-width:760px;margin:0 auto;padding:18px 14px 40px}
+h1{font-family:var(--f-cond);font-weight:700;font-size:30px;line-height:1.1;margin:0 0 4px}
+h2{font-family:var(--f-cond);font-weight:600;font-size:21px;margin:0 0 6px}
+p.lead{margin:0 0 18px;color:var(--ink2)}
+section{background:var(--sheet);border:1.5px solid var(--ink);border-radius:5px 11px 6px 13px/11px 5px 13px 6px;padding:16px;margin:0 0 16px}
+label{display:block;font-size:13px;color:var(--ink2);margin:10px 0 4px}
+input,textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1.5px solid var(--ink);border-radius:6px;padding:8px 10px}
+textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.5;white-space:pre;overflow-x:auto}
+.hint{font-size:13px;color:var(--ink2);margin:6px 0 0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+button{font-family:var(--f-cond);font-weight:700;font-size:18px;background:var(--ink);color:var(--paper);border:0;border-radius:6px 10px 7px 11px/10px 6px 11px 7px;padding:9px 16px;cursor:pointer}
+button.sec{background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+button:disabled{opacity:.55;cursor:default}
+:focus-visible{outline:3px solid #2C64DD;outline-offset:2px}
+.out{margin:12px 0 0;font-size:14px}
+.out ul{margin:6px 0 0;padding-left:20px}
+.ok{color:var(--ok)}.err{color:var(--err)}.warn{color:var(--warn)}
+.who{font-size:14px;color:var(--ink2);margin:0 0 14px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <h1>Nahrání plánu služeb</h1>
+  <p class="lead">Plán se uloží do Firestore a strážníkům se hned zobrazí v časové ose.</p>
+
+  <section id="login" hidden>
+    <h2>Přihlášení</h2>
+    <form id="loginForm" novalidate>
+      <label for="email">E-mail</label><input id="email" type="email" autocomplete="username" required>
+      <label for="pass">Heslo</label><input id="pass" type="password" autocomplete="current-password" required>
+      <div class="row"><button type="submit">Přihlásit</button></div>
+      <p class="out" id="loginOut"></p>
+    </form>
+  </section>
+
+  <div id="app" hidden>
+    <p class="who" id="who"></p>
+    <section>
+      <h2>Plán na měsíc</h2>
+      <label for="month">Měsíc</label>
+      <input id="month" type="month" value="2026-10">
+      <label for="plan">Služby – jeden řádek na strážníka</label>
+      <textarea id="plan" rows="20" spellcheck="false"></textarea>
+      <p class="hint">Formát: <b>Jméno Příjmení: kód kód …</b>, jeden kód na každý den měsíce. Prázdný den je tečka, stálá služba má hvězdičku (D12*), dva kódy v jednom dni spoj plusem (D2+N13). Kódy: D12, N13, N12, Nz7, Nk8, D2, DOV, ZdV.</p>
+      <label for="events">Události – jeden řádek na den</label>
+      <textarea id="events" rows="4" spellcheck="false"></textarea>
+      <p class="hint">Formát: <b>den: text</b>, třeba „14: Porada MP“.</p>
+      <div class="row">
+        <button type="button" class="sec" id="checkBtn">Zkontrolovat</button>
+        <button type="button" id="saveBtn">Uložit plán</button>
+        <button type="button" class="sec" id="loadBtn">Načíst uložený</button>
+      </div>
+      <div class="out" id="planOut" role="status"></div>
+    </section>
+
+    <section>
+      <h2>Služební čísla</h2>
+      <label for="officers">Jeden řádek na strážníka</label>
+      <textarea id="officers" rows="10" spellcheck="false"></textarea>
+      <p class="hint">Formát: <b>Jméno Příjmení – číslo</b>.</p>
+      <div class="row"><button type="button" id="saveOffBtn">Uložit čísla</button></div>
+      <div class="out" id="offOut" role="status"></div>
+    </section>
+    <div class="row"><button type="button" class="sec" id="logout">Odhlásit</button></div>
+  </div>
+</main>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+const PREFILL = {"plan":"Hlaváček Michal: N13* . . . . . N13* . DOV DOV DOV DOV DOV DOV DOV DOV DOV DOV DOV DOV DOV DOV D12* D12* N13* . . . . D12* .\nŠenk Kamil: D12 D12 . . D12 D12 N13 . D12 . . D12* N13 D2 DOV D12 . D12* D12 . . . D12 . . . D12 . D12 D12 Nz7\nTóth Pavel: N13 . . . D12 N13 N13 . . DOV DOV DOV DOV DOV DOV D12 DOV D12 N13 . . D12 . D12 N13 . . . D12 D12 Nz7\nSehnal Petr: ZdV . . N13* . D12* ZdV N13* . N12* . DOV DOV DOV DOV DOV . . . N13* . . D12 . D12* N13* . . . . D12*\nPřikryl Miroslav: D12 N12 . . . . D12 N13 . N12 . D12 D12 D2+N13 . . N12 . D12 N13 . . . . D12 N13 . . . . D12\nTóth Ondřej: . N12 . . . D12 D12 N13 . . . D12 D12 D2+N13 . DOV DOV DOV DOV DOV DOV DOV DOV DOV D12 N13 N12 . . D12 D12\nMenšík Jaroslav: Nk8 DOV DOV DOV DOV DOV DOV DOV DOV D12* D12* N13* . D2 . D12* . N13 . . D12* N13* . . . D12 D12* N12* . D12 Nz7*\nLiška Michal: Nk8 . N12 . D12 N13* . . . . D12 N13 N13* D2 . D12 N12* N13* . . D12 N13 . . . . D12 N12 . D12 .\nHavel Radek: Nk8 . . . D12* . . D12 . D12 D12 . . D2+N13* . D12 D12 N13 . N13 . N13 . . . . D12 N12 . . .\nVašíček Zdeněk: . D12 . D12* N13* . . D12 D12 . N13* . DOV DOV DOV DOV ZdV . . . D12 D12* N12 . . D12 . D12* N12* . .\nGrénar Martin: N13 . . . N13 . D12 . D12 D12 N13 . N13 D2 D12 . . . N13 . D12 D12 D12 . . . D12 D12 N12 . .\nChalupa Martin: . . D12 D12 N13 . . . D12 . N13 . . D2 D12 N12 . . . . D12 D12 N12 . . . . D12 N12 . .\nTesař Libor: . D12* D12* N13 . . . D12 D12* N12 . N13 . D2 D12* N12* . . D12* D12* . . N12* . . D12* D12 . D12 . .\nAdámek Jaroslav: . D12 . N13 . . DOV DOV DOV DOV DOV . . D12 D12 . . . D12 D12 N13 . . D12 N13 . . . . N12 .\nHofman Radek: DOV DOV DOV DOV DOV DOV DOV DOV DOV DOV DOV . . D12 D12 N12 . D12 . D12 . . . . . D12 . . D12 . .\nParolek Antonín: D12* . N12* . . . D12* D12* N12* . . . D12* D12* N13* . D12* . N13* . . . . N12* . . N12* . D12* N12* .\nJuračka Lukáš: D12 N12* . D12 . . D12 D12 N12 . . . D12 D2 N13 . . . D12 D12 N13* . . N12 . D12 . . . . N12\nŠkvařil Libor: D12 D12 N12 . . N13 . . N12 . . . D12 D12 N13 . D12 . D12 D12 N13 . N12 N12 . . N12 . . . .","ev":"9: Volby\n10: Volby\n14: Porada MP","off":"Adámek Jaroslav – 995\nGrénar Martin – 1774\nHavel Radek – 1794\nHlaváček Michal – 177\nHofman Radek – 1744\nChalupa Martin – 1781\nJuračka Lukáš – 1048\nLiška Michal – 2053\nMenšík Jaroslav – 202\nParolek Antonín – 611\nPřikryl Miroslav – 1996\nSehnal Petr – 182\nŠenk Kamil – 723\nŠkvařil Libor – 1564\nTesař Libor – 188\nTóth Ondřej – 2401\nTóth Pavel – 775\nVašíček Zdeněk – 1255"};
+const COLLECTION = "planSluzeb";
+const KNOWN = ["D12","N13","N12","Nz7","Nk8","D2","DOV","ZdV"];
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+$("plan").value = PREFILL.plan; $("events").value = PREFILL.ev; $("officers").value = PREFILL.off;
+
+function parseAll(){
+  const [y, m] = $("month").value.split("-").map(Number);
+  const errors = [], warns = [];
+  if (!y || !m) errors.push("Vyber měsíc.");
+  const days = y && m ? new Date(y, m, 0).getDate() : 31;
+  const plan = {};
+  $("plan").value.split("\n").forEach((line, li) => {
+    if (!line.trim()) return;
+    const k = line.indexOf(":");
+    if (k < 1){ errors.push(`Řádek ${li+1}: chybí dvojtečka za jménem.`); return; }
+    const name = line.slice(0, k).trim(), toks = line.slice(k+1).trim().split(/\s+/);
+    if (toks.length !== days) errors.push(`${name}: ${toks.length} hodnot, měsíc má ${days} dní.`);
+    toks.forEach((t, i) => { if (t === ".") return; t.split("+").forEach(c => { if (!KNOWN.includes(c.replace(/\*$/, ""))) errors.push(`${name}, ${i+1}. den: neznámý kód „${c}“.`); }); });
+    if (plan[name]) errors.push(`${name} je v plánu dvakrát.`);
+    plan[name] = toks.join(" ");
+  });
+  if (!Object.keys(plan).length) errors.push("Plán je prázdný.");
+  for (let d = 0; d < days; d++){
+    let D = 0, N = 0;
+    for (const s of Object.values(plan)) (s.split(" ")[d] || "").split("+").forEach(c => { if (c.endsWith("*")) c[0] === "D" ? D++ : N++; });
+    if (D !== 1) warns.push(`${d+1}. den: denní stálá služba ${D === 0 ? "chybí" : D + "×"}.`);
+    if (N !== 1) warns.push(`${d+1}. den: noční stálá služba ${N === 0 ? "chybí" : N + "×"}.`);
+  }
+  const udalosti = {};
+  $("events").value.split("\n").forEach((line, li) => {
+    if (!line.trim()) return;
+    const k = line.indexOf(":"), day = parseInt(line.slice(0, k), 10), text = line.slice(k+1).trim();
+    if (k < 1 || !(day >= 1 && day <= days) || !text) errors.push(`Událost na řádku ${li+1} nemá tvar „den: text“.`);
+    else udalosti[String(day)] = text;
+  });
+  return {id: y && m ? `${y}-${String(m).padStart(2,"0")}` : "", plan, udalosti, errors, warns};
+}
+function report(el, r, okText){
+  let h = "";
+  if (r.errors.length) h += `<div class="err"><b>Chyby – plán nejde uložit:</b><ul>${r.errors.map(e => `<li>${esc(e)}</li>`).join("")}</ul></div>`;
+  if (r.warns.length) h += `<div class="warn"><b>Upozornění:</b><ul>${r.warns.map(e => `<li>${esc(e)}</li>`).join("")}</ul></div>`;
+  if (!r.errors.length) h += `<p class="ok">${esc(okText)}</p>`;
+  el.innerHTML = h;
+}
+
+const cfg = window.FIREBASE_CONFIG;
+if (!cfg || !cfg.apiKey || cfg.apiKey === "DOPLNIT"){
+  $("login").hidden = false;
+  $("loginOut").innerHTML = `<span class="err">Chybí nastavení Firebase. Doplň údaje v souboru firebase-config.js.</span>`;
+} else {
+  firebase.initializeApp(cfg);
+  const auth = firebase.auth(), db = firebase.firestore();
+  auth.onAuthStateChanged(u => {
+    $("login").hidden = !!u; $("app").hidden = !u;
+    if (u) $("who").textContent = "Přihlášen: " + u.email;
+  });
+  $("loginForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    try { await auth.signInWithEmailAndPassword($("email").value.trim(), $("pass").value); $("loginOut").textContent = ""; }
+    catch (err) { $("loginOut").innerHTML = `<span class="err">Přihlášení se nepovedlo (${esc(err.code)}).</span>`; }
+  });
+  $("logout").addEventListener("click", () => auth.signOut());
+  const deny = err => err.code === "permission-denied"
+    ? "Účet nemá oprávnění zapisovat. Zkontroluj e-mail správce v pravidlech Firestore."
+    : "Uložení se nepovedlo (" + err.code + ").";
+
+  $("checkBtn").addEventListener("click", () => { const r = parseAll(); report($("planOut"), r, `Plán je v pořádku: ${Object.keys(r.plan).length} strážníků.`); });
+  $("saveBtn").addEventListener("click", async () => {
+    const r = parseAll();
+    if (r.errors.length){ report($("planOut"), r, ""); return; }
+    if (r.warns.length && !confirm("Plán má upozornění ke stálým službám. Přesto uložit?")) { report($("planOut"), r, ""); return; }
+    $("saveBtn").disabled = true;
+    try {
+      await db.collection(COLLECTION).doc(r.id).set({
+        plan: r.plan, udalosti: r.udalosti,
+        upraveno: firebase.firestore.FieldValue.serverTimestamp(),
+        upravil: auth.currentUser.email
+      });
+      report($("planOut"), r, `Plán na ${r.id} je uložený.`);
+    } catch (err) { $("planOut").innerHTML = `<p class="err">${esc(deny(err))}</p>`; }
+    finally { $("saveBtn").disabled = false; }
+  });
+  $("loadBtn").addEventListener("click", async () => {
+    const [y, m] = $("month").value.split("-");
+    const id = `${y}-${m}`;
+    try {
+      const s = await db.collection(COLLECTION).doc(id).get();
+      if (!s.exists){ $("planOut").innerHTML = `<p class="warn">Plán na ${esc(id)} zatím uložený není.</p>`; return; }
+      const d = s.data();
+      $("plan").value = Object.entries(d.plan || {}).map(([n, t]) => `${n}: ${t}`).join("\n");
+      $("events").value = Object.entries(d.udalosti || {}).sort((a,b) => a[0]-b[0]).map(([k, v]) => `${k}: ${v}`).join("\n");
+      $("planOut").innerHTML = `<p class="ok">Načten uložený plán na ${esc(id)}.</p>`;
+    } catch (err) { $("planOut").innerHTML = `<p class="err">Načtení se nepovedlo (${esc(err.code)}).</p>`; }
+  });
+  $("saveOffBtn").addEventListener("click", async () => {
+    const cisla = {}, errs = [];
+    $("officers").value.split("\n").forEach((line, li) => {
+      if (!line.trim()) return;
+      const mm = line.match(/^(.+?)\s*[–-]\s*(\d+)\s*$/);
+      if (!mm) errs.push(`Řádek ${li+1} nemá tvar „Jméno – číslo“.`); else cisla[mm[1].trim()] = mm[2];
+    });
+    if (errs.length){ $("offOut").innerHTML = `<div class="err"><ul>${errs.map(e => `<li>${esc(e)}</li>`).join("")}</ul></div>`; return; }
+    try {
+      await db.collection(COLLECTION).doc("straznici").set({cisla, upraveno: firebase.firestore.FieldValue.serverTimestamp()});
+      $("offOut").innerHTML = `<p class="ok">Uloženo ${Object.keys(cisla).length} služebních čísel.</p>`;
+    } catch (err) { $("offOut").innerHTML = `<p class="err">${esc(deny(err))}</p>`; }
+  });
+}
+</script>
+</body>
+</html>
