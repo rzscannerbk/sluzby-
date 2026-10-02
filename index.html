@@ -280,7 +280,7 @@ button.cal-day{cursor:pointer}
     <select id="me"></select>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v3.2</span>
+      <span class="ver">v3.4</span>
     </div>
   </div>
 </header>
@@ -878,9 +878,11 @@ function checkPerson(T, name, days, y, m, out){
   for (let k = 0; k < iv.length - 1; k++){
     const a = iv[k], b = iv[k+1];
     if (!days.has(a.day) && !days.has(b.day)) continue;
-    const gap = (b.s - a.e) / 36e5;
-    if (gap < 1) out.e.push(`${name}: ${a.lbl} a ${b.lbl} na sebe navazují nebo se překrývají.`);
-    else if (gap < 11) out.w.push(`${name}: mezi ${a.lbl} a ${b.lbl} je jen ${Math.round(gap)} h odpočinku.`);
+    // služby po sobě jsou povolené, překryv do 1 hodiny (noc N13 do 8:00 → denní od 7:00) se zanedbává
+    if (a.e - b.s > 36e5){
+      const hm = d => `${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`;
+      out.e.push(`${name}: ${a.lbl} končí v ${hm(a.e)}, ale ${b.lbl} začíná už v ${hm(b.s)}.`);
+    }
   }
 }
 /* simulace žádosti nad stavem měsíce; accepter = kdo bere nabídku */
