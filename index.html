@@ -135,9 +135,9 @@ ul.h li::before{content:"–";color:var(--ink2)}
 @media (prefers-reduced-motion: reduce){.full{animation:none}}
 #fullBody{flex:1 0 auto;display:flex;flex-direction:column}
 .full .card{flex:1 0 auto;margin:0;padding:20px 20px 96px;font-size:18px;cursor:default;border-radius:16px}
-.full .card h2{font-size:26px;padding-right:0}
-.full .card .when{position:static;display:block;font-size:16px;margin-top:4px}
-.full .time{font-size:56px;margin:12px 0 16px}
+.full .card h2{font-size:26px;padding-right:120px}
+.full .card .when{position:absolute;top:20px;right:20px;font-family:var(--f-cond);font-weight:600;font-size:26px;line-height:1.15;white-space:nowrap}
+.full .time{font-size:37px;text-align:center;margin:18px 0 18px}
 .full .lbl{font-size:15px;margin-top:16px}
 .full ul.h li{padding:5px 0}
 .full .hl{padding:3px 12px 3px 10px}
@@ -208,7 +208,7 @@ ul.h li::before{content:"–";color:var(--ink2)}
     <select id="me"></select>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v2.5</span>
+      <span class="ver">v2.6</span>
     </div>
   </div>
 </header>

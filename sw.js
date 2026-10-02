@@ -1,6 +1,6 @@
 // Služby MP Blansko – service worker
 // Při každé změně souborů zvyš verzi, aby se stará cache smazala.
-const VERSION = "sluzby-v8";
+const VERSION = "sluzby-v9";
 const LIB_CACHE = "sluzby-knihovny";
 const CORE = [
   "./",
