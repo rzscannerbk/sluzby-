@@ -1,6 +1,33 @@
 // Služby MP Blansko – service worker
+// --- notifikace (Firebase Cloud Messaging) ---
+self.window = self; // firebase-config.js zapisuje do window
+try {
+  importScripts(
+    "https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js",
+    "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js",
+    "./firebase-config.js"
+  );
+  const cfg = self.FIREBASE_CONFIG;
+  if (cfg && cfg.apiKey && cfg.apiKey !== "DOPLNIT"){
+    firebase.initializeApp(cfg);
+    firebase.messaging(); // zprávy s „notification“ zobrazí knihovna sama
+  }
+} catch (e) { /* bez notifikací stránka funguje dál */ }
+
+// klepnutí na upozornění zobrazené stránkou (při otevřené stránce)
+self.addEventListener("notificationclick", e => {
+  const d = e.notification.data || {};
+  if (d.FCM_MSG) return; // ty obslouží knihovna Firebase
+  e.notification.close();
+  const url = new URL(d.link || "./", self.registration.scope).href;
+  e.waitUntil(clients.matchAll({type:"window", includeUncontrolled:true}).then(list => {
+    const w = list.find(c => c.url.startsWith(self.registration.scope));
+    return w ? w.focus() : clients.openWindow(url);
+  }));
+});
+
 // Při každé změně souborů zvyš verzi, aby se stará cache smazala.
-const VERSION = "sluzby-v22";
+const VERSION = "sluzby-v23";
 const LIB_CACHE = "sluzby-knihovny";
 const CORE = [
   "./",

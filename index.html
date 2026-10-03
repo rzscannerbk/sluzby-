@@ -60,6 +60,12 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 .menu[hidden]{display:none}
 .menu label{display:block;font-size:13px;color:var(--ink2);margin:0 0 4px}
 .menu select{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1.5px solid var(--ink);border-radius:6px;padding:7px 8px}
+.push{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+.pinfo{font-size:13px;color:var(--ink2);margin:0 0 8px}
+.pinfo:empty{display:none}
+#pushOpts label{margin-top:10px}
+.menu label.chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);margin-top:10px}
+.menu label.chk input{width:18px;height:18px;accent-color:var(--ink)}
 .menu .mrow{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
 
 .split{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 92px}
@@ -296,9 +302,23 @@ button.cal-day{cursor:pointer}
   <div class="menu" id="menu" hidden>
     <label for="me">Zvýraznit strážníka</label>
     <select id="me"></select>
+    <div class="push" id="pushBox">
+      <label>Upozornění</label>
+      <p class="pinfo" id="pushInfo"></p>
+      <button class="btn-out" id="pushBtn" type="button" hidden>Zapnout upozornění</button>
+      <div id="pushOpts" hidden>
+        <label for="pushRem">Připomínka služby</label>
+        <select id="pushRem">
+          <option value="18">Den předem v 18:00</option>
+          <option value="2h">2 hodiny před začátkem</option>
+          <option value="off">Vypnuto</option>
+        </select>
+        <label class="chk"><input type="checkbox" id="pushPlan" checked> Nový nebo upravený plán</label>
+      </div>
+    </div>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v3.10</span>
+      <span class="ver">v4.0</span>
     </div>
   </div>
 </header>
@@ -330,6 +350,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script>
 const COLLECTION = "planSluzeb";
@@ -641,7 +662,11 @@ document.getElementById("resetBtn").addEventListener("click", async () => {
   try { await auth.sendPasswordResetEmail(email); showMsg("Odkaz pro změnu hesla jsme poslali na " + email + "."); }
   catch (err) { showMsg(authError(err.code), true); }
 });
-document.getElementById("logout").addEventListener("click", () => auth && auth.signOut());
+document.getElementById("logout").addEventListener("click", async () => {
+  if (!auth) return;
+  try { await pushRemoveToken(); } catch(e) {}
+  auth.signOut();
+});
 
 let offlineTimer = null, lastJSON = "";
 function setStatus(t){ subEl.textContent = t; subEl.hidden = !t; }
@@ -692,7 +717,7 @@ function start(){
       fillSelect(); render();
     }, () => {});
   }
-  resolveSelf(); startSwaps();
+  resolveSelf(); startSwaps(); pushRefresh();
   const n = getNow();
   loadMonth(n.getFullYear(), n.getMonth(), "now");
 }
@@ -1211,6 +1236,105 @@ function stopSwaps(){
   if (unsubSwaps){ unsubSwaps(); unsubSwaps = null; }
   unsubMine.forEach(u => u()); unsubMine = []; MY_OD = []; MY_ZA = [];
   PENDING = []; SWAPS_MONTH = []; updateBadge();
+}
+
+/* ================= notifikace ================= */
+const PUSH_KEY = "sluzby-push-token", PUSH_PREF = "sluzby-push-pref";
+let messaging = null;
+const pushEls = {info:document.getElementById("pushInfo"), btn:document.getElementById("pushBtn"), opts:document.getElementById("pushOpts"), rem:document.getElementById("pushRem"), plan:document.getElementById("pushPlan")};
+const lsGet = k => { try { return localStorage.getItem(k); } catch(e) { return null; } };
+const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch(e) {} };
+try { const pr = JSON.parse(lsGet(PUSH_PREF) || "{}"); if (pr.rem) pushEls.rem.value = pr.rem; if (pr.plan === false) pushEls.plan.checked = false; } catch(e) {}
+const standalone = () => navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+function pushSupported(){
+  return configOk && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window
+    && firebase.messaging && (!firebase.messaging.isSupported || firebase.messaging.isSupported());
+}
+function getMessaging(){
+  if (!messaging){
+    messaging = firebase.messaging();
+    messaging.onMessage(async p => {   // zpráva při otevřené stránce – ukázat stejně jako na pozadí
+      const n = p.notification || {};
+      const reg = await navigator.serviceWorker.ready;
+      reg.showNotification(n.title || "Služby", {body:n.body || "", icon:"icon-192.png", badge:"icon-192.png", data:{link:"./"}});
+    });
+  }
+  return messaging;
+}
+function pushRender(msg){
+  const {info, btn, opts} = pushEls;
+  btn.hidden = true; opts.hidden = true;
+  if (!configOk) { info.textContent = ""; return; }
+  if (!pushSupported()){
+    info.textContent = /iPhone|iPad/.test(navigator.userAgent) && !standalone()
+      ? "Na iPhonu fungují upozornění jen ve verzi přidané na plochu (Sdílet → Přidat na plochu)."
+      : "Tento prohlížeč upozornění nepodporuje.";
+    return;
+  }
+  if (Notification.permission === "denied"){
+    info.textContent = "Upozornění jsou zakázaná. Povolíš je v Nastavení → Oznámení → Služby.";
+    return;
+  }
+  const on = !!lsGet(PUSH_KEY) && Notification.permission === "granted";
+  info.textContent = msg || (on ? "Zapnuto na tomto zařízení." : "");
+  btn.hidden = false; btn.disabled = false;
+  btn.textContent = on ? "Vypnout upozornění" : "Zapnout upozornění";
+  opts.hidden = !on;
+}
+function pushPrefs(){ return {pripominka:pushEls.rem.value, plan:pushEls.plan.checked}; }
+async function pushSaveToken(token){
+  await db.collection("pushTokens").doc(token).set({
+    cislo:SELF_NO, jmeno:SELF || "", ...pushPrefs(),
+    zarizeni:navigator.userAgent.slice(0, 140),
+    upraveno:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  lsSet(PUSH_KEY, token);
+}
+async function pushEnable(){
+  const btn = pushEls.btn; btn.disabled = true;
+  try {
+    if (!SELF_NO) throw new Error("Účet se nepodařilo spárovat se strážníkem.");
+    if (!window.FIREBASE_VAPID) throw new Error("Chybí klíč FIREBASE_VAPID v souboru firebase-config.js.");
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted"){ pushRender(perm === "denied" ? "" : "Upozornění nebyla povolena."); return; }
+    const reg = await navigator.serviceWorker.ready;
+    const token = await getMessaging().getToken({vapidKey:window.FIREBASE_VAPID, serviceWorkerRegistration:reg});
+    if (!token) throw new Error("Nepodařilo se získat token zařízení.");
+    await pushSaveToken(token);
+    pushRender("Zapnuto. Upozornění budou chodit i se zavřenou stránkou.");
+  } catch (err){
+    pushRender(err.code === "permission-denied" ? "Token nejde uložit – chybí pravidla pro pushTokens ve Firestore." : (err.message || "Zapnutí se nepovedlo."));
+  }
+}
+async function pushRemoveToken(){
+  const token = lsGet(PUSH_KEY); if (!token) return;
+  lsSet(PUSH_KEY, null);
+  try { await db.collection("pushTokens").doc(token).delete(); } catch(e) {}
+  try { if (pushSupported()) await getMessaging().deleteToken(); } catch(e) {}
+}
+pushEls.btn.addEventListener("click", async () => {
+  if (lsGet(PUSH_KEY) && Notification.permission === "granted"){ pushEls.btn.disabled = true; await pushRemoveToken(); pushRender("Vypnuto."); }
+  else pushEnable();
+});
+async function pushPrefChange(){
+  lsSet(PUSH_PREF, JSON.stringify({rem:pushEls.rem.value, plan:pushEls.plan.checked}));
+  const token = lsGet(PUSH_KEY); if (!token) return;
+  try { await db.collection("pushTokens").doc(token).set(pushPrefs(), {merge:true}); pushRender("Uloženo."); }
+  catch(e){ pushRender("Nastavení se nepodařilo uložit."); }
+}
+pushEls.rem.addEventListener("change", pushPrefChange);
+pushEls.plan.addEventListener("change", pushPrefChange);
+// po přihlášení: obnovit token (iOS ho občas změní) a přiřadit ho přihlášenému strážníkovi
+async function pushRefresh(){
+  pushRender();
+  const old = lsGet(PUSH_KEY);
+  if (!old || !pushSupported() || Notification.permission !== "granted" || !SELF_NO || !window.FIREBASE_VAPID) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const token = await getMessaging().getToken({vapidKey:window.FIREBASE_VAPID, serviceWorkerRegistration:reg});
+    if (token && token !== old){ try { await db.collection("pushTokens").doc(old).delete(); } catch(e) {} }
+    if (token) await pushSaveToken(token);
+  } catch(e) {}
 }
 
 /* menu */
