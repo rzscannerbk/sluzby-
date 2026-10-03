@@ -172,6 +172,10 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .bal .bs.minus,.bal-sum b.minus{color:#D04848}
 .bal .bnet{grid-column:1;font-size:13px;color:var(--ink2)}
 .bal ul{margin:0 0 10px;padding-left:18px;font-size:14px}
+.req .st-prijato{background:#2E9E5B;border-color:#2E9E5B;color:#fff}
+.req .st-odmitnuto{background:#D04848;border-color:#D04848;color:#fff}
+.req .st-zruseno{background:#3B6FD6;border-color:#3B6FD6;color:#fff}
+.btn.sec.btn-danger{border-color:#D04848;color:#D04848}
 .pick-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
 .pname{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;text-decoration:none}
 .pname.me{font-weight:600;text-decoration:underline solid;text-decoration-thickness:2px;text-decoration-color:currentColor}
@@ -318,7 +322,7 @@ button.cal-day{cursor:pointer}
     </div>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.0</span>
+      <span class="ver">v4.1</span>
     </div>
   </div>
 </header>
@@ -1014,7 +1018,7 @@ function balanceHTML(){
 const ST_LBL = {ceka:"Čeká", prijato:"Přijato", odmitnuto:"Odmítnuto", zruseno:"Zrušeno"};
 function renderVym(){
   if (vym.hidden) return;
-  const reqHTML = (r, actions) => `<div class="req" data-id="${r.id}">${reqText(r)}<span class="st">${ST_LBL[r.stav]}</span>${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div></div>`;
+  const reqHTML = (r, actions) => `<div class="req" data-id="${r.id}">${reqText(r)}<span class="st st-${r.stav}">${ST_LBL[r.stav]}</span>${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div></div>`;
   const forMe = PENDING.filter(r => r.zaCislo === SELF_NO);
   const offersAll = PENDING.filter(r => r.zaCislo == null && r.odCislo !== SELF_NO);
   const offers = offersAll.filter(r => !HIDDEN.has(r.id));
@@ -1030,7 +1034,7 @@ function renderVym(){
     ${sec("Nabídky kolegů", offers, () => `<button class="btn" data-act="take">Vzít službu</button><button class="btn sec" data-act="hide">Nemám zájem</button>`, hidden.length ? "Žádné další nabídky." : "Žádné otevřené nabídky.")}
     ${hidden.length ? `<details class="hid"><summary>Skryté nabídky (${hidden.length})</summary>${hidden.map(r => reqHTML(r, `<button class="btn" data-act="take">Vzít službu</button><button class="btn sec" data-act="unhide">Znovu zobrazit</button>`)).join("")}</details>` : ""}
     ${sec("Moje žádosti", mine, () => `<button class="btn sec" data-act="cancel">Zrušit žádost</button>`, "Nemáš žádné otevřené žádosti.")}
-    ${sec(`Vyřízené – ${MONTHS[MONTH]}`, done, r => r.stav === "prijato" && isAdminUI() ? `<button class="btn sec" data-act="revoke">Zrušit výměnu</button>` : "", "Zatím žádné.")}`;
+    ${sec(`Vyřízené – ${MONTHS[MONTH]}`, done, r => r.stav === "prijato" && isAdminUI() ? `<button class="btn sec btn-danger" data-act="revoke">Zrušit výměnu</button>` : "", "Zatím žádné.")}`;
 }
 function openVym(){ vym.hidden = false; vym.scrollTop = 0; renderVym(); document.getElementById("vymClose").focus(); }
 function closeVym(){ vym.hidden = true; }
