@@ -49,8 +49,10 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 :focus-visible{outline:3px solid var(--now);outline-offset:2px}
 
 .top{order:2;position:relative;display:flex;align-items:center;gap:8px;padding:8px 10px calc(var(--sab) + 8px) 4px}
-.top h1{font-family:var(--f-cond);font-weight:700;font-size:24px;line-height:1;margin:0;white-space:nowrap}
+.top h1{font-family:var(--f-cond);font-weight:700;font-size:16px;line-height:1;margin:0;white-space:nowrap}
 .top-main{min-width:0}
+.self-btn{display:block;margin:0 0 0 34px;padding:0;background:none;border:0;font:inherit;font-size:15px;font-weight:600;color:var(--ink);text-align:left;cursor:pointer;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.self-btn[hidden]{display:none}
 #sub{font-size:12px;color:var(--ink2);margin:0 0 0 34px;line-height:1.2}
 #sub[hidden]{display:none}
 .btn-now{font-family:var(--f-cond);font-weight:700;font-size:17px;background:var(--ink);color:var(--paper);border:0;padding:6px 14px;border-radius:6px 10px 7px 11px/10px 6px 11px 7px;cursor:pointer}
@@ -296,6 +298,7 @@ button.cal-day{cursor:pointer}
       <h1 id="title">Načítám…</h1>
       <button id="nextM" type="button" aria-label="Následující měsíc">›</button>
     </div>
+    <button class="self-btn" id="selfBtn" type="button" hidden></button>
     <p id="sub" role="status" hidden></p>
   </div>
   <button class="btn-swap" id="btnSwap" type="button" aria-label="Výměny služeb">⇄<span class="badge" id="swapBadge" hidden>0</span></button>
@@ -322,7 +325,7 @@ button.cal-day{cursor:pointer}
     </div>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.3</span>
+      <span class="ver">v4.4</span>
     </div>
   </div>
 </header>
@@ -728,7 +731,7 @@ function start(){
 function stop(){
   if (unsubMonth){ unsubMonth(); unsubMonth = null; }
   if (unsubOfficers){ unsubOfficers(); unsubOfficers = null; }
-  stopSwaps(); SELF = null; SELF_NO = null;
+  stopSwaps(); SELF = null; SELF_NO = null; updateSelfLabel();
   PLAN = null; EFF = null; OFFICERS = {};
   renderEmpty("Odhlášeno", "Přihlas se pro zobrazení plánu.");
 }
@@ -869,6 +872,12 @@ function resolveSelf(){
   SELF_NO = m.length > 1 ? m[1] : null;
   SELF = SELF_NO ? (Object.keys(OFFICERS).find(n => String(OFFICERS[n]) === SELF_NO) || null) : null;
   if (SELF && !ME){ ME = SELF; }
+  updateSelfLabel();
+}
+function updateSelfLabel(){
+  const b = document.getElementById("selfBtn");
+  b.hidden = !SELF; b.textContent = SELF || "";
+  b.setAttribute("aria-label", SELF ? `${SELF} – moje služby` : "");
 }
 const isAdminUI = () => ADMINS.includes(SELF_EMAIL);
 
@@ -1340,6 +1349,8 @@ async function pushRefresh(){
     if (token) await pushSaveToken(token);
   } catch(e) {}
 }
+
+document.getElementById("selfBtn").addEventListener("click", () => { if (SELF && PLAN) openCal(SELF); });
 
 /* menu */
 const menu = document.getElementById("menu"), btnMenu = document.getElementById("btnMenu");
