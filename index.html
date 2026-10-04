@@ -208,6 +208,16 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .person[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--paper)}
 .person[aria-pressed="true"] small{color:var(--paper);opacity:.85}
 .swp .dpick{cursor:pointer}
+.req.pending{background:#F6EEDC;border-color:#E3D3AE}
+:root[data-theme="dark"] .req.pending{background:#3A3326;border-color:#5C4E33}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .req.pending{background:#3A3326;border-color:#5C4E33}}
+.req .st-navrh{background:#C9962E;border-color:#C9962E;color:#fff}
+.btn.btn-ok{background:#2E9E5B;border-color:#2E9E5B;color:#fff}
+.btn.btn-no{background:#D04848;border-color:#D04848;color:#fff}
+.prop-box{margin-top:12px;padding-top:10px;border-top:1px dashed #C9B48A}
+.vym .ppick{cursor:pointer}
+.vym .cal-day.sel{outline:3.5px solid var(--ink);outline-offset:2px;transform:scale(1.05);z-index:1}
+.vym .cal-day.off{opacity:.38}
 .pick-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
 .pname{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;text-decoration:none}
 .pname.me{font-weight:600;text-decoration:underline solid;text-decoration-thickness:2px;text-decoration-color:currentColor}
@@ -374,7 +384,7 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.11</span>
+      <span class="ver">v4.12</span>
     </div>
   </div>
 </header>
@@ -1233,7 +1243,10 @@ function saveHidden(){
   HIDDEN = new Set([...HIDDEN].filter(id => live.has(id)));
   try { localStorage.setItem(HIDE_KEY, JSON.stringify([...HIDDEN])); } catch(e) {}
 }
-const incoming = () => PENDING.filter(r => SELF_NO && (r.zaCislo === SELF_NO || (r.zaCislo == null && r.odCislo !== SELF_NO && !HIDDEN.has(r.id))));
+const incoming = () => PENDING.filter(r => SELF_NO && (
+  (r.stav === "ceka" && r.zaCislo === SELF_NO) ||
+  (r.stav === "navrh" && r.odCislo === SELF_NO) ||
+  (r.stav === "ceka" && r.zaCislo == null && r.odCislo !== SELF_NO && !HIDDEN.has(r.id))));
 function updateBadge(){
   const b = document.getElementById("swapBadge"), n = incoming().length;
   b.textContent = n; b.hidden = !n;
@@ -1279,28 +1292,78 @@ function balanceHTML(){
     <div class="bal-sum"><div><b class="plus">${owedMe}</b><span>dluží ti</span></div><div><b class="minus">${iOwe}</b><span>dlužíš</span></div></div>
     ${rows || `<p class="empty-s">Zatím žádné převzaté služby.</p>`}`;
 }
-const ST_LBL = {ceka:"Čeká", prijato:"Přijato", odmitnuto:"Odmítnuto", zruseno:"Zrušeno"};
+const ST_LBL = {ceka:"Čeká", navrh:"Návrh", prijato:"Přijato", odmitnuto:"Odmítnuto", zruseno:"Zrušeno"};
+const parseProp = t => { const [den, kind, kod] = String(t).split("|"); return {den:+den, kind, kod}; };
 function reqCard(r, actions){
-  return `<div class="req" data-id="${r.id}">${reqText(r)}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div></div>`;
+  const props = r.stav === "navrh" && r.odCislo !== SELF_NO
+    ? `<span class="pz">Navrženo místo toho: ${(r.navrhy || []).map(t => fmtS(r.mesic, parseProp(t))).join(", ")}</span>` : "";
+  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div></div>`;
+}
+let PROP = null; // {id, picks:[]} – rozpracovaný návrh u žádosti
+function propChoiceHTML(r){
+  return `<p class="pz">${esc(r.za.jmeno)} místo toho nabízí jednu ze svých služeb:</p>
+    <div class="people">${(r.navrhy || []).map((t, i) => { const x = parseProp(t);
+      return `<button type="button" class="person ${x.kind === "N" ? "pn" : "pd"}" data-act="choose" data-n="${i}"><b>${fmtS(r.mesic, x)}</b><small>${x.kod.replace("*","")}${x.kod.endsWith("*") ? " · stálá" : ""}</small></button>`; }).join("")}</div>
+    <div class="btns"><button class="btn btn-no" data-act="rejectprop">Odmítnout návrhy</button></div>`;
+}
+function propPickHTML(r){
+  if (r.mesic !== docId(YEAR, MONTH)) return `<p class="pz">Pro návrh přepni na měsíc ${MONTHS[ymOf(r.mesic)[1]]}.</p>`;
+  const toks = EFF_T[SELF] || [], autor = EFF_T[r.od.jmeno] || [];
+  const n = new Date(YEAR, MONTH + 1, 0).getDate();
+  const offset = (new Date(YEAR, MONTH, 1).getDay() + 6) % 7;
+  const now = getNow(), today = new Date(now); today.setHours(0,0,0,0);
+  let html = ["Po","Út","St","Čt","Pá","So","Ne"].map(d => `<div class="cal-dow">${d}</div>`).join("");
+  for (let i = 0; i < offset; i++) html += `<div></div>`;
+  for (let d = 1; d <= n; d++){
+    const parts = (toks[d-1] || ".") === "." ? [] : toks[d-1].split("+");
+    const codes = parts.map(p => p.replace(/\*$/, ""));
+    const shift = parts.find(p => kindOf(p)), kind = shift ? kindOf(shift) : null;
+    const date = new Date(YEAR, MONTH, d), wd = date.getDay();
+    const cls = ["cal-day"];
+    const hasD = codes.includes("D12"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.includes("D2");
+    if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p");
+    if (parts.some(p => p.endsWith("*"))) cls.push("stala");
+    if (wd === 0 || wd === 6) cls.push("we");
+    if (date.getTime() === today.getTime()) cls.push("today");
+    const label = codes.join("+");
+    // autor musí moji službu převzít: nesmí mít ten den volno ani stejný typ služby
+    const ap = (autor[d-1] || ".").split("+");
+    const authorOk = !ap.some(p => /^(DOV|ZdV)$/.test(p)) && !ap.some(p => kindOf(p) === kind);
+    const requested = r.typ === "vymena" && r.za && r.za.den === d && r.za.kind === kind;
+    const ok = shift && !requested && authorOk && windowOf(date, shift.replace(/\*$/, ""))[0] > now;
+    const key = shift ? `${d}|${kind}|${shift}` : "";
+    if (ok){
+      if (PROP.picks.includes(key)) cls.push("sel");
+      html += `<button type="button" class="${cls.join(" ")} ppick" data-act="ppick" data-key="${key}">${d}<small>${label}</small></button>`;
+    } else {
+      cls.push("off");
+      html += `<div class="${cls.join(" ")}">${d}${label ? `<small>${label}</small>` : ""}</div>`;
+    }
+  }
+  return `<div class="prop-box"><p class="pz">Označ až 3 své služby, které nabízíš místo požadované (vybráno ${PROP.picks.length}/3):</p>
+    <div class="cal-grid">${html}</div>
+    <div class="btns"><button class="btn" data-act="propsend" ${PROP.picks.length ? "" : "disabled"}>Odeslat návrh</button><button class="btn sec" data-act="propcancel">Zrušit</button></div></div>`;
 }
 function renderVym(){
   if (vym.hidden) return;
   const reqHTML = reqCard;
-  const forMe = PENDING.filter(r => r.zaCislo === SELF_NO);
-  const offersAll = PENDING.filter(r => r.zaCislo == null && r.odCislo !== SELF_NO);
+  const forMe = PENDING.filter(r => r.stav === "ceka" && r.zaCislo === SELF_NO);
+  const propsForMe = PENDING.filter(r => r.stav === "navrh" && r.odCislo === SELF_NO);
+  const offersAll = PENDING.filter(r => r.stav === "ceka" && r.zaCislo == null && r.odCislo !== SELF_NO);
   const offers = offersAll.filter(r => !HIDDEN.has(r.id));
   const hidden = offersAll.filter(r => HIDDEN.has(r.id));
-  const mine = PENDING.filter(r => r.odCislo === SELF_NO);
-  const done = SWAPS_MONTH.filter(r => r.stav !== "ceka" && (r.odCislo === SELF_NO || r.zaCislo === SELF_NO))
+  const mine = PENDING.filter(r => (r.stav === "ceka" && r.odCislo === SELF_NO) || (r.stav === "navrh" && r.zaCislo === SELF_NO));
+  const done = SWAPS_MONTH.filter(r => r.stav !== "ceka" && r.stav !== "navrh" && (r.odCislo === SELF_NO || r.zaCislo === SELF_NO))
     .sort((a,b) => tsMs(b.vyrizeno) - tsMs(a.vyrizeno));
   const sec = (t, list, act, empty) => `<h3>${t}</h3>${list.length ? list.map(r => reqHTML(r, act(r))).join("") : `<p class="empty-s">${empty}</p>`}`;
   vymBody.innerHTML = `<h2 id="vymTitle">Výměny služeb</h2>
     ${SELF ? `<p class="sub">Přihlášen jako ${esc(SELF)}</p>` : `<p class="note-id">Účet se nepodařilo spárovat se strážníkem. Výměny fungují s e-mailem ve tvaru prijmeni.cislo@… a se služebními čísly nahranými v importu.</p>`}
     ${SELF ? balanceHTML() : ""}
-    ${sec("Čeká na tebe", forMe, () => `<button class="btn" data-act="accept">Přijmout</button><button class="btn sec" data-act="reject">Odmítnout</button>`, "Nic nečeká.")}
+    ${sec("Čeká na tebe", [...propsForMe, ...forMe], r => r.stav === "navrh" ? propChoiceHTML(r) :
+      `<button class="btn btn-ok" data-act="accept">Přijmout</button><button class="btn btn-no" data-act="reject">Odmítnout</button>${r.za && r.za.jmeno === SELF ? `<button class="btn sec" data-act="propose">Navrhnout</button>` : ""}${PROP && PROP.id === r.id ? propPickHTML(r) : ""}`, "Nic nečeká.")}
     ${sec("Nabídky kolegů", offers, () => `<button class="btn" data-act="take">Vzít službu</button><button class="btn sec" data-act="hide">Nemám zájem</button>`, hidden.length ? "Žádné další nabídky." : "Žádné otevřené nabídky.")}
     ${hidden.length ? `<details class="hid"><summary>Skryté nabídky (${hidden.length})</summary>${hidden.map(r => reqHTML(r, `<button class="btn" data-act="take">Vzít službu</button><button class="btn sec" data-act="unhide">Znovu zobrazit</button>`)).join("")}</details>` : ""}
-    ${sec("Moje žádosti", mine, () => `<button class="btn sec" data-act="cancel">Zrušit žádost</button>`, "Nemáš žádné otevřené žádosti.")}
+    ${sec("Moje žádosti", mine, r => r.stav === "navrh" ? `<span class="pz">Čeká, až si ${esc(surname(r.od.jmeno))} vybere z tvých návrhů.</span>` : `<button class="btn sec" data-act="cancel">Zrušit žádost</button>`, "Nemáš žádné otevřené žádosti.")}
     ${sec(`Vyřízené – ${MONTHS[MONTH]}`, done, r => r.stav === "prijato" && isAdminUI() ? `<button class="btn sec btn-danger" data-act="revoke">Zrušit výměnu</button>` : "", "Zatím žádné.")}`;
 }
 function openVym(){ vym.hidden = false; vym.scrollTop = 0; renderVym(); document.getElementById("vymClose").focus(); }
@@ -1320,6 +1383,13 @@ async function reqAction(e){
   const box = b.closest(".req"), id = box.dataset.id, msg = box.querySelector(".msg");
   const r = [...PENDING, ...SWAPS_MONTH].find(x => x.id === id); if (!r) return;
   const ref = db.collection(SWAP_COL).doc(id), act = b.dataset.act;
+  if (act === "propose"){ PROP = (PROP && PROP.id === id) ? null : {id, picks:[]}; renderVym(); return; }
+  if (act === "propcancel"){ PROP = null; renderVym(); return; }
+  if (act === "ppick"){
+    const k = b.dataset.key, i = PROP.picks.indexOf(k);
+    if (i >= 0) PROP.picks.splice(i, 1); else if (PROP.picks.length < 3) PROP.picks.push(k);
+    renderVym(); return;
+  }
   if (act === "hide" || act === "unhide"){
     if (act === "hide") HIDDEN.add(id); else HIDDEN.delete(id);
     saveHidden(); updateBadge(); renderVym(); return;
@@ -1341,6 +1411,29 @@ async function reqAction(e){
         if (act === "take"){ upd.zaCislo = SELF_NO; upd.za = {jmeno:SELF, cislo:SELF_NO}; }
         tx.update(ref, upd);
       });
+    } else if (act === "propsend"){
+      await db.runTransaction(async tx => {
+        const s = await tx.get(ref);
+        if (!s.exists || s.data().stav !== "ceka") throw new Error("Žádost už byla vyřízena.");
+        tx.update(ref, {stav:"navrh", navrhy:PROP.picks.slice(0, 3), navrhnuto:FV.serverTimestamp()});
+      });
+      PROP = null;
+    } else if (act === "choose"){
+      const x = parseProp((r.navrhy || [])[+b.dataset.n]);
+      const newZa = {jmeno:r.za.jmeno, cislo:r.za.cislo, den:x.den, kind:x.kind, kod:x.kod};
+      msg.innerHTML = `<p class="i">Kontroluji plán…</p>`;
+      const [y, m] = ymOf(r.mesic);
+      const out = simulate(await loadMonthState(r.mesic), {...r, typ:"vymena", za:newZa}, null, y, m);
+      msg.innerHTML = checksHTML(out);
+      if (out.e.length) throw null;
+      if (out.w.length && !confirm("Výměna má upozornění. Přesto provést?")) throw null;
+      await db.runTransaction(async tx => {
+        const s = await tx.get(ref);
+        if (!s.exists || s.data().stav !== "navrh") throw new Error("Návrh už není platný.");
+        tx.update(ref, {stav:"prijato", typ:"vymena", za:newZa, vyrizeno:FV.serverTimestamp()});
+      });
+    } else if (act === "rejectprop"){
+      await ref.update({stav:"odmitnuto", vyrizeno:FV.serverTimestamp()});
     } else if (act === "reject"){
       await ref.update({stav:"odmitnuto", vyrizeno:FV.serverTimestamp()});
     } else if (act === "cancel"){
@@ -1556,7 +1649,7 @@ function startSwaps(){
       col.where("zaCislo", "==", SELF_NO).where("stav", "==", "prijato").onSnapshot(s => { MY_ZA = s.docs.map(d => ({id:d.id, ...d.data()})); renderVym(); }, () => {})
     ];
   }
-  unsubPending = db.collection(SWAP_COL).where("stav", "==", "ceka").onSnapshot(s => {
+  unsubPending = db.collection(SWAP_COL).where("stav", "in", ["ceka", "navrh"]).onSnapshot(s => {
     PENDING = s.docs.map(d => ({id:d.id, ...d.data()}));
     updateBadge(); renderVym();
   }, () => {});
