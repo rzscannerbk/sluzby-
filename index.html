@@ -417,7 +417,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver">v4.23</span>
+      <span class="ver" id="verDiag">v4.24</span>
     </div>
   </div>
 </header>
@@ -2138,6 +2138,26 @@ setInterval(render, 60000);
 
 /* iOS na ploše někdy vykreslí stránku nižší než displej, ale hlásí místo pro domovskou lištu –
    v tom případě s lištou nepočítáme, jinak by spodní okraje vyšly mimo viditelnou plochu */
+document.getElementById("verDiag").addEventListener("click", () => {
+  // měření rozměrů pro ladění spodního okraje na iPhonu
+  const pr = document.createElement("div");
+  pr.style.cssText = "position:fixed;left:0;bottom:0;width:1px;height:env(safe-area-inset-bottom,0px);padding-top:env(safe-area-inset-top,0px);visibility:hidden";
+  document.body.appendChild(pr);
+  const cs = getComputedStyle(pr), top = document.querySelector(".top").getBoundingClientRect(), b = document.body.getBoundingClientRect();
+  const out = [
+    "screen.height: " + screen.height,
+    "innerHeight: " + innerHeight,
+    "visualViewport: " + (window.visualViewport ? Math.round(visualViewport.height) : "-"),
+    "clientHeight: " + document.documentElement.clientHeight,
+    "safe top/bottom: " + cs.paddingTop + " / " + cs.height,
+    "body: " + Math.round(b.top) + "–" + Math.round(b.bottom),
+    "lišta: " + Math.round(top.top) + "–" + Math.round(top.bottom),
+    "třídy: " + (document.documentElement.className || "-"),
+    "standalone: " + (navigator.standalone ? "ano" : "ne")
+  ].join("\n");
+  pr.remove();
+  alert(out);
+});
 const NO_TALL_FIX = false; // při potížích přepnout na true = chování jako ve v4.21
 function checkViewport(){
   const standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
