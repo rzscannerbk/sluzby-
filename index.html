@@ -266,8 +266,20 @@ button.cal-day{cursor:pointer}
 .note-ed textarea{width:100%;min-height:90px;font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1.5px solid var(--ink);border-radius:8px;padding:8px 10px;resize:vertical}
 .cal-day.today{outline:2.5px solid var(--now);outline-offset:2px}
 .cal-day.past{opacity:.55}
-.full-close{position:fixed;bottom:calc(var(--sab) + 14px);right:26px;z-index:31;width:60px;height:60px;border-radius:50%;border:0;background:var(--ink);color:var(--paper);box-shadow:0 6px 18px rgba(0,0,0,.3);font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.full-close{position:fixed;bottom:calc(var(--sab) + 16px);right:24px;z-index:31;width:48px;height:48px;border-radius:50%;border:0;background:var(--ink);color:var(--paper);box-shadow:0 6px 18px rgba(0,0,0,.3);font-size:21px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
 .full.is-night .full-close{background:var(--night-ink);color:var(--night)}
+.note-open{position:fixed;left:24px;bottom:calc(var(--sab) + 16px);z-index:31;width:48px;height:48px;border-radius:50%;border:1.5px solid var(--ink);background:var(--sheet);color:var(--ink);box-shadow:0 6px 18px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer}
+.note-open svg{width:22px;height:22px}
+.snote{margin-top:12px;padding:8px 10px;border-radius:8px;background:rgba(224,124,124,.18);border-left:4px solid #E07C7C;font-size:14px}
+.snote b{display:block;font-size:12px;color:#B23A3A;margin-bottom:2px}
+.card.night .snote{background:rgba(255,255,255,.12)}
+.card.night .snote b{color:#FFC2C2}
+.snote p{margin:0;white-space:pre-wrap}
+.full .snote{font-size:16px}
+.snote-ed{position:fixed;left:12px;right:12px;bottom:calc(var(--sab) + 76px);z-index:33;background:var(--sheet);color:var(--ink);border:1.5px solid #E07C7C;border-radius:14px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.snote-ed[hidden]{display:none}
+.snote-ed label{display:block;font-weight:600;margin-bottom:6px}
+.snote-ed textarea{width:100%;min-height:90px;font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1.5px solid var(--ink);border-radius:8px;padding:8px 10px;resize:vertical}
 
 .bottom{display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1.5px solid var(--ink);font-size:14px}
 .bottom label{white-space:nowrap}
@@ -301,7 +313,7 @@ button.cal-day{cursor:pointer}
 .badge{position:absolute;top:-7px;right:-7px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#D04848;color:#fff;font:600 12px/19px var(--f-body);text-align:center}
 .badge[hidden]{display:none}
 .tag.sw{border-style:dashed}
-.swap-open{position:fixed;left:24px;bottom:calc(var(--sab) + 20px);z-index:31;font-family:var(--f-cond);font-weight:700;font-size:19px;padding:12px 18px;border:0;border-radius:999px;background:var(--hl);color:var(--hl-ink);box-shadow:0 6px 18px rgba(0,0,0,.3);cursor:pointer}
+.swap-open{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 16px);z-index:31;height:48px;display:flex;align-items:center;font-family:var(--f-cond);font-weight:700;font-size:19px;padding:0 28px;border:0;border-radius:999px;background:var(--hl);color:var(--hl-ink);box-shadow:0 6px 18px rgba(0,0,0,.3);cursor:pointer}
 .vym{z-index:38}.vym .full-close{z-index:39}
 .swp{z-index:40}.swp .full-close{z-index:41}
 .sheet{flex:1 0 auto;background:var(--sheet);border:1.5px solid var(--ink);border-radius:16px;padding:20px 16px calc(var(--sab) + 100px)}
@@ -385,7 +397,7 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.14</span>
+      <span class="ver">v4.15</span>
     </div>
   </div>
 </header>
@@ -435,6 +447,15 @@ button.cal-day{cursor:pointer}
 <div class="full swp" id="swp" role="dialog" aria-modal="true" aria-labelledby="swpTitle" hidden>
   <button class="full-close" id="swpClose" type="button" aria-label="Zavřít">✕</button>
   <div class="sheet" id="swpBody"></div>
+</div>
+<div class="snote-ed" id="snoteEd" role="dialog" aria-labelledby="snoteLbl" hidden>
+  <label for="snoteText" id="snoteLbl">Moje poznámka</label>
+  <textarea id="snoteText" maxlength="500"></textarea>
+  <div class="btns">
+    <button type="button" class="btn" id="snoteSave">Uložit</button>
+    <button type="button" class="btn sec btn-danger" id="snoteDel">Smazat</button>
+    <button type="button" class="btn sec" id="snoteCancel">Zrušit</button>
+  </div>
 </div>
 <main class="split">
   <div class="left" id="left" aria-label="Služby"></div>
@@ -574,6 +595,8 @@ function cardHTML(kind, g, slot, now){
     if (parts.length) aside = `<div class="aside">${parts.join("")}</div>`;
   }
   if (slot.note) aside += `<div class="aside"><p>${esc(slot.note)}</p></div>`;
+  const sn = MY_SNOTES[shiftNoteKey(g.date, kind)];
+  if (sn) aside += `<div class="snote"><b>Moje poznámka</b><p>${esc(sn)}</p></div>`;
   return `<article class="card ${kind==="D"?"day":"night"} ${st}" tabindex="0" data-k="${kind}" data-start="${win[0].getTime()}" data-end="${win[1].getTime()}">
     <h2>${title}${chip}${live}</h2><span class="when">${when}</span>
     <div class="time">${t2(c.s)} – ${t2(c.e)}</div>${st === "now" ? progressHTML(win, now) : ""}
@@ -842,9 +865,17 @@ function fillFull(){
   const mine = myShiftIn(GROUPS[fullRef.g], fullRef.k);
   if (mine){
     const b = document.createElement("button");
-    b.type = "button"; b.className = "swap-open"; b.textContent = "Vyměnit službu";
+    b.type = "button"; b.className = "swap-open"; b.textContent = "Výměna";
     b.addEventListener("click", () => openSwp(mine));
     fullBody.appendChild(b);
+  }
+  if (SELF_NO){
+    const g = GROUPS[fullRef.g], key = shiftNoteKey(g.date, fullRef.k);
+    const n = document.createElement("button");
+    n.type = "button"; n.className = "note-open"; n.setAttribute("aria-label", "Moje poznámka ke službě");
+    n.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5h10l4 4V20.5H5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M15 3.5v4h4M8.5 12h7M8.5 16h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+    n.addEventListener("click", () => openSnote(key, g.date, fullRef.k));
+    fullBody.appendChild(n);
   }
   full.classList.toggle("is-night", fullRef.k === "N");
 }
@@ -858,6 +889,7 @@ function openFull(card){
   document.getElementById("fullClose").focus();
 }
 function closeFull(){
+  closeSnote();
   full.hidden = true; fullRef = null; fullBody.innerHTML = "";
   if (fullReturn && document.contains(fullReturn)) fullReturn.focus({preventScroll:true});
   fullReturn = null;
@@ -928,17 +960,38 @@ function fillCal(){
   document.getElementById("calSum").innerHTML = sum.join("");
 }
 /* ---------- osobní poznámky ke dnům (jen ve vlastním kalendáři) ---------- */
-let MY_NOTES = {}, unsubNotes = null, noteDay = null;
+let MY_NOTES = {}, MY_SNOTES = {}, unsubNotes = null, noteDay = null, snoteRef = null;
+function shiftNoteKey(date, kind){ return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}|${kind}`; }
 const noteKey = d => `${YEAR}-${String(MONTH+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
 const noteDate = d => { const x = new Date(YEAR, MONTH, d); return `${DOW[x.getDay()]} ${d}. ${MONTH+1}.`; };
 function startNotes(){
   if (unsubNotes || !SELF_NO) return;
   unsubNotes = db.collection("poznamky").doc(SELF_NO).onSnapshot(s => {
     MY_NOTES = (s.exists && s.data().dny) || {};
+    MY_SNOTES = (s.exists && s.data().sluzby) || {};
     if (calName) fillCal();
+    render();
   }, () => {});
 }
-function stopNotes(){ if (unsubNotes){ unsubNotes(); unsubNotes = null; } MY_NOTES = {}; }
+function stopNotes(){ if (unsubNotes){ unsubNotes(); unsubNotes = null; } MY_NOTES = {}; MY_SNOTES = {}; }
+/* poznámka ke konkrétní službě – vidí ji jen autor */
+function openSnote(key, date, kind){
+  snoteRef = key;
+  document.getElementById("snoteLbl").textContent = `Moje poznámka – ${kind === "N" ? "noční" : "denní"} ${DOW[date.getDay()]} ${date.getDate()}. ${date.getMonth()+1}.`;
+  const t = document.getElementById("snoteText"); t.value = MY_SNOTES[key] || "";
+  document.getElementById("snoteDel").hidden = !MY_SNOTES[key];
+  document.getElementById("snoteEd").hidden = false;
+  setTimeout(() => t.focus(), 50);
+}
+function closeSnote(){ document.getElementById("snoteEd").hidden = true; snoteRef = null; }
+async function saveSnote(del){
+  if (!snoteRef) return;
+  const text = document.getElementById("snoteText").value.trim(), FV = firebase.firestore.FieldValue;
+  try {
+    await db.collection("poznamky").doc(SELF_NO).set(del || !text ? {sluzby:{[snoteRef]: FV.delete()}} : {sluzby:{[snoteRef]: text}, upraveno:FV.serverTimestamp()}, {merge:true});
+    closeSnote();
+  } catch (err){ alert("Poznámku se nepodařilo uložit."); }
+}
 function renderNotes(){
   const own = calName === SELF && !!SELF_NO;
   document.getElementById("calHint").hidden = !own;
@@ -976,6 +1029,9 @@ async function saveNote(del){
   }
 }
 document.getElementById("noteSave").addEventListener("click", () => saveNote(false));
+document.getElementById("snoteSave").addEventListener("click", () => saveSnote(false));
+document.getElementById("snoteDel").addEventListener("click", () => saveSnote(true));
+document.getElementById("snoteCancel").addEventListener("click", closeSnote);
 document.getElementById("noteDel").addEventListener("click", () => saveNote(true));
 document.getElementById("noteCancel").addEventListener("click", closeNote);
 document.getElementById("calNotes").addEventListener("click", e => { const b = e.target.closest("[data-note-d]"); if (b) openNote(+b.dataset.noteD); });
