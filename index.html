@@ -189,6 +189,9 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .btn-admin[hidden]{display:none}
 .seg.seg2{grid-template-columns:repeat(2,1fr)}
 .aside b.por{color:#3A9AD9}
+.ch-l{display:flex;align-items:center;gap:10px;min-width:0}
+.ics-btn{flex:none;width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;padding:0}
+.ics-btn svg{width:22px;height:22px}
 .pick-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
 .pname{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;text-decoration:none}
 .pname.me{font-weight:600;text-decoration:underline solid;text-decoration-thickness:2px;text-decoration-color:currentColor}
@@ -355,7 +358,7 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.7</span>
+      <span class="ver">v4.8</span>
     </div>
   </div>
 </header>
@@ -366,7 +369,7 @@ button.cal-day{cursor:pointer}
 <div class="full cal" id="cal" role="dialog" aria-modal="true" aria-labelledby="calName" hidden>
   <button class="full-close" id="calClose" type="button" aria-label="Zavřít kalendář">✕</button>
   <div class="cal-sheet">
-    <div class="cal-head"><h2 id="calName"></h2><span id="calMonth"></span></div>
+    <div class="cal-head"><div class="ch-l"><h2 id="calName"></h2><button class="ics-btn" id="calIcs" type="button" aria-label="Přidat služby do kalendáře" title="Přidat služby do kalendáře"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4M12 13v5M9.5 15.5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button></div><span id="calMonth"></span></div>
     <div class="cal-sum" id="calSum"></div>
     <div class="cal-grid" id="calGrid"></div>
     <p class="note-hint" id="calHint" hidden>Podrž prst na dni a přidáš k němu poznámku.</p>
@@ -949,6 +952,78 @@ calGridEl.addEventListener("pointermove", e => { if (lpTimer && lpStart && Math.
 calGridEl.addEventListener("contextmenu", e => { if (e.target.closest("[data-d]")) e.preventDefault(); });
 calGridEl.addEventListener("click", e => { if (lpFired){ lpFired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 
+/* ---------- export služeb do kalendáře (.ics) ---------- */
+const ICS_SPAN = {D12:[7,19,0], N12:[19,7,1], N13:[19,8,1], Nz7:[19,24,0], D2:[8,10,0]};
+function icsEsc(t){ return String(t).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n"); }
+function icsFold(line){
+  const out = []; let cur = "";
+  for (const ch of line){ if (cur.length >= 70){ out.push(cur); cur = " "; } cur += ch; }
+  out.push(cur); return out.join("\r\n");
+}
+function icsTime(y, m, d, h){
+  const t = new Date(y, m, d, h); // přetečení přes půlnoc a měsíc ošetří Date
+  const p = n => String(n).padStart(2,"0");
+  return `${t.getFullYear()}${p(t.getMonth()+1)}${p(t.getDate())}T${p(t.getHours())}0000`;
+}
+function namesOf(slot){ return slot ? [slot.stala && slot.stala.name, ...slot.hl.map(p => p.name)].filter(Boolean) : []; }
+function buildIcs(name){
+  const toks = String((EFF || PLAN)[name] || "").trim().split(/\s+/);
+  const now = new Date(), stamp = now.toISOString().replace(/[-:]/g,"").replace(/\.\d+Z$/,"Z");
+  const cislo = OFFICERS[name] || name.replace(/\s+/g,"");
+  const L = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//MP Blansko//Plan sluzeb//CS","CALSCALE:GREGORIAN","METHOD:PUBLISH",
+    "X-WR-CALNAME:Služby MP Blansko","X-WR-TIMEZONE:Europe/Prague",
+    "BEGIN:VTIMEZONE","TZID:Europe/Prague",
+    "BEGIN:DAYLIGHT","TZOFFSETFROM:+0100","TZOFFSETTO:+0200","TZNAME:CEST","DTSTART:19700329T020000","RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU","END:DAYLIGHT",
+    "BEGIN:STANDARD","TZOFFSETFROM:+0200","TZOFFSETTO:+0100","TZNAME:CET","DTSTART:19701025T030000","RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU","END:STANDARD",
+    "END:VTIMEZONE"];
+  let count = 0;
+  toks.forEach((tok, i) => {
+    if (tok === ".") return;
+    const d = i + 1, g = GROUPS.find(x => !x.prev && x.date.getDate() === d);
+    tok.split("+").forEach(part => {
+      const code = part.replace(/\*$/, ""), sp = ICS_SPAN[code]; if (!sp) return;
+      const stala = part.endsWith("*");
+      let title, desc;
+      if (code === "D2"){
+        title = "Porada";
+        desc = "Porada MP\nÚčastníci: " + (g && g.day ? g.day.P.map(p => p.name).join(", ") : "");
+      } else {
+        const night = kindOf(code) === "N";
+        title = (night ? "Noc" : "Den") + (stala ? " - stálá" : "");
+        const slot = g && (night ? g.night : g.day);
+        desc = `Stálá služba: ${slot && slot.stala ? slot.stala.name : "–"}\nHlídka: ${slot ? slot.hl.map(p => p.name).join(", ") : ""}`;
+      }
+      L.push("BEGIN:VEVENT",
+        `UID:${YEAR}${String(MONTH+1).padStart(2,"0")}${String(d).padStart(2,"0")}-${code}-${cislo}@sluzby-mp-blansko`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART;TZID=Europe/Prague:${icsTime(YEAR, MONTH, d, sp[0])}`,
+        `DTEND;TZID=Europe/Prague:${icsTime(YEAR, MONTH, d + sp[2], sp[1])}`,
+        icsFold(`SUMMARY:${icsEsc(title)}`),
+        icsFold(`DESCRIPTION:${icsEsc(desc)}`),
+        "END:VEVENT");
+      count++;
+    });
+  });
+  L.push("END:VCALENDAR");
+  return {text: L.join("\r\n") + "\r\n", count};
+}
+document.getElementById("calIcs").addEventListener("click", async () => {
+  if (!calName || !PLAN) return;
+  const {text, count} = buildIcs(calName);
+  if (!count){ alert("V tomto měsíci nejsou žádné služby k přidání."); return; }
+  const fname = `sluzby-${docId(YEAR, MONTH)}-${calName.split(" ")[0]}.ics`.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  if (ios){
+    // iOS: otevře nabídku „Přidat vše“ do Kalendáře (lze vybrat i kalendář Google)
+    location.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(text);
+    return;
+  }
+  const url = URL.createObjectURL(new Blob([text], {type:"text/calendar;charset=utf-8"}));
+  const a = document.createElement("a"); a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+});
+
 function openCal(name){
   calName = name; fillCal();
   cal.hidden = false; cal.scrollTop = 0;
@@ -1145,15 +1220,18 @@ function balanceHTML(){
     ${rows || `<p class="empty-s">Zatím žádné převzaté služby.</p>`}`;
 }
 const ST_LBL = {ceka:"Čeká", prijato:"Přijato", odmitnuto:"Odmítnuto", zruseno:"Zrušeno"};
+function reqCard(r, actions){
+  return `<div class="req" data-id="${r.id}">${reqText(r)}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div></div>`;
+}
 function renderVym(){
   if (vym.hidden) return;
-  const reqHTML = (r, actions) => `<div class="req" data-id="${r.id}">${reqText(r)}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div></div>`;
+  const reqHTML = reqCard;
   const forMe = PENDING.filter(r => r.zaCislo === SELF_NO);
   const offersAll = PENDING.filter(r => r.zaCislo == null && r.odCislo !== SELF_NO);
   const offers = offersAll.filter(r => !HIDDEN.has(r.id));
   const hidden = offersAll.filter(r => HIDDEN.has(r.id));
   const mine = PENDING.filter(r => r.odCislo === SELF_NO);
-  const done = SWAPS_MONTH.filter(r => r.stav === "prijato" || (r.stav !== "ceka" && (r.odCislo === SELF_NO || r.zaCislo === SELF_NO)))
+  const done = SWAPS_MONTH.filter(r => r.stav !== "ceka" && (r.odCislo === SELF_NO || r.zaCislo === SELF_NO))
     .sort((a,b) => tsMs(b.vyrizeno) - tsMs(a.vyrizeno));
   const sec = (t, list, act, empty) => `<h3>${t}</h3>${list.length ? list.map(r => reqHTML(r, act(r))).join("") : `<p class="empty-s">${empty}</p>`}`;
   vymBody.innerHTML = `<h2 id="vymTitle">Výměny služeb</h2>
@@ -1177,7 +1255,7 @@ async function loadMonthState(id){
   const swaps = sw.docs.map(d => ({id:d.id, ...d.data()}));
   return applySwaps(p.exists ? p.data().plan : {}, swaps, new Date(y, m + 1, 0).getDate()).T;
 }
-vymBody.addEventListener("click", async e => {
+async function reqAction(e){
   const b = e.target.closest("button[data-act]"); if (!b) return;
   const box = b.closest(".req"), id = box.dataset.id, msg = box.querySelector(".msg");
   const r = [...PENDING, ...SWAPS_MONTH].find(x => x.id === id); if (!r) return;
@@ -1215,7 +1293,8 @@ vymBody.addEventListener("click", async e => {
     if (err) msg.innerHTML += `<p class="e">${esc(err.code === "permission-denied" ? "Na tuhle akci nemáš oprávnění." : (err.message || "Akce se nepovedla."))}</p>`;
     box.querySelectorAll("button").forEach(x => x.disabled = false);
   }
-});
+}
+vymBody.addEventListener("click", reqAction);
 
 /* --- nová žádost --- */
 const swp = document.getElementById("swp"), swpBody = document.getElementById("swpBody");
@@ -1362,6 +1441,7 @@ function watchMonthSwaps(id){
     SWAPS_MONTH = s.docs.map(d => ({id:d.id, ...d.data()}));
     if (PLAN){ rebuild(); fillSelect(); render(); }
     renderVym();
+    if (typeof ADM !== "undefined" && ADM && !adm.hidden) renderAdm();
   }, () => {});
 }
 function stopSwaps(){
@@ -1534,7 +1614,14 @@ function renderAdm(){
     <label class="f" for="admPozn">Poznámka (nepovinné)</label>
     <input type="text" id="admPozn" maxlength="140" value="${esc(ADM.pozn)}">
     <div class="checks">${checksHTML(checks)}</div>
-    <div class="btns"><button type="button" class="btn" id="admSave" ${ready ? "" : "disabled"}>Uložit změnu</button></div>`;
+    <div class="btns"><button type="button" class="btn" id="admSave" ${ready ? "" : "disabled"}>Uložit změnu</button></div>
+    ${admLogHTML()}`;
+}
+function admLogHTML(){
+  const list = SWAPS_MONTH.slice().sort((a,b) => tsMs(b.vyrizeno || b.vytvoreno) - tsMs(a.vyrizeno || a.vytvoreno));
+  return `<h3>Všechny změny – ${MONTHS[MONTH]}</h3>${list.length
+    ? list.map(r => reqCard(r, r.stav === "prijato" ? `<button class="btn sec btn-danger" data-act="revoke">Zrušit výměnu</button>` : "")).join("")
+    : `<p class="empty-s">Zatím žádné změny.</p>`}`;
 }
 function openAdm(){
   if (!isAdminUI() || !PLAN) return;
@@ -1545,6 +1632,7 @@ function openAdm(){
 }
 function closeAdm(){ adm.hidden = true; ADM = null; }
 document.getElementById("admClose").addEventListener("click", closeAdm);
+admBody.addEventListener("click", e => { if (e.target.closest("button[data-act]")) reqAction(e); });
 document.getElementById("admBtn").addEventListener("click", openAdm);
 admBody.addEventListener("input", e => { if (e.target.id === "admPozn") ADM.pozn = e.target.value; });
 admBody.addEventListener("change", e => {
