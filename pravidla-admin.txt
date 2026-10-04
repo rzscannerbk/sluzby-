@@ -1,0 +1,10 @@
+Ve Firestore Rules (projekt rz-scanner) v bloku match /vymeny/{id}
+nahraď řádek začínající "allow create:" (a jeho 3 pokračovací řádky &&...)
+tímto:
+
+      allow create: if isAdmin() || (isSignedIn()
+        && request.resource.data.odCislo == myNum()
+        && request.resource.data.stav == 'ceka'
+        && request.resource.data.zaCislo != myNum());
+
+Nic jiného neměň a klikni na Publish.
