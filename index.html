@@ -48,7 +48,8 @@
 :root{--sab:env(safe-area-inset-bottom,0px)}
 :root{--extra:0px;--fsab:calc(var(--sab) - var(--extra))}
 /* iOS dal stránce menší výšku než displej → roztáhnout na celý displej */
-:root.tall-fix,:root.tall-fix body{height:var(--app-h);overflow:hidden}
+:root.tall-fix{height:var(--app-h);overflow:hidden}
+:root.tall-fix body{height:calc(var(--app-h) - env(safe-area-inset-top,0px));overflow:hidden}
 :root.tall-fix .full,:root.tall-fix .gate{bottom:auto;height:var(--app-h)}
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);background:var(--paper)}
 body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.4;display:flex;flex-direction:column;overflow:hidden;-webkit-text-size-adjust:100%}
@@ -418,7 +419,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.25</span>
+      <span class="ver" id="verDiag">v4.26</span>
     </div>
   </div>
 </header>
@@ -2160,12 +2161,15 @@ document.getElementById("verDiag").addEventListener("click", () => {
   alert(out);
 });
 const NO_TALL_FIX = false; // při potížích přepnout na true = chování jako ve v4.21
-let lastVP = "";
+let lastVP = "", tallFixOn = false;
 function checkViewport(){
   const standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
   const portrait = screen.height > screen.width && innerHeight > innerWidth;
-  const extra = screen.height - innerHeight;
-  const fix = standalone && portrait && extra > 20 && extra < 120 && !NO_TALL_FIX;
+  const extra = Math.max(0, screen.height - innerHeight);
+  // po roztažení iOS přidělí plnou výšku – oprava proto zůstává zapnutá (jinak by se přepínala dokola)
+  if (!portrait || !standalone || NO_TALL_FIX) tallFixOn = false;
+  else if (extra > 20 && extra < 120) tallFixOn = true;
+  const fix = tallFixOn;
   const sig = fix + "|" + extra;
   if (sig === lastVP) return;
   lastVP = sig;
