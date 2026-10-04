@@ -21,7 +21,8 @@
   padding-top:env(safe-area-inset-top,0px);
   --paper:#E6EAE4; --sheet:#FAFBF7; --ink:#1D2A4D; --ink2:#5A6480; --line:#B9C0B4;
   --hl:#F2E443; --hl-ink:#1D2A4D;
-  --night:#1F2846; --night-ink:#EEF0F7; --night2:#A9B2CE; --night-line:#1F2846;
+  --night:#4B3F9E; --night-ink:#FFFFFF; --night2:#D2CCF5; --night-line:#6C61C4;
+  --day:#FBEFB8; --day-line:#E2C33A;
   --now:#2C64DD; --now-n:#9BB7FF; --pink:#E7A3BE;
   --f-body:"Barlow","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --f-cond:"Barlow Condensed","Arial Narrow","Roboto Condensed","Segoe UI",sans-serif;
@@ -30,14 +31,16 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --paper:#10141D; --sheet:#1A2030; --ink:#E4E8F1; --ink2:#97A1B8; --line:#2E3750;
-    --night:#0A0E1A; --night-ink:#E4E8F1; --night2:#8A94AE; --night-line:#3A4566;
+    --night:#2E2766; --night-ink:#EEEAFF; --night2:#B3ABE6; --night-line:#4A40A0;
+    --day:#3A3317; --day-line:#6E6127;
     --now:#6E9BFF; --now-n:#8FB0FF; --pink:#B5577D;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --paper:#10141D; --sheet:#1A2030; --ink:#E4E8F1; --ink2:#97A1B8; --line:#2E3750;
-  --night:#0A0E1A; --night-ink:#E4E8F1; --night2:#8A94AE; --night-line:#3A4566;
+  --night:#2E2766; --night-ink:#EEEAFF; --night2:#B3ABE6; --night-line:#4A40A0;
+    --day:#3A3317; --day-line:#6E6127;
   --now:#6E9BFF; --now-n:#8FB0FF; --pink:#B5577D;
   color-scheme:dark;
 }
@@ -85,17 +88,20 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 .tile.prev{border-style:dashed}
 .tile.today{outline:2px solid var(--now);outline-offset:3px}
 .tile.active{border-width:3px}
+.tile.active.part-day{background:var(--day);border-color:var(--day-line);color:var(--ink)}
 .tile.active.part-night{background:var(--night);color:var(--night-ink);border-color:var(--night-line)}
 .tile.active.part-night .ev{color:var(--night2)}
 .tile.active.past{opacity:.85}
 .marks{position:absolute;top:4px;right:4px;display:flex;gap:2px}
 .marks i{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--ink)}
-.marks .d{background:var(--sheet)}
-.marks .n{background:var(--ink)}
-.marks .s{background:var(--hl)}
+.marks .d{background:#F2D24A}
+.marks .n{background:#4B3F9E}
+.marks .s{background:#2E9E5B}
 
 .group{margin:0 0 22px}
 .card{background:var(--sheet);border:1.5px solid var(--ink);border-radius:12px;padding:12px 14px 14px;margin:0 0 10px;position:relative}
+.card.day{background:var(--day);border-color:var(--day-line)}
+.card.day .prog .bar{background:rgba(29,42,77,.15)}
 .card.night{background:var(--night);color:var(--night-ink);border-color:var(--night-line)}
 .card.past{opacity:.55}
 .card.now{box-shadow:0 0 0 3px var(--now)}
@@ -123,8 +129,8 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 .card.night .prog b{color:var(--night-ink)}
 .lbl{display:block;font-size:13px;color:var(--ink2);margin-top:8px}
 .stala{margin:2px 0 0}
-.hl{display:inline-block;color:var(--hl-ink);font-weight:600;padding:1px 9px 1px 7px;margin-left:-4px;background:var(--hl);border-radius:6px}
-.hl .no{color:var(--hl-ink);opacity:.7}
+.hl{display:inline-block;color:#fff;font-weight:600;padding:1px 9px 1px 7px;margin-left:-4px;background:#2E9E5B;border-radius:6px}
+.hl .no{color:#fff;opacity:.8}
 .none{color:var(--ink2);font-style:italic}
 .card.night .none{color:var(--night2)}
 ul.h{list-style:none;margin:2px 0 0;padding:0}
@@ -157,7 +163,7 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .swp .cal-day.off{opacity:.38}
 .swp .cal-day.giv{outline:2.5px dashed var(--hl);outline-offset:2px}
 .cal-day.pick{cursor:pointer}
-.swp .cal-day.sel{outline:3.5px solid var(--hl);outline-offset:2px;transform:scale(1.05);z-index:1}
+.swp .cal-day.sel{outline:3.5px solid var(--ink);outline-offset:2px;transform:scale(1.05);z-index:1}
 .hid{margin:4px 0 0}
 .hid summary{cursor:pointer;color:var(--ink2);font-size:14px;padding:6px 0}
 .hid .req{margin-top:8px}
@@ -182,6 +188,7 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .btn-admin{display:block;width:100%;margin-top:14px;font-family:var(--f-cond);font-weight:700;font-size:17px;padding:9px 12px;border-radius:8px;border:1.5px solid #7A4FD6;background:transparent;color:#7A4FD6;cursor:pointer}
 .btn-admin[hidden]{display:none}
 .seg.seg2{grid-template-columns:repeat(2,1fr)}
+.aside b.por{color:#3A9AD9}
 .pick-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
 .pname{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;text-decoration:none}
 .pname.me{font-weight:600;text-decoration:underline solid;text-decoration-thickness:2px;text-decoration-color:currentColor}
@@ -348,7 +355,7 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.6</span>
+      <span class="ver">v4.7</span>
     </div>
   </div>
 </header>
@@ -520,7 +527,7 @@ function cardHTML(kind, g, slot, now){
   let aside = "";
   if (kind === "D"){
     const parts = [];
-    if (slot.P && slot.P.length) parts.push(`<p><b>Porada ${tPlain(CODES.D2.s)}–${tPlain(CODES.D2.e)}:</b> ${slot.P.map(p => nameBtn(p.name)).join(", ")}</p>`);
+    if (slot.P && slot.P.length) parts.push(`<p><b class="por">Porada ${tPlain(CODES.D2.s)}–${tPlain(CODES.D2.e)}:</b> ${slot.P.map(p => nameBtn(p.name)).join(", ")}</p>`);
     for (const [code, names] of Object.entries(slot.A || {})) parts.push(`<p><b>${CODES[code].label}:</b> ${names.map(n => nameBtn(n)).join(", ")}</p>`);
     if (parts.length) aside = `<div class="aside">${parts.join("")}</div>`;
   }
