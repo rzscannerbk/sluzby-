@@ -51,6 +51,7 @@
 :root.tall-fix{height:var(--app-h);overflow:hidden}
 :root.tall-fix body{height:calc(var(--app-h) - env(safe-area-inset-top,0px));overflow:hidden}
 :root.tall-fix .full,:root.tall-fix .gate{bottom:auto;height:var(--app-h)}
+:root.tall-fix .top{padding-bottom:30px}
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);background:var(--paper)}
 body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.4;display:flex;flex-direction:column;overflow:hidden;-webkit-text-size-adjust:100%}
 :focus-visible{outline:3px solid var(--now);outline-offset:2px}
@@ -419,7 +420,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.26</span>
+      <span class="ver" id="verDiag">v4.27</span>
     </div>
   </div>
 </header>
