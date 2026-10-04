@@ -107,8 +107,10 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 .card.past{opacity:.55}
 .card.now{box-shadow:0 0 0 3px var(--now)}
 .card.night.now{box-shadow:0 0 0 3px var(--now-n)}
-.card h2{font-family:var(--f-cond);font-weight:600;font-size:19px;line-height:1.15;margin:0;padding-right:70px}
-.card .when{position:absolute;top:13px;right:14px;font-size:13px;color:var(--ink2)}
+.card h2{font-family:var(--f-cond);font-weight:600;font-size:19px;line-height:1.15;margin:0;padding-right:110px}
+.card .when{position:absolute;top:11px;right:14px;text-align:right;color:var(--ink2);font-family:var(--f-cond);font-weight:600;line-height:1.05}
+.card .when .wd{display:block;font-size:22px}
+.card .when .wdt{display:block;font-size:26px}
 .card.night .when,.card.night .lbl,.card.night .no,.card.night li::before,.card.night .aside{color:var(--night2)}
 .time{font-family:var(--f-cond);font-weight:700;font-size:32px;line-height:1;margin:6px 0 10px;font-variant-numeric:tabular-nums}
 .time sup{font-size:.5em;line-height:0;vertical-align:.85em;margin-left:1px}
@@ -152,8 +154,10 @@ ul.h li::before{content:"–";color:var(--ink2)}
 @media (prefers-reduced-motion: reduce){.full{animation:none}}
 #fullBody{flex:1 0 auto;display:flex;flex-direction:column}
 .full .card{flex:1 0 auto;margin:0;padding:20px 20px calc(var(--sab) + 90px);font-size:18px;cursor:default;border-radius:16px}
-.full .card h2{font-size:26px;padding-right:120px}
-.full .card .when{position:absolute;top:20px;right:20px;font-family:var(--f-cond);font-weight:600;font-size:26px;line-height:1.15;white-space:nowrap}
+.full .card h2{font-size:26px;padding-right:140px}
+.full .card .when{position:absolute;top:18px;right:20px;white-space:nowrap}
+.full .card .when .wd{font-size:26px}
+.full .card .when .wdt{font-size:34px}
 .full .time{font-size:37px;text-align:center;margin:18px 0 18px}
 .full .lbl{font-size:15px;margin-top:16px}
 .full ul.h li{padding:5px 0}
@@ -219,6 +223,8 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .vym .ppick{cursor:pointer}
 .vym .cal-day.sel{outline:3.5px solid var(--ink);outline-offset:2px;transform:scale(1.05);z-index:1}
 .vym .cal-day.off{opacity:.38}
+.sheet h2.swp-h{font-size:17px;color:var(--ink2)}
+.swp-big{font-family:var(--f-cond);font-weight:700;font-size:30px;line-height:1.1;margin:2px 0 0}
 .pick-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
 .pname{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;text-decoration:none}
 .pname.me{font-weight:600;text-decoration:underline solid;text-decoration-thickness:2px;text-decoration-color:currentColor}
@@ -397,7 +403,7 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.15</span>
+      <span class="ver">v4.16</span>
     </div>
   </div>
 </header>
@@ -482,6 +488,7 @@ const CODES = {
   ZdV:{k:"A", label:"Zdravotní volno"}
 };
 const DOW = ["ne","po","út","st","čt","pá","so"];
+const DOW_FULL = ["neděle","pondělí","úterý","středa","čtvrtek","pátek","sobota"];
 const DOW_T = ["Ne","Po","Út","St","Čt","Pá","So"];
 const FOCAL = 0.3;
 const STORE_KEY = "sluzby-osa-zvyraznit";
@@ -577,7 +584,7 @@ function cardHTML(kind, g, slot, now){
   const win = windowOf(g.date, base);
   const st = stateOf(win, now);
   const c = CODES[base];
-  const when = `${DOW[g.date.getDay()]} ${g.date.getDate()}. ${g.date.getMonth()+1}.`;
+  const when = `<span class="wd">${DOW_FULL[g.date.getDay()]}</span><span class="wdt">${g.date.getDate()}. ${g.date.getMonth()+1}.</span>`;
   const title = kind === "D" ? "Denní služba" : "Noční služba";
   const chip = kind === "D" && slot.ev ? `<span class="chip">${esc(slot.ev)}</span>` : "";
   const live = st === "now" ? `<span class="live">Probíhá</span>` : "";
@@ -1652,8 +1659,9 @@ function renderSwp(){
   if (SW.kolega && !OFFICERS[SW.kolega]) checks.e.push(`${SW.kolega} nemá v systému služební číslo, takže žádost nemůže přijmout.`);
   if (ready && !checks.e.length){ const [y, m] = [YEAR, MONTH]; checks = simulate(EFF_T, buildReq(), null, y, m); }
   if (SW.typ === "nabidka" && /\*$/.test(mine.kod)) checks.i.push("Kdo nabídku vezme, převezme i stálou službu.");
-  swpBody.innerHTML = `<h2 id="swpTitle">Vyměnit službu</h2>
-    <p class="sub">Tvoje ${fmtS(id, mine)}</p>
+  const md = new Date(YEAR, MONTH, mine.den);
+  swpBody.innerHTML = `<h2 id="swpTitle" class="swp-h">Měním službu</h2>
+    <p class="swp-big">${DOW_FULL[md.getDay()]} ${mine.den}. ${MONTH+1}. ${mine.kind === "N" ? "Noční" : "Denní"}${/\*$/.test(mine.kod) ? " – stálá" : ""}</p>
     <div class="seg" role="group" aria-label="Typ žádosti">
       ${[["vymena","Výměna"],["prevzeti","Převzetí"],["nabidka","Nabídnout všem"]].map(([k,l]) => `<button type="button" data-typ="${k}" aria-pressed="${SW.typ === k}">${l}</button>`).join("")}
     </div>
