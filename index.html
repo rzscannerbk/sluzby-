@@ -51,12 +51,11 @@ html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);background:var(
 body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.4;display:flex;flex-direction:column;overflow:hidden;-webkit-text-size-adjust:100%}
 :focus-visible{outline:3px solid var(--now);outline-offset:2px}
 
-.top{order:2;position:relative;display:flex;align-items:center;gap:8px;padding:8px 10px calc(var(--sab) + 8px) 4px}
+.top{order:2;position:relative;display:flex;align-items:center;gap:8px;padding:6px 10px max(6px, calc(var(--sab) - 20px)) 10px}
 .top h1{font-family:var(--f-cond);font-weight:700;font-size:16px;line-height:1;margin:0;white-space:nowrap}
-.top-main{min-width:0}
-.self-btn{display:block;margin:0 0 0 34px;padding:0;background:none;border:0;font:inherit;font-size:15px;font-weight:600;color:var(--ink);text-align:left;cursor:pointer;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.self-btn[hidden]{display:none}
-#sub{font-size:12px;color:var(--ink2);margin:0 0 0 34px;line-height:1.2}
+.top-main{min-width:0;flex:1;display:flex;flex-direction:column;align-items:center}
+#title{cursor:pointer}
+#sub{font-size:12px;color:var(--ink2);margin:0;line-height:1.2;text-align:center}
 #sub[hidden]{display:none}
 .btn-now{width:36px;height:34px;display:inline-flex;align-items:center;justify-content:center;background:var(--ink);color:var(--paper);border:1.5px solid var(--ink);padding:0;border-radius:6px 9px 7px 10px/9px 6px 10px 7px;cursor:pointer}
 .btn-now svg{width:20px;height:20px}
@@ -72,7 +71,8 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 #pushOpts label{margin-top:10px}
 .menu label.chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);margin-top:10px}
 .menu label.chk input{width:18px;height:18px;accent-color:var(--ink)}
-.menu .mrow{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+.menu .mrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}
+.menu .mname{flex:1;min-width:0;text-align:center;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .split{order:1;flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 92px}
 .left{position:relative;margin-top:4px;overflow-y:auto;overscroll-behavior:contain;padding:14px 10px 0 12px;-webkit-overflow-scrolling:touch}
@@ -326,7 +326,8 @@ button.cal-day{cursor:pointer}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .msg.err{color:#FF8A8A}}
 .btn-swap{position:relative;width:36px;height:34px;display:inline-flex;align-items:center;justify-content:center;background:transparent;color:var(--ink);border:1.5px solid var(--ink);border-radius:6px 9px 7px 10px/9px 6px 10px 7px;cursor:pointer;padding:0;font-size:18px;font-weight:700}
 .btn-swap + .btn-menu{margin-left:0}
-.top .btn-swap{margin-left:auto}
+.top .btn-swap{margin-left:0}
+.top .btn-menu{margin-left:0}
 .badge{position:absolute;top:-7px;right:-7px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#D04848;color:#fff;font:600 12px/19px var(--f-body);text-align:center}
 .badge[hidden]{display:none}
 .tag.sw{border-style:dashed}
@@ -380,16 +381,15 @@ button.cal-day{cursor:pointer}
 </div>
 
 <header class="top">
+  <button class="btn-swap" id="btnSwap" type="button" aria-label="Výměny služeb">⇄<span class="badge" id="swapBadge" hidden>0</span></button>
   <div class="top-main">
     <div class="mnav">
       <button id="prevM" type="button" aria-label="Předchozí měsíc">‹</button>
       <h1 id="title">Načítám…</h1>
       <button id="nextM" type="button" aria-label="Následující měsíc">›</button>
     </div>
-    <button class="self-btn" id="selfBtn" type="button" hidden></button>
     <p id="sub" role="status" hidden></p>
   </div>
-  <button class="btn-swap" id="btnSwap" type="button" aria-label="Výměny služeb">⇄<span class="badge" id="swapBadge" hidden>0</span></button>
   <button class="btn-menu" id="btnMenu" type="button" aria-label="Nastavení" aria-expanded="false" aria-controls="menu">
     <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
   </button>
@@ -414,7 +414,8 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.21</span>
+      <span class="mname" id="menuName"></span>
+      <span class="ver">v4.22</span>
     </div>
   </div>
 </header>
@@ -1259,9 +1260,10 @@ function resolveSelf(){
 }
 function updateSelfLabel(){
   document.getElementById("admBtn").hidden = !isAdminUI();
-  const b = document.getElementById("selfBtn");
-  b.hidden = !SELF; b.textContent = SELF || "";
-  b.setAttribute("aria-label", SELF ? `${SELF} – moje služby` : "");
+  document.getElementById("menuName").textContent = SELF || "";
+  const t = document.getElementById("title");
+  t.setAttribute("role", "button"); t.tabIndex = 0;
+  t.title = SELF ? "Moje služby" : "";
 }
 const isAdminUI = () => ADMINS.includes(SELF_EMAIL);
 
@@ -1990,7 +1992,8 @@ async function pushRefresh(){
   } catch(e) {}
 }
 
-document.getElementById("selfBtn").addEventListener("click", () => { if (SELF && PLAN) openCal(SELF); });
+document.getElementById("title").addEventListener("click", () => { if (SELF && PLAN) openCal(SELF); });
+document.getElementById("title").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && SELF && PLAN){ e.preventDefault(); openCal(SELF); } });
 
 /* ================= administrace (jen správce) ================= */
 const adm = document.getElementById("adm"), admBody = document.getElementById("admBody");
