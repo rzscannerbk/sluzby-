@@ -200,6 +200,14 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .sub-btns[hidden]{display:none}
 .sub-btns .btn{display:block;text-align:center;text-decoration:none}
 .link-btn{background:none;border:0;padding:0;font:inherit;font-size:13px;color:#C03A3A;text-decoration:underline;cursor:pointer}
+.people{display:grid;gap:6px;margin:6px 0 4px}
+.person{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;font-size:15px;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-left-width:6px;border-radius:10px;padding:9px 12px;cursor:pointer}
+.person.pd{border-left-color:#F2D24A}
+.person.pn{border-left-color:#4B3F9E}
+.person small{font-size:13px;color:var(--ink2);white-space:nowrap}
+.person[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+.person[aria-pressed="true"] small{color:var(--paper);opacity:.85}
+.swp .dpick{cursor:pointer}
 .pick-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
 .pname{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;text-decoration:none}
 .pname.me{font-weight:600;text-decoration:underline solid;text-decoration-thickness:2px;text-decoration-color:currentColor}
@@ -366,7 +374,7 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.9</span>
+      <span class="ver">v4.10</span>
     </div>
   </div>
 </header>
@@ -1409,6 +1417,61 @@ function swapCalHTML(name, mine){
   }
   return any ? `<div class="cal-grid">${html}</div><p class="pick-hint">Klepni na službu, kterou vezmeš. Žlutý čárkovaný rámeček je den tvé služby.</p>` : "";
 }
+function shiftsOnDay(d){
+  // služby ostatních strážníků v den d, které ještě nezačaly
+  const now = getNow(), out = [];
+  for (const [name, arr] of Object.entries(EFF_T || {})){
+    if (name === SELF) continue;
+    (arr[d-1] || ".").split("+").forEach(p => {
+      const k = kindOf(p); if (!k) return;
+      if (windowOf(new Date(YEAR, MONTH, d), p.replace(/\*$/, ""))[0] <= now) return;
+      out.push({name, den:d, kind:k, kod:p});
+    });
+  }
+  return out.sort((a,b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name, "cs"));
+}
+function dayPickHTML(id, mine){
+  const toks = EFF_T[SELF] || [];
+  const n = new Date(YEAR, MONTH + 1, 0).getDate();
+  const offset = (new Date(YEAR, MONTH, 1).getDay() + 6) % 7;
+  const today = new Date(getNow()); today.setHours(0,0,0,0);
+  let html = ["Po","Út","St","Čt","Pá","So","Ne"].map(d => `<div class="cal-dow">${d}</div>`).join("");
+  for (let i = 0; i < offset; i++) html += `<div></div>`;
+  for (let d = 1; d <= n; d++){
+    const parts = (toks[d-1] || ".") === "." ? [] : toks[d-1].split("+");
+    const codes = parts.map(p => p.replace(/\*$/, ""));
+    const hasD = codes.includes("D12"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.includes("D2");
+    const abs = codes.find(c => c === "DOV" || c === "ZdV");
+    const date = new Date(YEAR, MONTH, d), wd = date.getDay();
+    const cls = ["cal-day"];
+    if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
+    if (parts.some(p => p.endsWith("*"))) cls.push("stala");
+    if (wd === 0 || wd === 6) cls.push("we");
+    if (date.getTime() === today.getTime()) cls.push("today");
+    if (d === mine.den) cls.push("giv");
+    const label = codes.join("+");
+    if (date >= today && shiftsOnDay(d).length){
+      if (SW.pickDay === d) cls.push("sel");
+      html += `<button type="button" class="${cls.join(" ")} dpick" data-dd="${d}">${d}<small>${label}</small></button>`;
+    } else {
+      cls.push("off");
+      html += `<div class="${cls.join(" ")}">${d}${label ? `<small>${label}</small>` : ""}</div>`;
+    }
+  }
+  let list = "";
+  if (SW.pickDay){
+    const people = shiftsOnDay(SW.pickDay);
+    const dt = new Date(YEAR, MONTH, SW.pickDay);
+    list = `<p class="sub">${DOW[dt.getDay()]} ${SW.pickDay}. ${MONTH+1}. – kdo má službu:</p>
+      <div class="people">${people.map(p => {
+        const on = SW.kolega === p.name && SW.target && SW.target.den === p.den && SW.target.kind === p.kind;
+        return `<button type="button" class="person ${p.kind === "N" ? "pn" : "pd"}" data-pname="${esc(p.name)}" data-den="${p.den}" data-kind="${p.kind}" data-kod="${p.kod}" aria-pressed="${on}">
+          <b>${esc(p.name)}</b><small>${KIND_LBL[p.kind]} ${p.kod.replace("*", "")}${p.kod.endsWith("*") ? " · stálá" : ""}</small></button>`;
+      }).join("")}</div>`;
+  }
+  return `<label class="f">Můj kalendář – vyber den, za který chceš měnit</label>
+    <div class="cal-grid">${html}</div>${list}`;
+}
 function buildReq(){
   const id = docId(YEAR, MONTH);
   const r = {typ:SW.typ, mesic:id, od:{jmeno:SELF, cislo:SELF_NO, ...SW.mine}, za:null};
@@ -1431,6 +1494,7 @@ function renderSwp(){
     <div class="seg" role="group" aria-label="Typ žádosti">
       ${[["vymena","Výměna"],["prevzeti","Převzetí"],["nabidka","Nabídnout všem"]].map(([k,l]) => `<button type="button" data-typ="${k}" aria-pressed="${SW.typ === k}">${l}</button>`).join("")}
     </div>
+    ${SW.typ === "vymena" ? dayPickHTML(id, mine) : ""}
     ${SW.typ !== "nabidka" ? `<label class="f" for="swKolega">Kolega</label>
       <select id="swKolega"><option value="">Vyber kolegu</option>${colleagues.map(n => `<option ${n === SW.kolega ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>` : ""}
     ${SW.typ === "vymena" && SW.kolega ? `<label class="f">Jeho služba, kterou vezmeš</label>
@@ -1441,7 +1505,7 @@ function renderSwp(){
     <div class="btns"><button type="button" class="btn" id="swSend" ${ready && !checks.e.length ? "" : "disabled"}>Odeslat žádost</button></div>`;
 }
 function openSwp(mine){
-  SW = {mine, typ:"vymena", kolega:"", target:null, pozn:""};
+  SW = {mine, typ:"vymena", kolega:"", target:null, pozn:"", pickDay:null};
   swp.hidden = false; swp.scrollTop = 0; renderSwp();
   document.getElementById("swpClose").focus();
 }
@@ -1450,7 +1514,10 @@ document.getElementById("swpClose").addEventListener("click", closeSwp);
 swpBody.addEventListener("input", e => { if (e.target.id === "swPozn") SW.pozn = e.target.value; });
 swpBody.addEventListener("change", e => { if (e.target.id === "swKolega"){ SW.kolega = e.target.value; SW.target = null; renderSwp(); } });
 swpBody.addEventListener("click", async e => {
-  const t = e.target.closest("[data-typ]"); if (t){ SW.typ = t.dataset.typ; SW.target = null; renderSwp(); return; }
+  const t = e.target.closest("[data-typ]"); if (t){ SW.typ = t.dataset.typ; SW.target = null; SW.pickDay = null; renderSwp(); return; }
+  const dp = e.target.closest(".dpick"); if (dp){ SW.pickDay = +dp.dataset.dd; renderSwp(); return; }
+  const pr = e.target.closest(".person");
+  if (pr){ SW.kolega = pr.dataset.pname; SW.target = {den:+pr.dataset.den, kind:pr.dataset.kind, kod:pr.dataset.kod}; renderSwp(); return; }
   const o = e.target.closest(".pick"); if (o){ SW.target = {den:+o.dataset.den, kind:o.dataset.kind, kod:o.dataset.kod}; renderSwp(); return; }
   if (e.target.id === "swSend"){
     const btn = e.target; btn.disabled = true;
