@@ -224,7 +224,8 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .vym .cal-day.sel{outline:3.5px solid var(--ink);outline-offset:2px;transform:scale(1.05);z-index:1}
 .vym .cal-day.off{opacity:.38}
 .sheet h2.swp-h{font-size:17px;color:var(--ink2)}
-.swp-big{font-family:var(--f-cond);font-weight:700;font-size:30px;line-height:1.1;margin:2px 0 0}
+.swp-big{font-family:var(--f-cond);font-weight:700;font-size:30px;line-height:1.1;margin:2px 0 0;text-align:center;color:#D04848}
+.sheet h2.swp-h{text-align:center;color:#D04848}
 .pick-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
 .pname{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;text-decoration:none}
 .pname.me{font-weight:600;text-decoration:underline solid;text-decoration-thickness:2px;text-decoration-color:currentColor}
@@ -403,7 +404,7 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.17</span>
+      <span class="ver">v4.18</span>
     </div>
   </div>
 </header>
@@ -1326,6 +1327,7 @@ function reqText(r){
       ? `<b>${esc(od.jmeno)}</b> ${fmtS(r.mesic, od)} ⇄ <b>${esc(za.jmeno)}</b> ${fmtS(r.mesic, za)}.`
       : `Služba ${fmtS(r.mesic, od)} převedena: <b>${esc(od.jmeno)}</b> → <b>${esc(za.jmeno)}</b>.`;
   }
+  if (r.typ === "vymena" && r.moznosti && !za.den) return `<b>${esc(od.jmeno)}</b> dá svou ${fmtS(r.mesic, od)} za ${za.jmeno === SELF ? "jednu z tvých služeb" : `jednu ze služeb <b>${esc(za.jmeno)}</b>`}: ${r.moznosti.map(t => fmtS(r.mesic, parseProp(t))).join(", ")}.`;
   if (r.typ === "vymena") return `<b>${esc(od.jmeno)}</b> dá svou ${fmtS(r.mesic, od)} za ${za.jmeno === SELF ? "tvoji" : `službu <b>${esc(za.jmeno)}</b>`} ${fmtS(r.mesic, za)}.`;
   if (r.typ === "prevzeti") return `<b>${esc(od.jmeno)}</b> žádá ${za.jmeno === SELF ? "tebe" : `<b>${esc(za.jmeno)}</b>`} o převzetí služby ${fmtS(r.mesic, od)}.`;
   return `<b>${esc(od.jmeno)}</b> nabízí službu ${fmtS(r.mesic, od)}${za.jmeno ? `, vzal ji <b>${esc(za.jmeno)}</b>` : " komukoli"}.`;
@@ -1370,6 +1372,11 @@ function propChoiceHTML(r){
       return `<button type="button" class="person ${x.kind === "N" ? "pn" : "pd"}" data-act="choose" data-n="${i}"><b>${fmtS(r.mesic, x)}</b><small>${x.kod.replace("*","")}${x.kod.endsWith("*") ? " · stálá" : ""}</small></button>`; }).join("")}</div>
     <div class="btns"><button class="btn btn-no" data-act="rejectprop">Odmítnout návrhy</button></div>`;
 }
+function optChoiceHTML(r){
+  return `<p class="pz">Vyber, kterou svou službu za ni dáš – výměna se provede hned:</p>
+    <div class="people">${r.moznosti.map((t, i) => { const x = parseProp(t);
+      return `<button type="button" class="person ${x.kind === "N" ? "pn" : "pd"}" data-act="acceptopt" data-n="${i}"><b>${fmtS(r.mesic, x)}</b><small>${x.kod.replace("*","")}${x.kod.endsWith("*") ? " · stálá" : ""} · Přijmout tuhle</small></button>`; }).join("")}</div>`;
+}
 function propPickHTML(r){
   if (r.mesic !== docId(YEAR, MONTH)) return `<p class="pz">Pro návrh přepni na měsíc ${MONTHS[ymOf(r.mesic)[1]]}.</p>`;
   const toks = EFF_T[SELF] || [], autor = EFF_T[r.od.jmeno] || [];
@@ -1393,7 +1400,7 @@ function propPickHTML(r){
     // autor musí moji službu převzít: nesmí mít ten den volno ani stejný typ služby
     const ap = (autor[d-1] || ".").split("+");
     const authorOk = !ap.some(p => kindOf(p) === kind);
-    const requested = r.typ === "vymena" && r.za && r.za.den === d && r.za.kind === kind;
+    const requested = r.typ === "vymena" && r.za && ((r.za.den === d && r.za.kind === kind) || (r.moznosti || []).some(t => { const x = parseProp(t); return x.den === d && x.kind === kind; }));
     const ok = shift && !requested && authorOk && windowOf(date, shift.replace(/\*$/, ""))[0] > now;
     const key = shift ? `${d}|${kind}|${shift}` : "";
     if (ok){
@@ -1424,7 +1431,7 @@ function renderVym(){
     ${SELF ? `<p class="sub">Přihlášen jako ${esc(SELF)}</p>` : `<p class="note-id">Účet se nepodařilo spárovat se strážníkem. Výměny fungují s e-mailem ve tvaru prijmeni.cislo@… a se služebními čísly nahranými v importu.</p>`}
     ${SELF ? balanceHTML() : ""}
     ${sec("Čeká na tebe", [...propsForMe, ...forMe], r => r.stav === "navrh" ? propChoiceHTML(r) :
-      `<button class="btn btn-ok" data-act="accept">Přijmout</button><button class="btn btn-no" data-act="reject">Odmítnout</button>${r.za && r.za.jmeno === SELF ? `<button class="btn sec" data-act="propose">Navrhnout</button>` : ""}${PROP && PROP.id === r.id ? propPickHTML(r) : ""}`, "Nic nečeká.")}
+      `${r.moznosti && !r.za.den ? optChoiceHTML(r) : `<button class="btn btn-ok" data-act="accept">Přijmout</button>`}<button class="btn btn-no" data-act="reject">Odmítnout</button>${r.za && r.za.jmeno === SELF ? `<button class="btn sec" data-act="propose">Navrhnout</button>` : ""}${PROP && PROP.id === r.id ? propPickHTML(r) : ""}`, "Nic nečeká.")}
     ${sec("Nabídky kolegů", offers, () => `<button class="btn" data-act="take">Vzít službu</button><button class="btn sec" data-act="hide">Nemám zájem</button>`, hidden.length ? "Žádné další nabídky." : "Žádné otevřené nabídky.")}
     ${hidden.length ? `<details class="hid"><summary>Skryté nabídky (${hidden.length})</summary>${hidden.map(r => reqHTML(r, `<button class="btn" data-act="take">Vzít službu</button><button class="btn sec" data-act="unhide">Znovu zobrazit</button>`)).join("")}</details>` : ""}
     ${sec("Moje žádosti", mine, r => r.stav === "navrh" ? `<span class="pz">Čeká, až si ${esc(surname(r.od.jmeno))} vybere z tvých návrhů.</span>` : `<button class="btn sec" data-act="cancel">Zrušit žádost</button>`, "Nemáš žádné otevřené žádosti.")}
@@ -1474,6 +1481,20 @@ async function reqAction(e){
         const upd = {stav:"prijato", vyrizeno:FV.serverTimestamp()};
         if (act === "take"){ upd.zaCislo = SELF_NO; upd.za = {jmeno:SELF, cislo:SELF_NO}; }
         tx.update(ref, upd);
+      });
+    } else if (act === "acceptopt"){
+      const x = parseProp((r.moznosti || [])[+b.dataset.n]);
+      const newZa = {jmeno:r.za.jmeno, cislo:r.za.cislo, den:x.den, kind:x.kind, kod:x.kod};
+      msg.innerHTML = `<p class="i">Kontroluji plán…</p>`;
+      const [y, m] = ymOf(r.mesic);
+      const out = simulate(await loadMonthState(r.mesic), {...r, za:newZa}, SELF, y, m);
+      msg.innerHTML = checksHTML(out);
+      if (out.e.length) throw null;
+      if (out.w.length && !confirm("Výměna má upozornění k odpočinku. Přesto přijmout?")) throw null;
+      await db.runTransaction(async tx => {
+        const s = await tx.get(ref);
+        if (!s.exists || s.data().stav !== "ceka") throw new Error("Žádost už byla vyřízena.");
+        tx.update(ref, {stav:"prijato", za:newZa, vyrizeno:FV.serverTimestamp()});
       });
     } else if (act === "propsend"){
       await db.runTransaction(async tx => {
@@ -1537,6 +1558,14 @@ function colleagueShifts(name){
   });
   return out;
 }
+const tKey = t => `${t.den}|${t.kind}|${t.kod}`;
+const isPicked = (den, kind) => SW.targets.some(t => t.den === den && t.kind === kind);
+function togglePick(name, t){
+  // varianty musí být od jednoho kolegy; jiný kolega = nový výběr
+  if (SW.kolega !== name){ SW.kolega = name; SW.targets = []; }
+  const i = SW.targets.findIndex(x => x.den === t.den && x.kind === t.kind);
+  if (i >= 0) SW.targets.splice(i, 1); else if (SW.targets.length < 3) SW.targets.push(t);
+}
 function swapCalHTML(name, mine){
   const toks = EFF_T[name] || [];
   const n = new Date(YEAR, MONTH + 1, 0).getDate();
@@ -1564,7 +1593,7 @@ function swapCalHTML(name, mine){
     const pickable = shift && iCanTake(d, kind) && windowOf(date, shift.replace(/\*$/, ""))[0] > now && !(d === mine.den && kind === mine.kind);
     if (pickable){
       any = true;
-      const sel = SW.target && SW.target.den === d && SW.target.kind === kind;
+      const sel = isPicked(d, kind);
       if (sel) cls.push("sel");
       html += `<button type="button" class="${cls.join(" ")} pick" data-den="${d}" data-kind="${kind}" data-kod="${shift}" aria-pressed="${!!sel}" aria-label="${d}. ${MONTH+1}. ${KIND_LBL[kind]} ${label}">${d}<small>${label}</small></button>`;
     } else {
@@ -1572,7 +1601,7 @@ function swapCalHTML(name, mine){
       html += `<div class="${cls.join(" ")}">${d}${label ? `<small>${label}</small>` : ""}</div>`;
     }
   }
-  return any ? `<div class="cal-grid">${html}</div><p class="pick-hint">Klepni na službu, kterou vezmeš. Červený čárkovaný rámeček je den tvé služby.</p>` : "";
+  return any ? `<div class="cal-grid">${html}</div><p class="pick-hint">Klepni až na 3 jeho služby, které bys vzal – on si pak jednu vybere. Opětovné klepnutí výběr zruší. Červený čárkovaný rámeček je den tvé služby.</p>` : "";
 }
 function canTakeMine(name){
   // v den mé služby nesmí mít dovolenou, zdravotní volno ani stejný typ služby
@@ -1592,6 +1621,7 @@ function shiftsOnDay(d){
   const now = getNow(), out = [];
   for (const [name, arr] of Object.entries(EFF_T || {})){
     if (name === SELF || !canTakeMine(name)) continue;
+    if (SW && SW.targets && SW.targets.length && name !== SW.kolega) continue;
     (arr[d-1] || ".").split("+").forEach(p => {
       const k = kindOf(p); if (!k || !iCanTake(d, k)) return;
       if (windowOf(new Date(YEAR, MONTH, d), p.replace(/\*$/, ""))[0] <= now) return;
@@ -1634,7 +1664,7 @@ function dayPickHTML(id, mine){
     const dt = new Date(YEAR, MONTH, SW.pickDay);
     list = `<p class="sub">${DOW[dt.getDay()]} ${SW.pickDay}. ${MONTH+1}. – kdo má službu:</p>
       <div class="people">${people.map(p => {
-        const on = SW.kolega === p.name && SW.target && SW.target.den === p.den && SW.target.kind === p.kind;
+        const on = SW.kolega === p.name && isPicked(p.den, p.kind);
         return `<button type="button" class="person ${p.kind === "N" ? "pn" : "pd"}" data-pname="${esc(p.name)}" data-den="${p.den}" data-kind="${p.kind}" data-kod="${p.kod}" aria-pressed="${on}">
           <b>${esc(p.name)}</b><small>${KIND_LBL[p.kind]} ${p.kod.replace("*", "")}${p.kod.endsWith("*") ? " · stálá" : ""}</small></button>`;
       }).join("")}</div>`;
@@ -1646,18 +1676,29 @@ function buildReq(){
   const id = docId(YEAR, MONTH);
   const r = {typ:SW.typ, mesic:id, od:{jmeno:SELF, cislo:SELF_NO, ...SW.mine}, za:null};
   if (SW.typ !== "nabidka" && SW.kolega) r.za = {jmeno:SW.kolega, cislo:String(OFFICERS[SW.kolega] || "")};
-  if (SW.typ === "vymena" && SW.target && r.za) Object.assign(r.za, SW.target);
+  if (SW.typ === "vymena" && SW.targets.length === 1 && r.za) Object.assign(r.za, SW.targets[0]);
+  if (SW.typ === "vymena" && SW.targets.length > 1 && r.za) r.moznosti = SW.targets.map(tKey);
   return r;
+}
+function simulateReq(r){
+  // u více variant zkontrolovat každou zvlášť
+  if (!r.moznosti) return simulate(EFF_T, r, null, YEAR, MONTH);
+  const out = {e:[], w:[], i:[]}, id = docId(YEAR, MONTH);
+  r.moznosti.forEach(k => {
+    const x = parseProp(k), o = simulate(EFF_T, {...r, za:{...r.za, ...x}}, null, YEAR, MONTH);
+    ["e","w","i"].forEach(t => o[t].forEach(m => out[t].push(`${fmtS(id, x)}: ${m}`)));
+  });
+  return out;
 }
 function renderSwp(){
   const id = docId(YEAR, MONTH), mine = SW.mine;
   const colleagues = Object.keys(OFFICERS).filter(n => n !== SELF && canTakeMine(n)).sort((a,b) => a.localeCompare(b, "cs"));
-  const ready = SW.typ === "nabidka" || (SW.kolega && (SW.typ === "prevzeti" || SW.target));
+  const ready = SW.typ === "nabidka" || (SW.kolega && (SW.typ === "prevzeti" || SW.targets.length));
   const dup = PENDING.some(r => r.odCislo === SELF_NO && r.mesic === id && r.od.den === mine.den && r.od.kind === mine.kind);
   let checks = {e:[], w:[], i:[]};
   if (dup) checks.e.push("Na tuhle službu už máš otevřenou žádost.");
   if (SW.kolega && !OFFICERS[SW.kolega]) checks.e.push(`${SW.kolega} nemá v systému služební číslo, takže žádost nemůže přijmout.`);
-  if (ready && !checks.e.length){ const [y, m] = [YEAR, MONTH]; checks = simulate(EFF_T, buildReq(), null, y, m); }
+  if (ready && !checks.e.length) checks = simulateReq(buildReq());
   if (SW.typ === "nabidka" && /\*$/.test(mine.kod)) checks.i.push("Kdo nabídku vezme, převezme i stálou službu.");
   const md = new Date(YEAR, MONTH, mine.den);
   swpBody.innerHTML = `<h2 id="swpTitle" class="swp-h">Měním službu</h2>
@@ -1668,37 +1709,37 @@ function renderSwp(){
     ${SW.typ === "vymena" ? dayPickHTML(id, mine) : ""}
     ${SW.typ !== "nabidka" ? `<label class="f" for="swKolega">Kolega</label>
       <select id="swKolega"><option value="">Vyber kolegu</option>${colleagues.map(n => `<option ${n === SW.kolega ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>` : ""}
-    ${SW.typ === "vymena" && SW.kolega ? `<label class="f">Jeho služba, kterou vezmeš</label>
-      ${swapCalHTML(SW.kolega, mine) || `<p class="empty-s">${esc(SW.kolega)} nemá v tomto měsíci žádnou budoucí službu.</p>`}${SW.target ? `<p class="sub">Vybráno: jeho ${fmtS(id, SW.target)}</p>` : ""}` : ""}
+    ${SW.typ === "vymena" && SW.kolega ? `<label class="f">Jeho služby, které bys vzal (vybráno ${SW.targets.length}/3)</label>
+      ${swapCalHTML(SW.kolega, mine) || `<p class="empty-s">${esc(SW.kolega)} nemá v tomto měsíci žádnou budoucí službu.</p>`}${SW.targets.length ? `<p class="sub">Vybráno: ${SW.targets.map(t => fmtS(id, t)).join(", ")}</p>` : ""}` : ""}
     <label class="f" for="swPozn">Poznámka (nepovinné)</label>
     <input type="text" id="swPozn" maxlength="140" value="${esc(SW.pozn)}">
     <div class="checks">${checksHTML(checks)}</div>
     <div class="btns"><button type="button" class="btn" id="swSend" ${ready && !checks.e.length ? "" : "disabled"}>Odeslat žádost</button></div>`;
 }
 function openSwp(mine){
-  SW = {mine, typ:"vymena", kolega:"", target:null, pozn:"", pickDay:null};
+  SW = {mine, typ:"vymena", kolega:"", targets:[], pozn:"", pickDay:null};
   swp.hidden = false; swp.scrollTop = 0; renderSwp();
   document.getElementById("swpClose").focus();
 }
 function closeSwp(){ swp.hidden = true; SW = null; }
 document.getElementById("swpClose").addEventListener("click", closeSwp);
 swpBody.addEventListener("input", e => { if (e.target.id === "swPozn") SW.pozn = e.target.value; });
-swpBody.addEventListener("change", e => { if (e.target.id === "swKolega"){ SW.kolega = e.target.value; SW.target = null; renderSwp(); } });
+swpBody.addEventListener("change", e => { if (e.target.id === "swKolega"){ SW.kolega = e.target.value; SW.targets = []; renderSwp(); } });
 swpBody.addEventListener("click", async e => {
-  const t = e.target.closest("[data-typ]"); if (t){ SW.typ = t.dataset.typ; SW.target = null; SW.pickDay = null; renderSwp(); return; }
+  const t = e.target.closest("[data-typ]"); if (t){ SW.typ = t.dataset.typ; SW.targets = []; SW.pickDay = null; renderSwp(); return; }
   const dp = e.target.closest(".dpick"); if (dp){ SW.pickDay = +dp.dataset.dd; renderSwp(); return; }
   const pr = e.target.closest(".person");
-  if (pr){ SW.kolega = pr.dataset.pname; SW.target = {den:+pr.dataset.den, kind:pr.dataset.kind, kod:pr.dataset.kod}; renderSwp(); return; }
-  const o = e.target.closest(".pick"); if (o){ SW.target = {den:+o.dataset.den, kind:o.dataset.kind, kod:o.dataset.kod}; renderSwp(); return; }
+  if (pr){ togglePick(pr.dataset.pname, {den:+pr.dataset.den, kind:pr.dataset.kind, kod:pr.dataset.kod}); renderSwp(); return; }
+  const o = e.target.closest(".pick"); if (o){ togglePick(SW.kolega, {den:+o.dataset.den, kind:o.dataset.kind, kod:o.dataset.kod}); renderSwp(); return; }
   if (e.target.id === "swSend"){
     const btn = e.target; btn.disabled = true;
     const r = buildReq();
-    if (r.typ === "vymena" || r.typ === "prevzeti"){ const out = simulate(EFF_T, r, null, YEAR, MONTH); if (out.w.length && !confirm("Žádost má upozornění k odpočinku. Přesto odeslat?")){ btn.disabled = false; return; } }
+    if (r.typ === "vymena" || r.typ === "prevzeti"){ const out = simulateReq(r); if (out.w.length && !confirm("Žádost má upozornění k odpočinku. Přesto odeslat?")){ btn.disabled = false; return; } }
     try {
       await db.collection(SWAP_COL).add({
         typ:r.typ, mesic:r.mesic, stav:"ceka",
         odCislo:SELF_NO, zaCislo:r.za ? r.za.cislo : null,
-        od:r.od, za:r.za, pozn:SW.pozn.trim(),
+        od:r.od, za:r.za, pozn:SW.pozn.trim(), ...(r.moznosti ? {moznosti:r.moznosti} : {}),
         vytvoreno:firebase.firestore.FieldValue.serverTimestamp(), vyrizeno:null
       });
       closeSwp(); if (!full.hidden) closeFull(); openVym();
