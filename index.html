@@ -47,11 +47,13 @@
 *,*::before,*::after{box-sizing:inherit}
 :root{--sab:env(safe-area-inset-bottom,0px)}
 :root.short-vp{--sab:0px}
+:root.tall-fix{--sab:env(safe-area-inset-bottom,0px)}
+:root.tall-fix,:root.tall-fix body{height:var(--app-h);overflow:hidden}
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);background:var(--paper)}
 body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.4;display:flex;flex-direction:column;overflow:hidden;-webkit-text-size-adjust:100%}
 :focus-visible{outline:3px solid var(--now);outline-offset:2px}
 
-.top{order:2;position:relative;display:flex;align-items:center;gap:8px;padding:6px 10px max(6px, calc(var(--sab) - 20px)) 10px}
+.top{order:2;position:relative;display:flex;align-items:center;gap:8px;padding:10px 10px max(8px, calc(var(--sab) - 18px)) 10px}
 .top h1{font-family:var(--f-cond);font-weight:700;font-size:16px;line-height:1;margin:0;white-space:nowrap}
 .top-main{min-width:0;flex:1;display:flex;flex-direction:column;align-items:center}
 #title{cursor:pointer}
@@ -415,7 +417,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver">v4.22</span>
+      <span class="ver">v4.23</span>
     </div>
   </div>
 </header>
@@ -2136,10 +2138,15 @@ setInterval(render, 60000);
 
 /* iOS na ploše někdy vykreslí stránku nižší než displej, ale hlásí místo pro domovskou lištu –
    v tom případě s lištou nepočítáme, jinak by spodní okraje vyšly mimo viditelnou plochu */
+const NO_TALL_FIX = false; // při potížích přepnout na true = chování jako ve v4.21
 function checkViewport(){
   const standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
   const short = standalone && (screen.height - window.innerHeight) > 20 && Math.abs(window.orientation || 0) !== 90;
-  document.documentElement.classList.toggle("short-vp", !!short);
+  // pokus: iOS stránku zkrátil → roztáhnout ji na celou výšku displeje, aby lišta sjela až k domovské čárce
+  const root = document.documentElement, fix = !!short && !NO_TALL_FIX;
+  root.classList.toggle("short-vp", !!short && !fix);
+  root.classList.toggle("tall-fix", fix);
+  if (fix) root.style.setProperty("--app-h", screen.height + "px"); else root.style.removeProperty("--app-h");
 }
 checkViewport();
 window.addEventListener("resize", checkViewport);
