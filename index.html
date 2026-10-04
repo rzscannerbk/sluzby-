@@ -228,6 +228,7 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .sheet h2.swp-h{text-align:center;color:#D04848}
 .swp-sum{border:2.5px dashed #D04848;border-radius:12px;padding:10px 14px;margin:14px 0 4px;color:#1E63C6;font-size:16px;line-height:1.4}
 .swp-sum p{margin:0}
+.swp-sum .sum-note{font-size:13px;opacity:.85}
 .swp-sum p+p{margin-top:6px}
 .pick-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
 .pname{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;text-decoration:none}
@@ -407,7 +408,7 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.19</span>
+      <span class="ver">v4.20</span>
     </div>
   </div>
 </header>
@@ -1366,7 +1367,7 @@ const parseProp = t => { const [den, kind, kod] = String(t).split("|"); return {
 function reqCard(r, actions){
   const props = r.stav === "navrh" && r.odCislo !== SELF_NO
     ? `<span class="pz">Navrženo místo toho: ${(r.navrhy || []).map(t => fmtS(r.mesic, parseProp(t))).join(", ")}</span>` : "";
-  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div></div>`;
+  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${r.skupina && r.skupina.length > 1 && (r.stav === "ceka" || r.stav === "navrh") ? `<span class="pz">Žádost dostalo ${r.skupina.length} kolegů – platí, kdo přijme první.</span>` : ""}${r.duvod === "jinde" ? `<span class="pz">Výměnu vzal jiný kolega.</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div></div>`;
 }
 let PROP = null; // {id, picks:[]} – rozpracovaný návrh u žádosti
 function propChoiceHTML(r){
@@ -1452,6 +1453,13 @@ async function loadMonthState(id){
   const swaps = sw.docs.map(d => ({id:d.id, ...d.data()}));
   return applySwaps(p.exists ? p.data().plan : {}, swaps, new Date(y, m + 1, 0).getDate()).T;
 }
+async function siblingCheck(tx, r){
+  for (const sid of (r.skupina || [])){
+    if (sid === r.id) continue;
+    const s = await tx.get(db.collection(SWAP_COL).doc(sid));
+    if (s.exists && s.data().stav === "prijato") throw new Error("Výměnu už mezitím vzal jiný kolega.");
+  }
+}
 async function reqAction(e){
   const b = e.target.closest("button[data-act]"); if (!b) return;
   const box = b.closest(".req"), id = box.dataset.id, msg = box.querySelector(".msg");
@@ -1481,6 +1489,7 @@ async function reqAction(e){
       await db.runTransaction(async tx => {
         const s = await tx.get(ref);
         if (!s.exists || s.data().stav !== "ceka") throw new Error("Žádost už byla vyřízena.");
+        await siblingCheck(tx, r);
         const upd = {stav:"prijato", vyrizeno:FV.serverTimestamp()};
         if (act === "take"){ upd.zaCislo = SELF_NO; upd.za = {jmeno:SELF, cislo:SELF_NO}; }
         tx.update(ref, upd);
@@ -1497,6 +1506,7 @@ async function reqAction(e){
       await db.runTransaction(async tx => {
         const s = await tx.get(ref);
         if (!s.exists || s.data().stav !== "ceka") throw new Error("Žádost už byla vyřízena.");
+        await siblingCheck(tx, r);
         tx.update(ref, {stav:"prijato", za:newZa, vyrizeno:FV.serverTimestamp()});
       });
     } else if (act === "propsend"){
@@ -1518,6 +1528,7 @@ async function reqAction(e){
       await db.runTransaction(async tx => {
         const s = await tx.get(ref);
         if (!s.exists || s.data().stav !== "navrh") throw new Error("Návrh už není platný.");
+        await siblingCheck(tx, r);
         tx.update(ref, {stav:"prijato", typ:"vymena", za:newZa, vyrizeno:FV.serverTimestamp()});
       });
     } else if (act === "rejectprop"){
@@ -1562,12 +1573,24 @@ function colleagueShifts(name){
   return out;
 }
 const tKey = t => `${t.den}|${t.kind}|${t.kod}`;
-const isPicked = (den, kind) => SW.targets.some(t => t.den === den && t.kind === kind);
+const isPicked = (den, kind, name) => SW.targets.some(t => t.den === den && t.kind === kind && (!name || t.name === name));
+const pickNames = () => [...new Set(SW.targets.map(t => t.name))];
+const multiPeople = () => pickNames().length > 1;
+function pickAllowed(name, d){
+  // režim A: jeden kolega, až 3 jeho služby; režim B: jeden den, víc kolegů
+  const T = SW.targets; if (!T.length) return true;
+  const names = pickNames(), sameDay = T.every(x => x.den === d);
+  return (names.length === 1 && name === names[0]) || (sameDay && (T.length === 1 || names.length > 1));
+}
 function togglePick(name, t){
-  // varianty musí být od jednoho kolegy; jiný kolega = nový výběr
-  if (SW.kolega !== name){ SW.kolega = name; SW.targets = []; }
-  const i = SW.targets.findIndex(x => x.den === t.den && x.kind === t.kind);
-  if (i >= 0) SW.targets.splice(i, 1); else if (SW.targets.length < 3) SW.targets.push(t);
+  t = {name, den:t.den, kind:t.kind, kod:t.kod};
+  const T = SW.targets, i = T.findIndex(x => x.name === name && x.den === t.den && x.kind === t.kind);
+  if (i >= 0) T.splice(i, 1);
+  else if (!pickAllowed(name, t.den)) SW.targets = [t];
+  else if (pickNames().length <= 1 && (!T.length || T[0].name === name)){ if (T.length < 3) T.push(t); }
+  else T.push(t);
+  const names = pickNames();
+  SW.kolega = names.length === 1 ? names[0] : names.length ? "" : SW.kolega;
 }
 function swapCalHTML(name, mine){
   const toks = EFF_T[name] || [];
@@ -1596,7 +1619,7 @@ function swapCalHTML(name, mine){
     const pickable = shift && iCanTake(d, kind) && windowOf(date, shift.replace(/\*$/, ""))[0] > now && !(d === mine.den && kind === mine.kind);
     if (pickable){
       any = true;
-      const sel = isPicked(d, kind);
+      const sel = isPicked(d, kind, name);
       if (sel) cls.push("sel");
       html += `<button type="button" class="${cls.join(" ")} pick" data-den="${d}" data-kind="${kind}" data-kod="${shift}" aria-pressed="${!!sel}" aria-label="${d}. ${MONTH+1}. ${KIND_LBL[kind]} ${label}">${d}<small>${label}</small></button>`;
     } else {
@@ -1624,7 +1647,7 @@ function shiftsOnDay(d){
   const now = getNow(), out = [];
   for (const [name, arr] of Object.entries(EFF_T || {})){
     if (name === SELF || !canTakeMine(name)) continue;
-    if (SW && SW.targets && SW.targets.length && name !== SW.kolega) continue;
+    if (SW && SW.targets && SW.targets.length && !pickAllowed(name, d)) continue;
     (arr[d-1] || ".").split("+").forEach(p => {
       const k = kindOf(p); if (!k || !iCanTake(d, k)) return;
       if (windowOf(new Date(YEAR, MONTH, d), p.replace(/\*$/, ""))[0] <= now) return;
@@ -1667,7 +1690,7 @@ function dayPickHTML(id, mine){
     const dt = new Date(YEAR, MONTH, SW.pickDay);
     list = `<p class="sub">${DOW[dt.getDay()]} ${SW.pickDay}. ${MONTH+1}. – kdo má službu:</p>
       <div class="people">${people.map(p => {
-        const on = SW.kolega === p.name && isPicked(p.den, p.kind);
+        const on = isPicked(p.den, p.kind, p.name);
         return `<button type="button" class="person ${p.kind === "N" ? "pn" : "pd"}" data-pname="${esc(p.name)}" data-den="${p.den}" data-kind="${p.kind}" data-kod="${p.kod}" aria-pressed="${on}">
           <b>${esc(p.name)}</b><small>${KIND_LBL[p.kind]} ${p.kod.replace("*", "")}${p.kod.endsWith("*") ? " · stálá" : ""}</small></button>`;
       }).join("")}</div>`;
@@ -1679,9 +1702,24 @@ function buildReq(){
   const id = docId(YEAR, MONTH);
   const r = {typ:SW.typ, mesic:id, od:{jmeno:SELF, cislo:SELF_NO, ...SW.mine}, za:null};
   if (SW.typ !== "nabidka" && SW.kolega) r.za = {jmeno:SW.kolega, cislo:String(OFFICERS[SW.kolega] || "")};
-  if (SW.typ === "vymena" && SW.targets.length === 1 && r.za) Object.assign(r.za, SW.targets[0]);
+  const strip = t => ({den:t.den, kind:t.kind, kod:t.kod});
+  if (SW.typ === "vymena" && SW.targets.length === 1 && r.za) Object.assign(r.za, strip(SW.targets[0]));
   if (SW.typ === "vymena" && SW.targets.length > 1 && r.za) r.moznosti = SW.targets.map(tKey);
   return r;
+}
+function buildReqs(){
+  // víc kolegů v jednom dni → každý dostane vlastní žádost
+  if (SW.typ !== "vymena" || !multiPeople()) return [buildReq()];
+  const id = docId(YEAR, MONTH);
+  return SW.targets.map(t => ({typ:"vymena", mesic:id, od:{jmeno:SELF, cislo:SELF_NO, ...SW.mine},
+    za:{jmeno:t.name, cislo:String(OFFICERS[t.name] || ""), den:t.den, kind:t.kind, kod:t.kod}}));
+}
+function simulateAll(list){
+  if (list.length === 1) return simulateReq(list[0]);
+  const out = {e:[], w:[], i:[]};
+  list.forEach(r => { const o = simulate(EFF_T, r, null, YEAR, MONTH);
+    ["e","w","i"].forEach(t => o[t].forEach(m => out[t].push(`${surname(r.za.jmeno)}: ${m}`))); });
+  return out;
 }
 function simulateReq(r){
   // u více variant zkontrolovat každou zvlášť
@@ -1693,15 +1731,24 @@ function simulateReq(r){
   });
   return out;
 }
+function sumHTML(id, mine){
+  if (!SW.targets.length) return "";
+  const T = SW.targets;
+  const take = multiPeople()
+    ? `<p>Vzal bych službu <b>${DOW[new Date(YEAR, MONTH, T[0].den).getDay()]} ${T[0].den}. ${MONTH+1}.</b> od jednoho z: <b>${T.map(t => `${esc(t.name)} (${KIND_LBL[t.kind]})`).join(", ")}</b></p><p class="sum-note">Žádost dostanou všichni označení – platí, kdo přijme první.</p>`
+    : `<p>Vzal bych ${T.length > 1 ? "jednu ze služeb" : "službu"} <b>${T.map(t => fmtS(id, t)).join(", ")}</b></p>`;
+  return `<div class="swp-sum"><p>Nabízím službu <b>${fmtS(id, mine)}</b></p>${take}</div>`;
+}
 function renderSwp(){
   const id = docId(YEAR, MONTH), mine = SW.mine;
   const colleagues = Object.keys(OFFICERS).filter(n => n !== SELF && canTakeMine(n)).sort((a,b) => a.localeCompare(b, "cs"));
-  const ready = SW.typ === "nabidka" || (SW.kolega && (SW.typ === "prevzeti" || SW.targets.length));
+  const ready = SW.typ === "nabidka" || (SW.typ === "vymena" ? SW.targets.length > 0 : !!SW.kolega);
   const dup = PENDING.some(r => r.odCislo === SELF_NO && r.mesic === id && r.od.den === mine.den && r.od.kind === mine.kind);
   let checks = {e:[], w:[], i:[]};
   if (dup) checks.e.push("Na tuhle službu už máš otevřenou žádost.");
-  if (SW.kolega && !OFFICERS[SW.kolega]) checks.e.push(`${SW.kolega} nemá v systému služební číslo, takže žádost nemůže přijmout.`);
-  if (ready && !checks.e.length) checks = simulateReq(buildReq());
+  const who = multiPeople() ? pickNames() : SW.kolega ? [SW.kolega] : [];
+  who.filter(n => !OFFICERS[n]).forEach(n => checks.e.push(`${n} nemá v systému služební číslo, takže žádost nemůže přijmout.`));
+  if (ready && !checks.e.length) checks = simulateAll(buildReqs());
   if (SW.typ === "nabidka" && /\*$/.test(mine.kod)) checks.i.push("Kdo nabídku vezme, převezme i stálou službu.");
   const md = new Date(YEAR, MONTH, mine.den);
   swpBody.innerHTML = `<h2 id="swpTitle" class="swp-h">Měním službu</h2>
@@ -1710,10 +1757,11 @@ function renderSwp(){
       ${[["vymena","Výměna"],["prevzeti","Převzetí"],["nabidka","Nabídnout všem"]].map(([k,l]) => `<button type="button" data-typ="${k}" aria-pressed="${SW.typ === k}">${l}</button>`).join("")}
     </div>
     ${SW.typ === "vymena" ? dayPickHTML(id, mine) : ""}
-    ${SW.typ !== "nabidka" ? `<label class="f" for="swKolega">Kolega</label>
+    ${SW.typ !== "nabidka" && !(SW.typ === "vymena" && multiPeople()) ? `<label class="f" for="swKolega">Kolega</label>
       <select id="swKolega"><option value="">Vyber kolegu</option>${colleagues.map(n => `<option ${n === SW.kolega ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>` : ""}
-    ${SW.typ === "vymena" && SW.kolega ? `<label class="f">Jeho služby, které bys vzal (vybráno ${SW.targets.length}/3)</label>
-      ${swapCalHTML(SW.kolega, mine) || `<p class="empty-s">${esc(SW.kolega)} nemá v tomto měsíci žádnou budoucí službu.</p>`}${SW.targets.length ? `<div class="swp-sum"><p>Nabízím službu <b>${fmtS(id, mine)}</b></p><p>Vzal bych ${SW.targets.length > 1 ? "jednu ze služeb" : "službu"} <b>${SW.targets.map(t => fmtS(id, t)).join(", ")}</b></p></div>` : ""}` : ""}
+    ${SW.typ === "vymena" && SW.kolega && !multiPeople() ? `<label class="f">Jeho služby, které bys vzal (vybráno ${SW.targets.length}/3)</label>
+      ${swapCalHTML(SW.kolega, mine) || `<p class="empty-s">${esc(SW.kolega)} nemá v tomto měsíci žádnou budoucí službu.</p>`}${sumHTML(id, mine)}` : ""}
+    ${SW.typ === "vymena" && multiPeople() ? sumHTML(id, mine) : ""}
     <label class="f" for="swPozn">Poznámka (nepovinné)</label>
     <input type="text" id="swPozn" maxlength="140" value="${esc(SW.pozn)}">
     <div class="checks">${checksHTML(checks)}</div>
@@ -1736,15 +1784,18 @@ swpBody.addEventListener("click", async e => {
   const o = e.target.closest(".pick"); if (o){ togglePick(SW.kolega, {den:+o.dataset.den, kind:o.dataset.kind, kod:o.dataset.kod}); renderSwp(); return; }
   if (e.target.id === "swSend"){
     const btn = e.target; btn.disabled = true;
-    const r = buildReq();
-    if (r.typ === "vymena" || r.typ === "prevzeti"){ const out = simulateReq(r); if (out.w.length && !confirm("Žádost má upozornění k odpočinku. Přesto odeslat?")){ btn.disabled = false; return; } }
+    const list = buildReqs(), r = list[0];
+    if (r.typ === "vymena" || r.typ === "prevzeti"){ const out = simulateAll(list); if (out.w.length && !confirm("Žádost má upozornění k odpočinku. Přesto odeslat?")){ btn.disabled = false; return; } }
     try {
-      await db.collection(SWAP_COL).add({
-        typ:r.typ, mesic:r.mesic, stav:"ceka",
-        odCislo:SELF_NO, zaCislo:r.za ? r.za.cislo : null,
-        od:r.od, za:r.za, pozn:SW.pozn.trim(), ...(r.moznosti ? {moznosti:r.moznosti} : {}),
+      const col = db.collection(SWAP_COL), refs = list.map(() => col.doc()), batch = db.batch();
+      const skupina = list.length > 1 ? refs.map(x => x.id) : null;
+      list.forEach((q, i) => batch.set(refs[i], {
+        typ:q.typ, mesic:q.mesic, stav:"ceka",
+        odCislo:SELF_NO, zaCislo:q.za ? q.za.cislo : null,
+        od:q.od, za:q.za, pozn:SW.pozn.trim(), ...(q.moznosti ? {moznosti:q.moznosti} : {}), ...(skupina ? {skupina} : {}),
         vytvoreno:firebase.firestore.FieldValue.serverTimestamp(), vyrizeno:null
-      });
+      }));
+      await batch.commit();
       closeSwp(); if (!full.hidden) closeFull(); openVym();
     } catch (err){
       swpBody.querySelector(".checks").innerHTML += `<p class="e">${esc(err.code === "permission-denied" ? "Žádost nejde uložit – chybí pravidla pro výměny ve Firestore." : "Odeslání se nepovedlo (" + err.code + ").")}</p>`;
