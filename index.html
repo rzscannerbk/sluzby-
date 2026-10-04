@@ -58,7 +58,8 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 .self-btn[hidden]{display:none}
 #sub{font-size:12px;color:var(--ink2);margin:0 0 0 34px;line-height:1.2}
 #sub[hidden]{display:none}
-.btn-now{font-family:var(--f-cond);font-weight:700;font-size:17px;background:var(--ink);color:var(--paper);border:0;padding:6px 14px;border-radius:6px 10px 7px 11px/10px 6px 11px 7px;cursor:pointer}
+.btn-now{width:36px;height:34px;display:inline-flex;align-items:center;justify-content:center;background:var(--ink);color:var(--paper);border:1.5px solid var(--ink);padding:0;border-radius:6px 9px 7px 10px/9px 6px 10px 7px;cursor:pointer}
+.btn-now svg{width:20px;height:20px}
 .btn-menu{margin-left:auto;width:36px;height:34px;display:inline-flex;align-items:center;justify-content:center;background:transparent;color:var(--ink);border:1.5px solid var(--ink);border-radius:6px 9px 7px 10px/9px 6px 10px 7px;cursor:pointer;padding:0}
 .btn-menu svg{width:18px;height:18px}
 .menu{position:absolute;right:10px;bottom:calc(100% + 6px);max-height:calc(100vh - 140px);overflow-y:auto;z-index:15;width:min(300px,calc(100vw - 20px));background:var(--sheet);color:var(--ink);border:1.5px solid var(--ink);border-radius:5px 11px 6px 13px/11px 5px 13px 6px;padding:12px 14px 14px;box-shadow:0 10px 30px rgba(0,0,0,.28)}
@@ -363,7 +364,7 @@ button.cal-day{cursor:pointer}
   <button class="btn-menu" id="btnMenu" type="button" aria-label="Nastavení" aria-expanded="false" aria-controls="menu">
     <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
   </button>
-  <button class="btn-now" id="btnNow" type="button">Teď</button>
+  <button class="btn-now" id="btnNow" type="button" aria-label="Teď – aktuální služba" title="Teď"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11.2 12 4l8.5 7.2M6 9.5V20h4.5v-5.5h3V20H18V9.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <div class="menu" id="menu" hidden>
     <label for="me">Zvýraznit strážníka</label>
     <select id="me"></select>
@@ -384,7 +385,7 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.12</span>
+      <span class="ver">v4.13</span>
     </div>
   </div>
 </header>
@@ -841,7 +842,7 @@ function fillFull(){
   const mine = myShiftIn(GROUPS[fullRef.g], fullRef.k);
   if (mine){
     const b = document.createElement("button");
-    b.type = "button"; b.className = "swap-open"; b.textContent = "⇄ Vyměnit službu";
+    b.type = "button"; b.className = "swap-open"; b.textContent = "Vyměnit službu";
     b.addEventListener("click", () => openSwp(mine));
     fullBody.appendChild(b);
   }
@@ -1497,7 +1498,7 @@ function swapCalHTML(name, mine){
     if (date.getTime() === today.getTime()) cls.push("today");
     if (d === mine.den) cls.push("giv");
     const label = codes.join("+");
-    const pickable = shift && windowOf(date, shift.replace(/\*$/, ""))[0] > now && !(d === mine.den && kind === mine.kind);
+    const pickable = shift && iCanTake(d, kind) && windowOf(date, shift.replace(/\*$/, ""))[0] > now && !(d === mine.den && kind === mine.kind);
     if (pickable){
       any = true;
       const sel = SW.target && SW.target.den === d && SW.target.kind === kind;
@@ -1518,13 +1519,18 @@ function canTakeMine(name){
   if (parts.some(p => kindOf(p) === m.kind)) return false;
   return true;
 }
+function iCanTake(d, kind){
+  const parts = ((EFF_T[SELF] || [])[d-1] || ".").split("+");
+  if (parts.some(p => /^(DOV|ZdV)$/.test(p))) return false;
+  return !parts.some(p => kindOf(p) === kind);
+}
 function shiftsOnDay(d){
   // služby ostatních strážníků v den d, které ještě nezačaly
   const now = getNow(), out = [];
   for (const [name, arr] of Object.entries(EFF_T || {})){
     if (name === SELF || !canTakeMine(name)) continue;
     (arr[d-1] || ".").split("+").forEach(p => {
-      const k = kindOf(p); if (!k) return;
+      const k = kindOf(p); if (!k || !iCanTake(d, k)) return;
       if (windowOf(new Date(YEAR, MONTH, d), p.replace(/\*$/, ""))[0] <= now) return;
       out.push({name, den:d, kind:k, kod:p});
     });
