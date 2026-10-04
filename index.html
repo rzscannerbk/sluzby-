@@ -201,14 +201,32 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .cal-day small{font-family:var(--f-body);font-size:11px;font-weight:600;line-height:1;opacity:.9}
 button.cal-day{cursor:pointer}
 .cal-day.we{color:var(--ink2)}
-.k-d,.cal-sum .k-d{background:#2E9E5B;color:#fff}
-.k-n,.cal-sum .k-n{background:#D04848;color:#fff}
-.k-p,.cal-sum .k-p{background:#3B6FD6;color:#fff}
-.cal-day.k-d,.cal-day.k-n,.cal-day.k-p,.cal-day.k-pn{color:#fff}
-.k-pn{background:linear-gradient(to bottom,#3B6FD6 0 50%,#D04848 50% 100%)}
+.k-d,.cal-sum .k-d{background:#F2D24A;color:#1D2A4D}
+.k-n,.cal-sum .k-n{background:#4B3F9E;color:#fff}
+.k-p,.cal-sum .k-p{background:#3A9AD9;color:#fff}
+.cal-day.k-n,.cal-day.k-p,.cal-day.k-pn{color:#fff}
+.cal-day.k-d{color:#1D2A4D}
+.k-pn{background:linear-gradient(to bottom,#3A9AD9 0 50%,#4B3F9E 50% 100%)}
 .cal-day.abs small{color:var(--ink2)}
-.cal-day.stala::after{content:"";position:absolute;top:5px;right:5px;width:9px;height:9px;border-radius:50%;background:var(--hl);box-shadow:0 0 0 1.5px rgba(0,0,0,.3)}
-.cal-sum .k-s{background:var(--hl);border-radius:50%}
+.cal-day.stala::after{content:"";position:absolute;top:5px;right:5px;width:10px;height:10px;border-radius:50%;background:#2E9E5B;box-shadow:0 0 0 2px #fff}
+.cal-sum .k-s{background:#2E9E5B;border-radius:50%}
+.cal-day{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.cal-day.note{box-shadow:inset 0 0 0 3px #F3A3A3}
+.cal-day.note:not(.k-d):not(.k-n):not(.k-p):not(.k-pn){background:#F9D3D3;color:#7A1F1F}
+.cal-day.note:not(.k-d):not(.k-n):not(.k-p):not(.k-pn) small{color:#7A1F1F}
+.cal-day.pressing{transform:scale(.94);transition:transform .2s}
+.note-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
+.notes{margin-top:18px}
+.notes h3{font-family:var(--f-cond);font-weight:600;font-size:20px;margin:0 0 8px}
+.notes ul{list-style:none;margin:0;padding:0}
+.notes li button{display:block;width:100%;text-align:left;font:inherit;font-size:15px;color:var(--ink);background:#F9D3D3;border:0;border-left:4px solid #E07C7C;border-radius:8px;padding:9px 12px;margin:0 0 8px;cursor:pointer;white-space:pre-wrap}
+:root[data-theme="dark"] .notes li button{background:#4A2A2E}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .notes li button{background:#4A2A2E}}
+.notes li b{display:block;font-size:13px;color:#B23A3A;margin-bottom:2px}
+.note-ed{margin-top:16px;padding:12px;border:1.5px solid #E07C7C;border-radius:12px}
+.note-ed[hidden]{display:none}
+.note-ed label{display:block;font-weight:600;margin-bottom:6px}
+.note-ed textarea{width:100%;min-height:90px;font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1.5px solid var(--ink);border-radius:8px;padding:8px 10px;resize:vertical}
 .cal-day.today{outline:2.5px solid var(--now);outline-offset:2px}
 .cal-day.past{opacity:.55}
 .full-close{position:fixed;bottom:calc(var(--sab) + 14px);right:26px;z-index:31;width:60px;height:60px;border-radius:50%;border:0;background:var(--ink);color:var(--paper);box-shadow:0 6px 18px rgba(0,0,0,.3);font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
@@ -330,7 +348,7 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.5</span>
+      <span class="ver">v4.6</span>
     </div>
   </div>
 </header>
@@ -344,6 +362,17 @@ button.cal-day{cursor:pointer}
     <div class="cal-head"><h2 id="calName"></h2><span id="calMonth"></span></div>
     <div class="cal-sum" id="calSum"></div>
     <div class="cal-grid" id="calGrid"></div>
+    <p class="note-hint" id="calHint" hidden>Podrž prst na dni a přidáš k němu poznámku.</p>
+    <div class="note-ed" id="noteEd" hidden>
+      <label for="noteText" id="noteLbl">Poznámka</label>
+      <textarea id="noteText" maxlength="500"></textarea>
+      <div class="btns">
+        <button type="button" class="btn" id="noteSave">Uložit</button>
+        <button type="button" class="btn sec btn-danger" id="noteDel">Smazat</button>
+        <button type="button" class="btn sec" id="noteCancel">Zrušit</button>
+      </div>
+    </div>
+    <div class="notes" id="calNotes"></div>
   </div>
 </div>
 <div class="full vym" id="vym" role="dialog" aria-modal="true" aria-labelledby="vymTitle" hidden>
@@ -729,18 +758,18 @@ function start(){
   if (!unsubOfficers){
     unsubOfficers = db.collection(COLLECTION).doc("straznici").onSnapshot(s => {
       OFFICERS = (s.exists && s.data().cisla) || {};
-      resolveSelf(); updateBadge(); renderVym();
+      resolveSelf(); updateBadge(); renderVym(); startNotes();
       fillSelect(); render();
     }, () => {});
   }
-  resolveSelf(); startSwaps(); pushRefresh();
+  resolveSelf(); startSwaps(); startNotes(); pushRefresh();
   const n = getNow();
   loadMonth(n.getFullYear(), n.getMonth(), "now");
 }
 function stop(){
   if (unsubMonth){ unsubMonth(); unsubMonth = null; }
   if (unsubOfficers){ unsubOfficers(); unsubOfficers = null; }
-  stopSwaps(); SELF = null; SELF_NO = null; updateSelfLabel();
+  stopSwaps(); stopNotes(); SELF = null; SELF_NO = null; updateSelfLabel();
   PLAN = null; EFF = null; OFFICERS = {};
   renderEmpty("Odhlášeno", "Přihlas se pro zobrazení plánu.");
 }
@@ -828,14 +857,17 @@ function fillCal(){
     if (wd === 0 || wd === 6) cls.push("we");
     if (date < today) cls.push("past");
     if (date.getTime() === today.getTime()) cls.push("today");
+    const own = calName === SELF;
+    if (own && MY_NOTES[noteKey(d)]) cls.push("note");
     const label = parts.map(p => p.code).join("+");
     const work = hasD || hasN || hasP;
     const aria = `${d}. ${MONTH+1}.${label ? ", " + label : ", volno"}${st ? ", stálá služba" : ""}`;
     html += work
-      ? `<button type="button" class="${cls.join(" ")}" data-day="${d}" data-kind="${hasN && !hasD ? "N" : "D"}" aria-label="${aria}">${d}<small>${label}</small></button>`
-      : `<div class="${cls.join(" ")}" aria-label="${aria}">${d}${label ? `<small>${label}</small>` : ""}</div>`;
+      ? `<button type="button" class="${cls.join(" ")}" data-day="${d}" data-d="${d}" data-kind="${hasN && !hasD ? "N" : "D"}" aria-label="${aria}">${d}<small>${label}</small></button>`
+      : `<div class="${cls.join(" ")}" data-d="${d}" aria-label="${aria}">${d}${label ? `<small>${label}</small>` : ""}</div>`;
   }
   document.getElementById("calGrid").innerHTML = html;
+  renderNotes();
   document.getElementById("calName").textContent = calName;
   document.getElementById("calMonth").textContent = `${cap(MONTHS[MONTH])} ${YEAR}`;
   const sum = [`<span><i class="k-d"></i>Denní <b>${cD}</b></span>`, `<span><i class="k-n"></i>Noční <b>${cN}</b></span>`];
@@ -844,12 +876,78 @@ function fillCal(){
   if (cA) sum.push(`<span>Volno z plánu <b>${cA}</b></span>`);
   document.getElementById("calSum").innerHTML = sum.join("");
 }
+/* ---------- osobní poznámky ke dnům (jen ve vlastním kalendáři) ---------- */
+let MY_NOTES = {}, unsubNotes = null, noteDay = null;
+const noteKey = d => `${YEAR}-${String(MONTH+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+const noteDate = d => { const x = new Date(YEAR, MONTH, d); return `${DOW[x.getDay()]} ${d}. ${MONTH+1}.`; };
+function startNotes(){
+  if (unsubNotes || !SELF_NO) return;
+  unsubNotes = db.collection("poznamky").doc(SELF_NO).onSnapshot(s => {
+    MY_NOTES = (s.exists && s.data().dny) || {};
+    if (calName) fillCal();
+  }, () => {});
+}
+function stopNotes(){ if (unsubNotes){ unsubNotes(); unsubNotes = null; } MY_NOTES = {}; }
+function renderNotes(){
+  const own = calName === SELF && !!SELF_NO;
+  document.getElementById("calHint").hidden = !own;
+  const box = document.getElementById("calNotes");
+  if (!own){ box.innerHTML = ""; document.getElementById("noteEd").hidden = true; return; }
+  const pref = `${YEAR}-${String(MONTH+1).padStart(2,"0")}-`;
+  const keys = Object.keys(MY_NOTES).filter(k => k.startsWith(pref) && MY_NOTES[k]).sort();
+  box.innerHTML = keys.length ? `<h3>Moje poznámky</h3><ul>${keys.map(k => {
+    const d = +k.slice(-2);
+    return `<li><button type="button" data-note-d="${d}"><b>${noteDate(d)}</b>${esc(MY_NOTES[k])}</button></li>`;
+  }).join("")}</ul>` : "";
+}
+function openNote(d){
+  if (calName !== SELF || !SELF_NO) return;
+  noteDay = d;
+  const ed = document.getElementById("noteEd");
+  document.getElementById("noteLbl").textContent = `Poznámka – ${noteDate(d)}`;
+  const t = document.getElementById("noteText"); t.value = MY_NOTES[noteKey(d)] || "";
+  document.getElementById("noteDel").hidden = !MY_NOTES[noteKey(d)];
+  ed.hidden = false;
+  ed.scrollIntoView({block:"nearest", behavior: reduceMotion ? "auto" : "smooth"});
+  setTimeout(() => t.focus(), 50);
+}
+function closeNote(){ document.getElementById("noteEd").hidden = true; noteDay = null; }
+async function saveNote(del){
+  if (noteDay == null) return;
+  const key = noteKey(noteDay), text = document.getElementById("noteText").value.trim();
+  const ref = db.collection("poznamky").doc(SELF_NO), FV = firebase.firestore.FieldValue;
+  try {
+    if (del || !text) await ref.set({dny:{[key]: FV.delete()}}, {merge:true});
+    else await ref.set({dny:{[key]: text}, upraveno:FV.serverTimestamp()}, {merge:true});
+    closeNote();
+  } catch (err){
+    alert(err.code === "permission-denied" ? "Poznámku nejde uložit – chybí pravidla pro poznamky ve Firestore." : "Uložení se nepovedlo.");
+  }
+}
+document.getElementById("noteSave").addEventListener("click", () => saveNote(false));
+document.getElementById("noteDel").addEventListener("click", () => saveNote(true));
+document.getElementById("noteCancel").addEventListener("click", closeNote);
+document.getElementById("calNotes").addEventListener("click", e => { const b = e.target.closest("[data-note-d]"); if (b) openNote(+b.dataset.noteD); });
+// dlouhé podržení dne
+let lpTimer = null, lpFired = false, lpStart = null, lpEl = null;
+const calGridEl = document.getElementById("calGrid");
+function lpClear(){ clearTimeout(lpTimer); lpTimer = null; if (lpEl) lpEl.classList.remove("pressing"); lpEl = null; }
+calGridEl.addEventListener("pointerdown", e => {
+  const c = e.target.closest("[data-d]"); if (!c || calName !== SELF) return;
+  lpFired = false; lpStart = {x:e.clientX, y:e.clientY}; lpEl = c; c.classList.add("pressing");
+  lpTimer = setTimeout(() => { lpFired = true; const d = +c.dataset.d; lpClear(); if (navigator.vibrate) navigator.vibrate(15); openNote(d); }, 550);
+});
+calGridEl.addEventListener("pointermove", e => { if (lpTimer && lpStart && Math.hypot(e.clientX - lpStart.x, e.clientY - lpStart.y) > 10) lpClear(); });
+["pointerup","pointercancel","pointerleave"].forEach(t => calGridEl.addEventListener(t, lpClear));
+calGridEl.addEventListener("contextmenu", e => { if (e.target.closest("[data-d]")) e.preventDefault(); });
+calGridEl.addEventListener("click", e => { if (lpFired){ lpFired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+
 function openCal(name){
   calName = name; fillCal();
   cal.hidden = false; cal.scrollTop = 0;
   document.getElementById("calClose").focus();
 }
-function closeCal(){ cal.hidden = true; calName = null; }
+function closeCal(){ cal.hidden = true; calName = null; closeNote(); }
 document.getElementById("calClose").addEventListener("click", closeCal);
 document.getElementById("calGrid").addEventListener("click", e => {
   const b = e.target.closest("button.cal-day"); if (!b) return;
