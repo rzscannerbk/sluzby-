@@ -385,7 +385,7 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.13</span>
+      <span class="ver">v4.14</span>
     </div>
   </div>
 </header>
@@ -1192,9 +1192,9 @@ function intervals(T, name, y, m){
   });
   return out.sort((a,b) => a.s - b.s);
 }
-function checkPerson(T, name, days, y, m, out){
+function checkPerson(T, name, days, y, m, out, skipAbs){
   const tok = n => (T[name] && T[name][n-1]) || ".";
-  days.forEach(d => { if (/DOV|ZdV/.test(tok(d)) && tok(d).split("+").some(p => kindOf(p))) out.e.push(`${name} má ${d}. ${m+1}. ${/ZdV/.test(tok(d)) ? "zdravotní volno" : "dovolenou"}.`); });
+  if (!skipAbs) days.forEach(d => { if (/DOV|ZdV/.test(tok(d)) && tok(d).split("+").some(p => kindOf(p))) out.e.push(`${name} má ${d}. ${m+1}. ${/ZdV/.test(tok(d)) ? "zdravotní volno" : "dovolenou"}.`); });
   const iv = intervals(T, name, y, m);
   for (let k = 0; k < iv.length - 1; k++){
     const a = iv[k], b = iv[k+1];
@@ -1222,7 +1222,7 @@ function simulate(T0, req, accepter, y, m){
   moveShift(T, req.od.jmeno, recv, req.od.den, req.od.kind, len);
   if (req.typ === "vymena") moveShift(T, req.za.jmeno, req.od.jmeno, req.za.den, req.za.kind, len);
   checkPerson(T, recv, new Set([req.od.den]), y, m, out);
-  if (req.typ === "vymena") checkPerson(T, req.od.jmeno, new Set([req.za.den]), y, m, out);
+  if (req.typ === "vymena") checkPerson(T, req.od.jmeno, new Set([req.za.den]), y, m, out, true);
   if (/\*$/.test(req.od.kod)) out.i.push(`${recv} převezme i stálou službu ${req.od.den}. ${m+1}.`);
   if (req.typ === "vymena" && /\*$/.test(req.za.kod)) out.i.push(`${req.od.jmeno} převezme i stálou službu ${req.za.den}. ${m+1}.`);
   return out;
@@ -1329,7 +1329,7 @@ function propPickHTML(r){
     const label = codes.join("+");
     // autor musí moji službu převzít: nesmí mít ten den volno ani stejný typ služby
     const ap = (autor[d-1] || ".").split("+");
-    const authorOk = !ap.some(p => /^(DOV|ZdV)$/.test(p)) && !ap.some(p => kindOf(p) === kind);
+    const authorOk = !ap.some(p => kindOf(p) === kind);
     const requested = r.typ === "vymena" && r.za && r.za.den === d && r.za.kind === kind;
     const ok = shift && !requested && authorOk && windowOf(date, shift.replace(/\*$/, ""))[0] > now;
     const key = shift ? `${d}|${kind}|${shift}` : "";
@@ -1520,8 +1520,8 @@ function canTakeMine(name){
   return true;
 }
 function iCanTake(d, kind){
+  // žadatel smí jít i v dovolené nebo zdravotním volnu – vadí jen stejný typ služby
   const parts = ((EFF_T[SELF] || [])[d-1] || ".").split("+");
-  if (parts.some(p => /^(DOV|ZdV)$/.test(p))) return false;
   return !parts.some(p => kindOf(p) === kind);
 }
 function shiftsOnDay(d){
