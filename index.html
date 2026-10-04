@@ -226,6 +226,9 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .sheet h2.swp-h{font-size:17px;color:var(--ink2)}
 .swp-big{font-family:var(--f-cond);font-weight:700;font-size:30px;line-height:1.1;margin:2px 0 0;text-align:center;color:#D04848}
 .sheet h2.swp-h{text-align:center;color:#D04848}
+.swp-sum{border:2.5px dashed #D04848;border-radius:12px;padding:10px 14px;margin:14px 0 4px;color:#1E63C6;font-size:16px;line-height:1.4}
+.swp-sum p{margin:0}
+.swp-sum p+p{margin-top:6px}
 .pick-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
 .pname{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;text-decoration:none}
 .pname.me{font-weight:600;text-decoration:underline solid;text-decoration-thickness:2px;text-decoration-color:currentColor}
@@ -404,7 +407,7 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.18</span>
+      <span class="ver">v4.19</span>
     </div>
   </div>
 </header>
@@ -1710,7 +1713,7 @@ function renderSwp(){
     ${SW.typ !== "nabidka" ? `<label class="f" for="swKolega">Kolega</label>
       <select id="swKolega"><option value="">Vyber kolegu</option>${colleagues.map(n => `<option ${n === SW.kolega ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>` : ""}
     ${SW.typ === "vymena" && SW.kolega ? `<label class="f">Jeho služby, které bys vzal (vybráno ${SW.targets.length}/3)</label>
-      ${swapCalHTML(SW.kolega, mine) || `<p class="empty-s">${esc(SW.kolega)} nemá v tomto měsíci žádnou budoucí službu.</p>`}${SW.targets.length ? `<p class="sub">Vybráno: ${SW.targets.map(t => fmtS(id, t)).join(", ")}</p>` : ""}` : ""}
+      ${swapCalHTML(SW.kolega, mine) || `<p class="empty-s">${esc(SW.kolega)} nemá v tomto měsíci žádnou budoucí službu.</p>`}${SW.targets.length ? `<div class="swp-sum"><p>Nabízím službu <b>${fmtS(id, mine)}</b></p><p>Vzal bych ${SW.targets.length > 1 ? "jednu ze služeb" : "službu"} <b>${SW.targets.map(t => fmtS(id, t)).join(", ")}</b></p></div>` : ""}` : ""}
     <label class="f" for="swPozn">Poznámka (nepovinné)</label>
     <input type="text" id="swPozn" maxlength="140" value="${esc(SW.pozn)}">
     <div class="checks">${checksHTML(checks)}</div>
