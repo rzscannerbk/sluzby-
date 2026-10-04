@@ -191,7 +191,15 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .aside b.por{color:#3A9AD9}
 .ch-l{display:flex;align-items:center;gap:10px;min-width:0}
 .ics-btn{flex:none;width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;padding:0}
+.ics-btn[hidden]{display:none}
 .ics-btn svg{width:22px;height:22px}
+.sub-box{margin:12px 0 4px;padding:12px 14px;border:1.5px solid var(--ink);border-radius:12px;background:var(--paper)}
+.sub-box h3{font-family:var(--f-cond);font-weight:600;font-size:19px;margin:0 0 6px}
+.sub-txt{font-size:13px;color:var(--ink2);margin:6px 0}
+.sub-btns{display:grid;gap:8px;margin:10px 0}
+.sub-btns[hidden]{display:none}
+.sub-btns .btn{display:block;text-align:center;text-decoration:none}
+.link-btn{background:none;border:0;padding:0;font:inherit;font-size:13px;color:#C03A3A;text-decoration:underline;cursor:pointer}
 .pick-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
 .pname{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;text-decoration:none}
 .pname.me{font-weight:600;text-decoration:underline solid;text-decoration-thickness:2px;text-decoration-color:currentColor}
@@ -358,7 +366,7 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.8</span>
+      <span class="ver">v4.9</span>
     </div>
   </div>
 </header>
@@ -370,6 +378,18 @@ button.cal-day{cursor:pointer}
   <button class="full-close" id="calClose" type="button" aria-label="Zavřít kalendář">✕</button>
   <div class="cal-sheet">
     <div class="cal-head"><div class="ch-l"><h2 id="calName"></h2><button class="ics-btn" id="calIcs" type="button" aria-label="Přidat služby do kalendáře" title="Přidat služby do kalendáře"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4M12 13v5M9.5 15.5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></button></div><span id="calMonth"></span></div>
+    <div class="sub-box" id="subBox" hidden>
+      <h3>Služby v kalendáři</h3>
+      <p class="sub-txt" id="subInfo">Připravuji odkaz…</p>
+      <div class="sub-btns" id="subBtns" hidden>
+        <a class="btn" id="subIos">Odebírat v iPhonu</a>
+        <a class="btn sec" id="subGoogle" target="_blank" rel="noopener">Přidat do Google kalendáře</a>
+        <a class="btn sec" id="subOnce" target="_blank" rel="noopener">Stáhnout jednorázově</a>
+        <button type="button" class="btn sec" id="subCopy">Zkopírovat adresu</button>
+      </div>
+      <p class="sub-txt">Odběr se sám aktualizuje i po výměnách a opravách plánu. Adresu nikomu neposílej – kdo ji má, vidí tvoje služby.</p>
+      <button type="button" class="link-btn" id="subReset">Zneplatnit adresu a vytvořit novou</button>
+    </div>
     <div class="cal-sum" id="calSum"></div>
     <div class="cal-grid" id="calGrid"></div>
     <p class="note-hint" id="calHint" hidden>Podrž prst na dni a přidáš k němu poznámku.</p>
@@ -877,6 +897,8 @@ function fillCal(){
       : `<div class="${cls.join(" ")}" data-d="${d}" aria-label="${aria}">${d}${label ? `<small>${label}</small>` : ""}</div>`;
   }
   document.getElementById("calGrid").innerHTML = html;
+  document.getElementById("calIcs").hidden = calName !== SELF;
+  if (calName !== SELF) subBox.hidden = true;
   renderNotes();
   document.getElementById("calName").textContent = calName;
   document.getElementById("calMonth").textContent = `${cap(MONTHS[MONTH])} ${YEAR}`;
@@ -1007,21 +1029,51 @@ function buildIcs(name){
   L.push("END:VCALENDAR");
   return {text: L.join("\r\n") + "\r\n", count};
 }
-document.getElementById("calIcs").addEventListener("click", async () => {
-  if (!calName || !PLAN) return;
-  const {text, count} = buildIcs(calName);
-  if (!count){ alert("V tomto měsíci nejsou žádné služby k přidání."); return; }
-  const fname = `sluzby-${docId(YEAR, MONTH)}-${calName.split(" ")[0]}.ics`.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  if (ios){
-    // iOS: otevře nabídku „Přidat vše“ do Kalendáře (lze vybrat i kalendář Google)
-    location.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(text);
-    return;
+/* odběr kalendáře – adresu generuje serverová funkce „kalendar“ */
+const ICS_FN = "https://europe-west1-rz-scanner.cloudfunctions.net/kalendar";
+const subBox = document.getElementById("subBox");
+function randomKey(){
+  const a = new Uint8Array(24); crypto.getRandomValues(a);
+  const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  return Array.from(a, b => abc[b % abc.length]).join("");
+}
+async function subKey(fresh){
+  const col = db.collection("kalendare");
+  const ex = await col.where("cislo", "==", SELF_NO).get();
+  if (!fresh && !ex.empty) return ex.docs[0].id;
+  await Promise.all(ex.docs.map(d => d.ref.delete().catch(() => {})));
+  const k = randomKey();
+  await col.doc(k).set({cislo:SELF_NO, vytvoreno:firebase.firestore.FieldValue.serverTimestamp()});
+  return k;
+}
+async function showSub(fresh){
+  const info = document.getElementById("subInfo"), btns = document.getElementById("subBtns");
+  subBox.hidden = false; btns.hidden = true; info.textContent = "Připravuji odkaz…";
+  try {
+    const k = await subKey(fresh);
+    const https = `${ICS_FN}?k=${k}`, webcal = https.replace(/^https:/, "webcal:");
+    document.getElementById("subIos").href = webcal;
+    document.getElementById("subGoogle").href = "https://calendar.google.com/calendar/render?cid=" + encodeURIComponent(webcal);
+    document.getElementById("subOnce").href = https;
+    subBox.dataset.url = https;
+    info.textContent = "Obsahuje minulý, aktuální a dva další měsíce, pokud jsou nahrané.";
+    btns.hidden = false;
+  } catch (err){
+    info.textContent = err.code === "permission-denied" ? "Odkaz nejde vytvořit – chybí pravidla pro kalendare ve Firestore." : "Odkaz se nepodařilo připravit.";
   }
-  const url = URL.createObjectURL(new Blob([text], {type:"text/calendar;charset=utf-8"}));
-  const a = document.createElement("a"); a.href = url; a.download = fname;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+document.getElementById("calIcs").addEventListener("click", () => {
+  if (calName !== SELF || !SELF_NO) return;
+  if (!subBox.hidden){ subBox.hidden = true; return; }
+  showSub(false);
+});
+document.getElementById("subCopy").addEventListener("click", async e => {
+  try { await navigator.clipboard.writeText(subBox.dataset.url || ""); e.target.textContent = "Zkopírováno"; }
+  catch(_){ prompt("Zkopíruj adresu:", subBox.dataset.url || ""); }
+  setTimeout(() => e.target.textContent = "Zkopírovat adresu", 2000);
+});
+document.getElementById("subReset").addEventListener("click", () => {
+  if (confirm("Stará adresa přestane fungovat a odběry s ní se přestanou aktualizovat. Pokračovat?")) showSub(true);
 });
 
 function openCal(name){
@@ -1029,7 +1081,7 @@ function openCal(name){
   cal.hidden = false; cal.scrollTop = 0;
   document.getElementById("calClose").focus();
 }
-function closeCal(){ cal.hidden = true; calName = null; closeNote(); }
+function closeCal(){ cal.hidden = true; calName = null; closeNote(); subBox.hidden = true; }
 document.getElementById("calClose").addEventListener("click", closeCal);
 document.getElementById("calGrid").addEventListener("click", e => {
   const b = e.target.closest("button.cal-day"); if (!b) return;
