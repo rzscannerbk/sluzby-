@@ -287,6 +287,12 @@ button.cal-day{cursor:pointer}
 .card.night .snote b{color:#FFC2C2}
 .snote p{margin:0;white-space:pre-wrap}
 .full .snote{font-size:16px}
+.snote p+p{margin-top:6px;padding-top:6px;border-top:1px dashed rgba(178,58,58,.35)}
+.full .snote p{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;border-radius:6px;transition:background .15s}
+.full .snote p.hold{background:rgba(224,124,124,.3)}
+.snote-menu{position:fixed;left:12px;right:12px;bottom:calc(var(--sab) + 76px);z-index:34;background:var(--sheet);color:var(--ink);border:1.5px solid #E07C7C;border-radius:14px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.snote-menu[hidden]{display:none}
+.snote-menu .sm-text{margin:0 0 10px;font-size:15px;white-space:pre-wrap;max-height:30vh;overflow:auto;color:var(--ink2)}
 .snote-ed{position:fixed;left:12px;right:12px;bottom:calc(var(--sab) + 76px);z-index:33;background:var(--sheet);color:var(--ink);border:1.5px solid #E07C7C;border-radius:14px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 .snote-ed[hidden]{display:none}
 .snote-ed label{display:block;font-weight:600;margin-bottom:6px}
@@ -408,7 +414,7 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="ver">v4.20</span>
+      <span class="ver">v4.21</span>
     </div>
   </div>
 </header>
@@ -466,6 +472,14 @@ button.cal-day{cursor:pointer}
     <button type="button" class="btn" id="snoteSave">Uložit</button>
     <button type="button" class="btn sec btn-danger" id="snoteDel">Smazat</button>
     <button type="button" class="btn sec" id="snoteCancel">Zrušit</button>
+  </div>
+</div>
+<div class="snote-menu" id="snoteMenu" role="dialog" aria-label="Poznámka" hidden>
+  <p class="sm-text" id="snoteMenuText"></p>
+  <div class="btns">
+    <button type="button" class="btn" id="snoteEdit">Upravit</button>
+    <button type="button" class="btn sec btn-danger" id="snoteRemove">Smazat</button>
+    <button type="button" class="btn sec" id="snoteMenuCancel">Zrušit</button>
   </div>
 </div>
 <main class="split">
@@ -607,8 +621,8 @@ function cardHTML(kind, g, slot, now){
     if (parts.length) aside = `<div class="aside">${parts.join("")}</div>`;
   }
   if (slot.note) aside += `<div class="aside"><p>${esc(slot.note)}</p></div>`;
-  const sn = MY_SNOTES[shiftNoteKey(g.date, kind)];
-  if (sn) aside += `<div class="snote"><b>Moje poznámka</b><p>${esc(sn)}</p></div>`;
+  const snKey = shiftNoteKey(g.date, kind), sn = snotesOf(snKey);
+  if (sn.length) aside += `<div class="snote"><b>${sn.length > 1 ? "Moje poznámky" : "Moje poznámka"}</b>${sn.map((t, i) => `<p data-snk="${snKey}" data-sni="${i}">${esc(t)}</p>`).join("")}</div>`;
   return `<article class="card ${kind==="D"?"day":"night"} ${st}" tabindex="0" data-k="${kind}" data-start="${win[0].getTime()}" data-end="${win[1].getTime()}">
     <h2>${title}${chip}${live}</h2><span class="when">${when}</span>
     <div class="time">${t2(c.s)} – ${t2(c.e)}</div>${st === "now" ? progressHTML(win, now) : ""}
@@ -884,9 +898,9 @@ function fillFull(){
   if (SELF_NO){
     const g = GROUPS[fullRef.g], key = shiftNoteKey(g.date, fullRef.k);
     const n = document.createElement("button");
-    n.type = "button"; n.className = "note-open"; n.setAttribute("aria-label", "Moje poznámka ke službě");
+    n.type = "button"; n.className = "note-open"; n.setAttribute("aria-label", "Přidat poznámku ke službě");
     n.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5h10l4 4V20.5H5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M15 3.5v4h4M8.5 12h7M8.5 16h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
-    n.addEventListener("click", () => openSnote(key, g.date, fullRef.k));
+    n.addEventListener("click", () => openSnote(key, g.date, fullRef.k, -1));
     fullBody.appendChild(n);
   }
   full.classList.toggle("is-night", fullRef.k === "N");
@@ -901,7 +915,7 @@ function openFull(card){
   document.getElementById("fullClose").focus();
 }
 function closeFull(){
-  closeSnote();
+  closeSnote(); closeSnoteMenu();
   full.hidden = true; fullRef = null; fullBody.innerHTML = "";
   if (fullReturn && document.contains(fullReturn)) fullReturn.focus({preventScroll:true});
   fullReturn = null;
@@ -972,7 +986,9 @@ function fillCal(){
   document.getElementById("calSum").innerHTML = sum.join("");
 }
 /* ---------- osobní poznámky ke dnům (jen ve vlastním kalendáři) ---------- */
-let MY_NOTES = {}, MY_SNOTES = {}, unsubNotes = null, noteDay = null, snoteRef = null;
+let MY_NOTES = {}, MY_SNOTES = {}, unsubNotes = null, noteDay = null, snoteRef = null, snoteIdx = -1, snoteDate = null, snoteKind = null;
+// poznámky ke službě: dřív jeden text, nově seznam textů
+const snotesOf = key => { const v = MY_SNOTES[key]; return Array.isArray(v) ? v.filter(Boolean) : v ? [String(v)] : []; };
 function shiftNoteKey(date, kind){ return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}|${kind}`; }
 const noteKey = d => `${YEAR}-${String(MONTH+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
 const noteDate = d => { const x = new Date(YEAR, MONTH, d); return `${DOW[x.getDay()]} ${d}. ${MONTH+1}.`; };
@@ -987,23 +1003,62 @@ function startNotes(){
 }
 function stopNotes(){ if (unsubNotes){ unsubNotes(); unsubNotes = null; } MY_NOTES = {}; MY_SNOTES = {}; }
 /* poznámka ke konkrétní službě – vidí ji jen autor */
-function openSnote(key, date, kind){
-  snoteRef = key;
-  document.getElementById("snoteLbl").textContent = `Moje poznámka – ${kind === "N" ? "noční" : "denní"} ${DOW[date.getDay()]} ${date.getDate()}. ${date.getMonth()+1}.`;
-  const t = document.getElementById("snoteText"); t.value = MY_SNOTES[key] || "";
-  document.getElementById("snoteDel").hidden = !MY_SNOTES[key];
+function openSnote(key, date, kind, idx){
+  snoteRef = key; snoteIdx = idx;
+  const kdy = `${kind === "N" ? "noční" : "denní"} ${DOW[date.getDay()]} ${date.getDate()}. ${date.getMonth()+1}.`;
+  document.getElementById("snoteLbl").textContent = `${idx >= 0 ? "Úprava poznámky" : "Nová poznámka"} – ${kdy}`;
+  const t = document.getElementById("snoteText"); t.value = idx >= 0 ? (snotesOf(key)[idx] || "") : "";
+  document.getElementById("snoteDel").hidden = idx < 0;
   document.getElementById("snoteEd").hidden = false;
   setTimeout(() => t.focus(), 50);
 }
-function closeSnote(){ document.getElementById("snoteEd").hidden = true; snoteRef = null; }
+function closeSnote(){ document.getElementById("snoteEd").hidden = true; snoteRef = null; snoteIdx = -1; }
+async function writeSnotes(key, list){
+  const FV = firebase.firestore.FieldValue;
+  await db.collection("poznamky").doc(SELF_NO).set(list.length ? {sluzby:{[key]: list}, upraveno:FV.serverTimestamp()} : {sluzby:{[key]: FV.delete()}}, {merge:true});
+}
 async function saveSnote(del){
   if (!snoteRef) return;
-  const text = document.getElementById("snoteText").value.trim(), FV = firebase.firestore.FieldValue;
-  try {
-    await db.collection("poznamky").doc(SELF_NO).set(del || !text ? {sluzby:{[snoteRef]: FV.delete()}} : {sluzby:{[snoteRef]: text}, upraveno:FV.serverTimestamp()}, {merge:true});
-    closeSnote();
-  } catch (err){ alert("Poznámku se nepodařilo uložit."); }
+  const text = document.getElementById("snoteText").value.trim(), list = snotesOf(snoteRef);
+  if (snoteIdx >= 0){ if (del || !text) list.splice(snoteIdx, 1); else list[snoteIdx] = text; }
+  else if (text) list.push(text);
+  else { closeSnote(); return; }
+  try { await writeSnotes(snoteRef, list); closeSnote(); }
+  catch (err){ alert("Poznámku se nepodařilo uložit."); }
 }
+/* podržení prstu na poznámce v otevřené kartě → Upravit / Smazat */
+let snoteHold = null, snoteSel = null;
+function openSnoteMenu(p){
+  snoteSel = {key:p.dataset.snk, idx:+p.dataset.sni};
+  document.getElementById("snoteMenuText").textContent = snotesOf(snoteSel.key)[snoteSel.idx] || "";
+  document.getElementById("snoteEd").hidden = true;
+  document.getElementById("snoteMenu").hidden = false;
+  if (navigator.vibrate) navigator.vibrate(15);
+}
+function closeSnoteMenu(){ document.getElementById("snoteMenu").hidden = true; snoteSel = null; }
+function cancelHold(){ if (snoteHold){ clearTimeout(snoteHold.t); snoteHold.p.classList.remove("hold"); snoteHold = null; } }
+full.addEventListener("pointerdown", e => {
+  const p = e.target.closest(".snote p[data-snk]"); if (!p) return;
+  cancelHold();
+  p.classList.add("hold");
+  snoteHold = {p, x:e.clientX, y:e.clientY, t:setTimeout(() => { p.classList.remove("hold"); snoteHold = null; openSnoteMenu(p); }, 550)};
+});
+full.addEventListener("pointermove", e => { if (snoteHold && Math.hypot(e.clientX - snoteHold.x, e.clientY - snoteHold.y) > 10) cancelHold(); });
+["pointerup", "pointercancel", "pointerleave"].forEach(t => full.addEventListener(t, cancelHold));
+full.addEventListener("scroll", cancelHold, {passive:true});
+full.addEventListener("contextmenu", e => { if (e.target.closest(".snote p")) e.preventDefault(); });
+document.getElementById("snoteMenuCancel").addEventListener("click", closeSnoteMenu);
+document.getElementById("snoteEdit").addEventListener("click", () => {
+  const sel = snoteSel; if (!sel) return; closeSnoteMenu();
+  const [y, m, d] = sel.key.split("|")[0].split("-").map(Number);
+  openSnote(sel.key, new Date(y, m - 1, d), sel.key.split("|")[1], sel.idx);
+});
+document.getElementById("snoteRemove").addEventListener("click", async () => {
+  const sel = snoteSel; if (!sel) return;
+  const list = snotesOf(sel.key); list.splice(sel.idx, 1);
+  try { await writeSnotes(sel.key, list); closeSnoteMenu(); }
+  catch (err){ alert("Poznámku se nepodařilo smazat."); }
+});
 function renderNotes(){
   const own = calName === SELF && !!SELF_NO;
   document.getElementById("calHint").hidden = !own;
