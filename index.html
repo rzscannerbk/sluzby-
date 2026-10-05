@@ -121,6 +121,7 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 .card.night .when,.card.night .lbl,.card.night .no,.card.night li::before,.card.night .aside{color:var(--night2)}
 .time{font-family:var(--f-cond);font-weight:700;font-size:32px;line-height:1;margin:6px 0 10px;font-variant-numeric:tabular-nums}
 .time sup{font-size:.5em;line-height:0;vertical-align:.85em;margin-left:1px}
+.aside .evt{color:var(--ink);font-weight:500}
 .chip{display:inline-block;font-family:var(--f-body);font-weight:500;font-size:12px;line-height:1.5;padding:0 7px;border:1px solid currentColor;border-radius:999px;margin-left:6px;vertical-align:2px}
 .live{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-body);font-size:12px;font-weight:600;color:var(--now);margin-left:6px;vertical-align:2px}
 .card.night .live{color:var(--now-n)}
@@ -422,7 +423,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.28</span>
+      <span class="ver" id="verDiag">v4.30</span>
     </div>
   </div>
 </header>
@@ -506,6 +507,7 @@ const MONTHS = ["leden","únor","březen","duben","květen","červen","červenec
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 const CODES = {
   D12:{k:"D", s:[7,0],  e:[19,0]},
+  D8: {k:"D", s:[10,0], e:[18,0]},
   N13:{k:"N", s:[19,0], e:[8,0]},
   N12:{k:"N", s:[19,0], e:[7,0]},
   Nz7:{k:"N", s:[19,0], e:[24,0]},
@@ -613,7 +615,7 @@ function cardHTML(kind, g, slot, now){
   const c = CODES[base];
   const when = `<span class="wd">${DOW_FULL[g.date.getDay()]}</span><span class="wdt">${g.date.getDate()}. ${g.date.getMonth()+1}.</span>`;
   const title = kind === "D" ? "Denní služba" : "Noční služba";
-  const chip = kind === "D" && slot.ev ? `<span class="chip">${esc(slot.ev)}</span>` : "";
+  const chip = "";
   const live = st === "now" ? `<span class="live">Probíhá</span>` : "";
   const stala = slot.stala
     ? `<div class="stala"><span class="hl">${person(slot.stala, base, ctx)}</span></div>`
@@ -624,6 +626,8 @@ function cardHTML(kind, g, slot, now){
   let aside = "";
   if (kind === "D"){
     const parts = [];
+    // události z plánu (ručně psané poznámky) – pod hlídkou, nad poradou a nepřítomnými
+    if (slot.ev) String(slot.ev).split(/\s*·\s*/).filter(Boolean).forEach(t => parts.push(`<p class="evt">${esc(t)}</p>`));
     if (slot.P && slot.P.length) parts.push(`<p><b class="por">Porada ${tPlain(CODES.D2.s)}–${tPlain(CODES.D2.e)}:</b> ${slot.P.map(p => nameBtn(p.name)).join(", ")}</p>`);
     for (const [code, names] of Object.entries(slot.A || {})) parts.push(`<p><b>${CODES[code].label}:</b> ${names.map(n => nameBtn(n)).join(", ")}</p>`);
     if (parts.length) aside = `<div class="aside">${parts.join("")}</div>`;
@@ -669,8 +673,8 @@ function render(){
       const dm = on(g.day), nm = on(g.night);
       if (dm || nm) marks = `<span class="marks" aria-hidden="true">${dm ? `<i class="${dm==="s"?"s":"d"}"></i>` : ""}${nm ? `<i class="${nm==="s"?"s":"n"}"></i>` : ""}</span>`;
     }
-    const ev = g.day?.ev || (g.prev ? g.prevName : "");
-    const label = `${DOW_T[wd]} ${d.getDate()}. ${d.getMonth()+1}.${ev ? ", " + ev : ""}`;
+    const ev = g.prev ? g.prevName : "";
+    const label = `${DOW_T[wd]} ${d.getDate()}. ${d.getMonth()+1}.${ev ? ", " + ev : g.day?.ev ? ", " + g.day.ev : ""}`;
     return `<button type="button" class="${cls.join(" ")}" data-i="${i}" aria-label="${esc(label)}">${marks}
       <span class="dow">${DOW_T[wd]}</span><span class="dt">${d.getDate()}. ${d.getMonth()+1}.</span>${ev ? `<span class="ev">${esc(ev)}</span>` : ""}</button>`;
   }).join("");
@@ -1125,7 +1129,7 @@ calGridEl.addEventListener("contextmenu", e => { if (e.target.closest("[data-d]"
 calGridEl.addEventListener("click", e => { if (lpFired){ lpFired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 
 /* ---------- export služeb do kalendáře (.ics) ---------- */
-const ICS_SPAN = {D12:[7,19,0], N12:[19,7,1], N13:[19,8,1], Nz7:[19,24,0], D2:[8,10,0]};
+const ICS_SPAN = {D12:[7,19,0], D8:[10,18,0], N12:[19,7,1], N13:[19,8,1], Nz7:[19,24,0], D2:[8,10,0]};
 function icsEsc(t){ return String(t).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n"); }
 function icsFold(line){
   const out = []; let cur = "";
@@ -1253,7 +1257,7 @@ let PENDING = [], SWAPS_MONTH = [], EFF = null, EFF_T = null, NOTES = {};
 let unsubPending = null, unsubSwaps = null, unsubMine = [];
 let MY_OD = [], MY_ZA = [];
 const KIND_LBL = {D:"denní", N:"noční"};
-const kindOf = c => { c = c.replace(/\*$/, ""); return c === "D12" ? "D" : (c === "N12" || c === "N13" || c === "Nz7") ? "N" : null; };
+const kindOf = c => { c = c.replace(/\*$/, ""); return (c === "D12" || c === "D8") ? "D" : (c === "N12" || c === "N13" || c === "Nz7") ? "N" : null; };
 const surname = n => String(n).split(" ")[0];
 
 function resolveSelf(){
@@ -1311,7 +1315,7 @@ function rebuild(){
 }
 
 /* --- kontroly: kolize, odpočinek, dovolená --- */
-const SPAN = {D12:[7,19,0], N12:[19,7,1], N13:[19,8,1], Nz7:[19,0,1], Nk8:[0,8,0]};
+const SPAN = {D12:[7,19,0], D8:[10,18,0], N12:[19,7,1], N13:[19,8,1], Nz7:[19,0,1], Nk8:[0,8,0]};
 function intervals(T, name, y, m){
   const out = [];
   (T[name] || []).forEach((tok, i) => {
@@ -1459,7 +1463,7 @@ function propPickHTML(r){
     const shift = parts.find(p => kindOf(p)), kind = shift ? kindOf(shift) : null;
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
-    const hasD = codes.includes("D12"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.includes("D2");
+    const hasD = codes.includes("D12") || codes.includes("D8"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.includes("D2");
     if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p");
     if (parts.some(p => p.endsWith("*"))) cls.push("stala");
     if (wd === 0 || wd === 6) cls.push("we");
@@ -1668,7 +1672,7 @@ function swapCalHTML(name, mine){
     const tok = toks[d-1] || ".";
     const parts = tok === "." ? [] : tok.split("+");
     const codes = parts.map(p => p.replace(/\*$/, ""));
-    const hasD = codes.includes("D12"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.includes("D2");
+    const hasD = codes.includes("D12") || codes.includes("D8"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.includes("D2");
     const abs = codes.find(c => c === "DOV" || c === "ZdV");
     const shift = parts.find(p => kindOf(p));
     const kind = shift ? kindOf(shift) : null;
@@ -1730,7 +1734,7 @@ function dayPickHTML(id, mine){
   for (let d = 1; d <= n; d++){
     const parts = (toks[d-1] || ".") === "." ? [] : toks[d-1].split("+");
     const codes = parts.map(p => p.replace(/\*$/, ""));
-    const hasD = codes.includes("D12"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.includes("D2");
+    const hasD = codes.includes("D12") || codes.includes("D8"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.includes("D2");
     const abs = codes.find(c => c === "DOV" || c === "ZdV");
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
@@ -2016,7 +2020,7 @@ function admCalHTML(name, sel, mark){
     const tok = toks[d-1] || ".";
     const parts = tok === "." ? [] : tok.split("+");
     const codes = parts.map(p => p.replace(/\*$/, ""));
-    const hasD = codes.includes("D12"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.includes("D2");
+    const hasD = codes.includes("D12") || codes.includes("D8"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.includes("D2");
     const abs = codes.find(c => c === "DOV" || c === "ZdV");
     const shift = parts.find(p => kindOf(p)), kind = shift ? kindOf(shift) : null;
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
