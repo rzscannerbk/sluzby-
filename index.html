@@ -100,7 +100,8 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 .tile.active.part-night{background:var(--night);color:var(--night-ink);border-color:var(--night-line)}
 .tile.active.part-night .ev{color:var(--night2)}
 .tile.active.past{opacity:.85}
-.marks{position:absolute;top:4px;right:4px;display:flex;gap:2px}
+.marks{position:absolute;top:4px;right:4px;display:flex;gap:2px;align-items:flex-start}
+.marks .mk{display:flex;flex-direction:column;gap:2px}
 .marks i{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--ink)}
 .marks .d{background:#F2D24A}
 .marks .n{background:#4B3F9E}
@@ -423,7 +424,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.30</span>
+      <span class="ver" id="verDiag">v4.31</span>
     </div>
   </div>
 </header>
@@ -671,7 +672,9 @@ function render(){
     if (ME){
       const on = slot => slot && (slot.stala?.name === ME ? "s" : slot.hl.some(p => p.name === ME) ? "x" : "");
       const dm = on(g.day), nm = on(g.night);
-      if (dm || nm) marks = `<span class="marks" aria-hidden="true">${dm ? `<i class="${dm==="s"?"s":"d"}"></i>` : ""}${nm ? `<i class="${nm==="s"?"s":"n"}"></i>` : ""}</span>`;
+      // tečka podle služby (žlutá denní, modrá noční), pod ní zelená, je-li stálá
+      const mk = (m, k) => m ? `<span class="mk"><i class="${k}"></i>${m === "s" ? `<i class="s"></i>` : ""}</span>` : "";
+      if (dm || nm) marks = `<span class="marks" aria-hidden="true">${mk(dm, "d")}${mk(nm, "n")}</span>`;
     }
     const ev = g.prev ? g.prevName : "";
     const label = `${DOW_T[wd]} ${d.getDate()}. ${d.getMonth()+1}.${ev ? ", " + ev : g.day?.ev ? ", " + g.day.ev : ""}`;
