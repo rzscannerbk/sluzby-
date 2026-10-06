@@ -295,6 +295,9 @@ button.cal-day{cursor:pointer}
 .vol-share svg{width:22px;height:22px}
 .vol-item{display:block;width:100%;text-align:left;margin-top:8px;padding:10px 12px;border-radius:8px;border:0;background:rgba(224,124,124,.18);border-left:4px solid #E07C7C;color:var(--ink);font:inherit;font-size:15px;line-height:1.4;cursor:pointer}
 .vol-item b{display:block;font-size:16px}
+.vol-item .vg{display:block}
+.vol-item .vg+.vg{margin-top:6px;padding-top:6px;border-top:1px dashed rgba(178,58,58,.35)}
+.vol-item .vg-sum{display:block;margin-top:6px;padding-top:6px;border-top:1.5px solid rgba(178,58,58,.45);font-weight:600}
 .vol-item small{display:block;color:var(--ink2);font-size:13px}
 .vol-item.edit{outline:2px solid #D04848}
 .vol-tot{font-size:14px;color:var(--ink2);margin:10px 0 0}
@@ -453,7 +456,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.35</span>
+      <span class="ver" id="verDiag">v4.36</span>
     </div>
   </div>
 </header>
@@ -1317,17 +1320,19 @@ function volStats(dny){
   return {dni:dny.length, d, n, h:(d + n) * DLP_H};
 }
 const dniTxt = n => n === 1 ? "den" : n >= 2 && n <= 4 ? "dny" : "dní";
-function volRanges(dny){
-  // souvislé úseky: „9.–15. 11. 2026“, přes měsíc „28. 11.–5. 12. 2026“
-  const ks = [...dny].sort(), out = []; let st = null, pv = null;
+function volGroups(dny){
+  // souvislé úseky dnů → [{label, dny}], např. „9.–15. 11. 2026“, přes měsíc „28. 11.–5. 12. 2026“
+  const ks = [...dny].sort(), out = []; let cur = null;
   const next = k => { const x = dparse(k), t = new Date(x.y, x.m, x.d + 1); return dkey(t.getFullYear(), t.getMonth(), t.getDate()); };
-  ks.forEach(k => { if (pv && next(pv) === k) pv = k; else { if (st) out.push([st, pv]); st = pv = k; } });
-  if (st) out.push([st, pv]);
-  return out.map(([a, b]) => { const x = dparse(a), z = dparse(b);
-    if (a === b) return `${x.d}. ${x.m+1}. ${x.y}`;
-    if (x.m === z.m && x.y === z.y) return `${x.d}.–${z.d}. ${x.m+1}. ${x.y}`;
-    return `${x.d}. ${x.m+1}.–${z.d}. ${z.m+1}. ${z.y}`; }).join(", ");
+  ks.forEach(k => { if (cur && next(cur[cur.length - 1]) === k) cur.push(k); else { cur = [k]; out.push(cur); } });
+  return out.map(g => { const x = dparse(g[0]), z = dparse(g[g.length - 1]);
+    const label = g.length === 1 ? `${x.d}. ${x.m+1}. ${x.y}`
+      : (x.m === z.m && x.y === z.y) ? `${x.d}.–${z.d}. ${x.m+1}. ${x.y}`
+      : `${x.d}. ${x.m+1}.–${z.d}. ${z.m+1}. ${z.y}`;
+    return {label, dny:g}; });
 }
+const volRanges = dny => volGroups(dny).map(g => g.label).join(", ");
+const volLine = st => `${st.dni} ${dniTxt(st.dni)} · ${st.d + st.n ? `služeb ${st.d + st.n} (denní ${st.d}, noční ${st.n}) = ${fmtH(st.h)}\u00a0h` : "bez služby"}`;
 function openVol(){
   // začíná následujícím měsícem oproti dnešku
   const now = getNow(); let y = now.getFullYear(), m = now.getMonth() + 1;
@@ -1377,15 +1382,19 @@ function fillVol(){
   const res = document.getElementById("volRes"), st = volStats([...volDraft]);
   res.hidden = !volDraft.size && !volEditId;
   if (!res.hidden) res.innerHTML = `<p><b>${volEditId ? "Úprava volna" : "Nové volno"}:</b> ${volDraft.size ? volRanges([...volDraft]) : "žádný den"}</p>
-    <p>${st.dni} ${dniTxt(st.dni)}, z toho služeb <b>${st.d + st.n}</b> (denní ${st.d}, noční ${st.n}) = <b>${fmtH(st.h)} h</b></p>
+    ${volGroups([...volDraft]).length > 1 ? volGroups([...volDraft]).map(g => `<p>${g.label}: ${volLine(volStats(g.dny))}</p>`).join("") : ""}
+    <p>${volDraft.size ? (volGroups([...volDraft]).length > 1 ? "Celkem " : "") + volLine(st) : ""}</p>
     <div class="btns"><button type="button" class="btn" id="volSave" ${volDraft.size ? "" : "disabled"}>Uložit</button>${volEditId ? `<button type="button" class="btn sec btn-danger" id="volDel">Smazat</button>` : ""}<button type="button" class="btn sec" id="volCancel">Zrušit</button></div>`;
   // uložená volna
   const list = [...MY_VOLP].sort((a, b) => (a.dny[0] < b.dny[0] ? -1 : 1));
   let tD = 0, tN = 0;
   const items = list.map(e => { const x = volStats(e.dny); tD += x.d; tN += x.n;
-    return `<div class="vol-row"><button type="button" class="vol-item${e.id === volEditId ? " edit" : ""}" data-vid="${e.id}"><b>${volRanges(e.dny)}</b>${x.dni} ${dniTxt(x.dni)} · služeb ${x.d + x.n} (denní ${x.d}, noční ${x.n}) = ${fmtH(x.h)} h<small>Klepni pro úpravu</small></button><button type="button" class="vol-share" data-vshare="${e.id}" aria-label="Sdílet volno ${volRanges(e.dny)}"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button></div>`; }).join("");
+    const gs = volGroups(e.dny);
+    const rows = gs.map(g => `<span class="vg"><b>${g.label}</b>${volLine(volStats(g.dny))}</span>`).join("");
+    const sum = gs.length > 1 ? `<span class="vg-sum">Celkem ${volLine(x)}</span>` : "";
+    return `<div class="vol-row"><button type="button" class="vol-item${e.id === volEditId ? " edit" : ""}" data-vid="${e.id}">${rows}${sum}<small>Klepni pro úpravu</small></button><button type="button" class="vol-share" data-vshare="${e.id}" aria-label="Sdílet volno ${volRanges(e.dny)}"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button></div>`; }).join("");
   document.getElementById("volList").innerHTML = list.length
-    ? `<h3>Naplánované volno</h3>${items}<p class="vol-tot">Celkem: služeb ${tD + tN} (denní ${tD}, noční ${tN}) = ${fmtH((tD + tN) * DLP_H)} h</p>` : "";
+    ? `<h3>Naplánované volno</h3>${items}<p class="vol-tot">Celkem za všechna volna: služeb ${tD + tN} (denní ${tD}, noční ${tN}) = ${fmtH((tD + tN) * DLP_H)}\u00a0h</p>` : "";
 }
 async function volWrite(list){
   const FV = firebase.firestore.FieldValue;
@@ -1429,13 +1438,14 @@ document.getElementById("volRes").addEventListener("click", e => {
 });
 function volText(e){
   // text pro sdílení – podoba se doladí
-  const x = volStats(e.dny), lines = [`Plánované volno – ${SELF}`, `${volRanges(e.dny)} (${x.dni} ${dniTxt(x.dni)})`];
-  const sl = e.dny.slice().sort().filter(k => dlpCode(k) !== ".").map(k => { const d = dparse(k), w = DOW[new Date(d.y, d.m, d.d).getDay()];
-    return `${w} ${d.d}. ${d.m+1}. ${dlpCode(k) === "N" ? "N12 noční" : "D12 denní"}`; });
-  lines.push("", sl.length ? "Služby podle dlouhodobého plánu:" : "Bez služeb podle dlouhodobého plánu.");
-  sl.forEach(t => lines.push("– " + t));
-  lines.push("", `Celkem služeb ${x.d + x.n} (denní ${x.d}, noční ${x.n}) = ${fmtH(x.h)} h`);
-  return lines.join("\n");
+  const x = volStats(e.dny), lines = [`Plánované volno – ${SELF}`];
+  volGroups(e.dny).forEach(g => {
+    lines.push("", `${g.label}: ${volLine(volStats(g.dny))}`);
+    g.dny.filter(k => dlpCode(k) !== ".").forEach(k => { const d = dparse(k), w = DOW[new Date(d.y, d.m, d.d).getDay()];
+      lines.push(`– ${w} ${d.d}. ${d.m+1}. ${dlpCode(k) === "N" ? "N12 noční" : "D12 denní"}`); });
+  });
+  lines.push("", `Celkem ${volLine(x)}`);
+  return lines.join("\n").replace(/\u00a0/g, " ");
 }
 async function volShare(id){
   const e = MY_VOLP.find(x => x.id === id); if (!e) return;
