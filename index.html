@@ -273,6 +273,21 @@ button.cal-day{cursor:pointer}
 .cal-day.note:not(.k-d):not(.k-n):not(.k-p):not(.k-pn) small{color:#7A1F1F}
 .cal-day.pressing{transform:scale(.94);transition:transform .2s}
 .note-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
+.vol-open{margin-top:18px;width:100%}
+#vol{z-index:32}
+.vol-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0 4px}
+.vol-nav b{font-family:var(--f-cond);font-weight:600;font-size:24px}
+.vol-nav button{width:44px;height:40px;border-radius:10px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);font-size:20px;cursor:pointer}
+.vol-nav button:disabled{opacity:.25;cursor:default}
+.vol-who{font-size:14px;color:var(--ink2);margin:0}
+.cal-day.vsel{box-shadow:0 0 0 3px #D04848;z-index:1}
+.cal-day.vsel:not(.k-d):not(.k-n){background:#F9D3D3;color:#7A1F1F}
+.cal-day.vsel::after{content:"V";position:absolute;top:4px;right:6px;font-family:var(--f-body);font-size:10px;font-weight:700;color:#D04848}
+.cal-day.k-n.vsel::after{color:#FFB3B3}
+.vol-sum{border:2.5px dashed #D04848;border-radius:12px;padding:10px 14px;margin:16px 0 0;font-size:15px;line-height:1.45}
+.vol-sum p{margin:0}
+.vol-sum p+p{margin-top:4px}
+.vol-sum .vs-y{color:var(--ink2);font-size:14px}
 .notes{margin-top:18px}
 .notes h3{font-family:var(--f-cond);font-weight:600;font-size:20px;margin:0 0 8px}
 .notes ul{list-style:none;margin:0;padding:0}
@@ -424,10 +439,26 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.31</span>
+      <span class="ver" id="verDiag">v4.32</span>
     </div>
   </div>
 </header>
+<div class="full cal" id="vol" role="dialog" aria-modal="true" aria-labelledby="volTitle" hidden>
+  <button class="full-close" id="volClose" type="button" aria-label="Zavřít plánování volna">✕</button>
+  <div class="cal-sheet">
+    <div class="cal-head"><h2 id="volTitle">Plánování volna</h2></div>
+    <p class="vol-who" id="volWho"></p>
+    <div class="vol-nav">
+      <button type="button" id="volPrev" aria-label="Předchozí měsíc">‹</button>
+      <b id="volMonth"></b>
+      <button type="button" id="volNext" aria-label="Další měsíc">›</button>
+    </div>
+    <div class="cal-sum" id="volSum"></div>
+    <div class="cal-grid" id="volGrid"></div>
+    <p class="note-hint">Služby podle dlouhodobého plánu. Klepnutím na den ho označíš jako volno, dalším klepnutím označení zrušíš.</p>
+    <div class="vol-sum" id="volRes" hidden></div>
+  </div>
+</div>
 <div class="full" id="full" role="dialog" aria-modal="true" aria-label="Detail služby" hidden>
   <button class="full-close" id="fullClose" type="button" aria-label="Zavřít">✕</button>
   <div id="fullBody"></div>
@@ -451,6 +482,7 @@ button.cal-day{cursor:pointer}
     <div class="cal-sum" id="calSum"></div>
     <div class="cal-grid" id="calGrid"></div>
     <p class="note-hint" id="calHint" hidden>Podrž prst na dni a přidáš k němu poznámku.</p>
+    <button type="button" class="btn sec vol-open" id="volBtn" hidden>Plánování volna</button>
     <div class="note-ed" id="noteEd" hidden>
       <label for="noteText" id="noteLbl">Poznámka</label>
       <textarea id="noteText" maxlength="500"></textarea>
@@ -1001,7 +1033,7 @@ function fillCal(){
   document.getElementById("calSum").innerHTML = sum.join("");
 }
 /* ---------- osobní poznámky ke dnům (jen ve vlastním kalendáři) ---------- */
-let MY_NOTES = {}, MY_SNOTES = {}, unsubNotes = null, noteDay = null, snoteRef = null, snoteIdx = -1, snoteDate = null, snoteKind = null;
+let MY_VOL = {}, MY_NOTES = {}, MY_SNOTES = {}, unsubNotes = null, noteDay = null, snoteRef = null, snoteIdx = -1, snoteDate = null, snoteKind = null;
 // poznámky ke službě: dřív jeden text, nově seznam textů
 const snotesOf = key => { const v = MY_SNOTES[key]; return Array.isArray(v) ? v.filter(Boolean) : v ? [String(v)] : []; };
 function shiftNoteKey(date, kind){ return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}|${kind}`; }
@@ -1012,7 +1044,9 @@ function startNotes(){
   unsubNotes = db.collection("poznamky").doc(SELF_NO).onSnapshot(s => {
     MY_NOTES = (s.exists && s.data().dny) || {};
     MY_SNOTES = (s.exists && s.data().sluzby) || {};
+    MY_VOL = (s.exists && s.data().volno) || {};
     if (calName) fillCal();
+    if (!vol.hidden) fillVol();
     render();
   }, () => {});
 }
@@ -1077,6 +1111,7 @@ document.getElementById("snoteRemove").addEventListener("click", async () => {
 function renderNotes(){
   const own = calName === SELF && !!SELF_NO;
   document.getElementById("calHint").hidden = !own;
+  document.getElementById("volBtn").hidden = !(own && DLP_ANY(SELF));
   const box = document.getElementById("calNotes");
   if (!own){ box.innerHTML = ""; document.getElementById("noteEd").hidden = true; return; }
   const pref = `${YEAR}-${String(MONTH+1).padStart(2,"0")}-`;
@@ -1239,6 +1274,91 @@ function openCal(name){
   document.getElementById("calClose").focus();
 }
 function closeCal(){ cal.hidden = true; calName = null; closeNote(); subBox.hidden = true; }
+/* ================= plánování volna (dlouhodobý plán) ================= */
+// dlouhodobý plán 2026: měsíce oddělené „|“, znak = den (D denní D12, N noční N12, . volno)
+const DLP = {2026:{"Hlaváček Michal":".DDN...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN.|..DDN...DDN....DN...DDN...DDN..|.DDN...DDN...DDN...DDN....DN..|..DN...DDN...DDN...DDN...DDN...|DDN....DN...DDN...DDN...DDN...|DDN...DDN...DDN....DN....DN...D|DN...DDN...DDN...DDN...DDN....D|N...DDN...DDN...DDN...DDN...DD|N...DDN....DN....DN...DDN...DDN|...DDN...DDN...DDN....DN...DDN|...DDN.DDN...DDN....DN...DDN...","Sehnal Petr":"..DDN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN|...DDN...DDN...DDN....DN...DDN.|..DDN...DDN...DDN...DDN...DDN.|...DN....DN...DDN...DDN...DDN..|.DDN...DDN....DN...DDN...DDN..|.DDN...DDN...DDN...DDN....DN...|.DN...DDN...DDN...DDN...DDN...D|DN....DN...DDN...DDN...DDN...D|DN...DDN...DDN....DN....DN...DD|N...DDN...DDN...DDN...DDN....D|N...DDN...DDN.DDN...DDN....DN..","Tesař Libor":"N...DDN....DN...DDN...DDN...DDN|...DDN...DDN...DDN....DN....|DN...DDN...DDN...DDN...DDN...DD|N....DN...DDN...DDN...DDN...DD|N...DDN...DDN....DN....DN...DDN|...DDN...DDN...DDN...DDN....DN|...DDN...DDN...DDN...DDN...DDN.|..DDN....DN....DN...DDN...DDN..|.DDN...DDN...DDN....DN...DDN..|.DDN...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN...|DDN...DDN....DN...DDN...DDN.DDN","Menšík Jaroslav":"DDN...DDN...DDN...DDN....DN...D|DN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN...|DDN...DDN...DDN....DN...DDN...|DDN...DDN...DDN...DDN...DDN....|DN....DN...DDN...DDN...DDN...D|DN...DDN....DN...DDN...DDN...DD|N...DDN...DDN...DDN....DN....DN|...DDN...DDN...DDN...DDN...DDN|....DN...DDN...DDN.DDN...DDN...|.DN...DDN...DDN...DDN...DDN...|DDN...DDN....DN....DN...DDN...D","Parolek Antonín":"....DN...DDN...DDN...DDN...DDN.|..DDN...DDN....DN....DN...DD|N...DDN...DDN...DDN...DDN....DN|...DDN...DDN...DDN...DDN...DDN|...DDN....DN....DN...DDN...DDN.|..DDN...DDN...DDN....DN...DDN.|..DDN...DDN...DDN...DDN...DDN..|..DN....DN...DDN...DDN...DDN...|DDN...DDN....DN...DDN...DDN...|DDN...DDN...DDN...DDN....DN....|DN...DDN...DDN...DDN...DDN...D|DN....DN...DDN...DDN.DDN...DDN.","Šenk Kamil":".DDN...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN.|..DDN...DDN....DN...DDN...DDN..|.DDN...DDN...DDN...DDN....DN..|..DN...DDN...DDN...DDN...DDN...|DDN....DN...DDN...DDN...DDN...|DDN...DDN...DDN....DN....DN...D|DN...DDN...DDN...DDN...DDN....D|N...DDN...DDN...DDN...DDN...DD|N...DDN....DN....DN...DDN...DDN|...DDN...DDN...DDN....DN...DDN|...DDN.DDN...DDN....DN...DDN...","Tóth Pavel":".DDN...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN.|..DDN...DDN....DN...DDN...DDN..|.DDN...DDN...DDN...DDN....DN..|..DN...DDN...DDN...DDN...DDN...|DDN....DN...DDN...DDN...DDN...|DDN...DDN...DDN....DN....DN...D|DN...DDN...DDN...DDN...DDN....D|N...DDN...DDN...DDN...DDN...DD|N...DDN....DN....DN...DDN...DDN|...DDN...DDN...DDN....DN...DDN|...DDN.DDN...DDN....DN...DDN...","Adámek Jaroslav":"N...DDN....DN...DDN...DDN...DDN|...DDN...DDN...DDN....DN....|DN...DDN...DDN...DDN...DDN...DD|N....DN...DDN...DDN...DDN...DD|N...DDN...DDN....DN....DN...DDN|...DDN...DDN...DDN...DDN....DN|...DDN...DDN...DDN...DDN...DDN.|..DDN....DN....DN...DDN...DDN..|.DDN...DDN...DDN....DN...DDN..|.DDN...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN...|DDN...DDN....DN...DDN...DDN.DDN","Juračka Lukáš":"....DN...DDN...DDN...DDN...DDN.|..DDN...DDN....DN....DN...DD|N...DDN...DDN...DDN...DDN....DN|...DDN...DDN...DDN...DDN...DDN|...DDN....DN....DN...DDN...DDN.|..DDN...DDN...DDN....DN...DDN.|..DDN...DDN...DDN...DDN...DDN..|..DN....DN...DDN...DDN...DDN...|DDN...DDN....DN...DDN...DDN...|DDN...DDN...DDN...DDN....DN....|DN...DDN...DDN...DDN...DDN...D|DN....DN...DDN...DDN.DDN...DDN.","Vašíček Zdeněk":".DDN.DDN...DDN....DN...DDN...DD|N...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN...D|DN...DDN....DN...DDN...DDN...D|DN...DDN...DDN...DDN....DN....D|N...DDN...DDN...DDN...DDN...DD|N....DN...DDN...DDN...DDN...DDN|...DDN...DDN....DN....DN...DDN.|..DDN...DDN...DDN...DDN....DN.|..DDN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN..|.DDN...DDN...DDN....DN...DDN...","Škvařil Libor":"....DN...DDN...DDN...DDN...DDN.|..DDN...DDN....DN....DN...DD|N...DDN...DDN...DDN...DDN....DN|...DDN...DDN...DDN...DDN...DDN|...DDN....DN....DN...DDN...DDN.|..DDN...DDN...DDN....DN...DDN.|..DDN...DDN...DDN...DDN...DDN..|..DN....DN...DDN...DDN...DDN...|DDN...DDN....DN...DDN...DDN...|DDN...DDN...DDN...DDN....DN....|DN...DDN...DDN...DDN...DDN...D|DN....DN...DDN...DDN.DDN...DDN.","Hofman Radek":"N...DDN....DN...DDN...DDN...DDN|...DDN...DDN...DDN....DN....|DN...DDN...DDN...DDN...DDN...DD|N....DN...DDN...DDN...DDN...DD|N...DDN...DDN....DN....DN...DDN|...DDN...DDN...DDN...DDN....DN|...DDN...DDN...DDN...DDN...DDN.|..DDN....DN....DN...DDN...DDN..|.DDN...DDN...DDN....DN...DDN..|.DDN...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN...|DDN...DDN....DN...DDN...DDN.DDN","Grénar Martin":".DDN.DDN...DDN....DN...DDN...DD|N...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN...D|DN...DDN....DN...DDN...DDN...D|DN...DDN...DDN...DDN....DN....D|N...DDN...DDN...DDN...DDN...DD|N....DN...DDN...DDN...DDN...DDN|...DDN...DDN....DN....DN...DDN.|..DDN...DDN...DDN...DDN....DN.|..DDN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN..|.DDN...DDN...DDN....DN...DDN...","Chalupa Martin":".DDN.DDN...DDN....DN...DDN...DD|N...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN...D|DN...DDN....DN...DDN...DDN...D|DN...DDN...DDN...DDN....DN....D|N...DDN...DDN...DDN...DDN...DD|N....DN...DDN...DDN...DDN...DDN|...DDN...DDN....DN....DN...DDN.|..DDN...DDN...DDN...DDN....DN.|..DDN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN..|.DDN...DDN...DDN....DN...DDN...","Havel Radek":"DDN...DDN...DDN...DDN....DN...D|DN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN...|DDN...DDN...DDN....DN...DDN...|DDN...DDN...DDN...DDN...DDN....|DN....DN...DDN...DDN...DDN...D|DN...DDN....DN...DDN...DDN...DD|N...DDN...DDN...DDN....DN....DN|...DDN...DDN...DDN...DDN...DDN|....DN...DDN...DDN.DDN...DDN...|.DN...DDN...DDN...DDN...DDN...|DDN...DDN....DN....DN...DDN....","Přikryl Miroslav":"..DDN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN|...DDN...DDN...DDN....DN...DDN.|..DDN...DDN...DDN...DDN...DDN.|...DN....DN...DDN...DDN...DDN..|.DDN...DDN....DN...DDN...DDN..|.DDN...DDN...DDN...DDN....DN...|.DN...DDN...DDN...DDN...DDN...D|DN....DN...DDN...DDN...DDN...D|DN...DDN...DDN....DN....DN...DD|N...DDN...DDN...DDN...DDN....D|N...DDN...DDN.DDN...DDN....DN..","Liška Michal":"DDN...DDN...DDN...DDN....DN...D|DN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN...|DDN...DDN...DDN....DN...DDN...|DDN...DDN...DDN...DDN...DDN....|DN....DN...DDN...DDN...DDN...D|DN...DDN....DN...DDN...DDN...DD|N...DDN...DDN...DDN....DN....DN|...DDN...DDN...DDN...DDN...DDN|....DN...DDN...DDN.DDN...DDN...|.DN...DDN...DDN...DDN...DDN...|DDN...DDN....DN....DN...DDN...."}};
+const DLP_H = 11.5;
+const DLP_ANY = name => Object.values(DLP).some(r => r && r[name]);
+const capM = m => MONTHS[m].charAt(0).toUpperCase() + MONTHS[m].slice(1);
+const vol = document.getElementById("vol");
+let volY = 0, volM = 0, volSaving = false;
+const volKey = (y, m) => `${y}-${String(m+1).padStart(2,"0")}`;
+const dlpOf = (name, y, m) => { const r = DLP[y] && DLP[y][name]; return r ? (r.split("|")[m] || "") : null; };
+const dlpHas = (y, m) => !!dlpOf(SELF, y, m);
+function volDays(y, m){ const v = MY_VOL[volKey(y, m)]; return Array.isArray(v) ? v.map(Number) : []; }
+function openVol(){
+  // začíná následujícím měsícem oproti dnešku
+  const now = getNow(); let y = now.getFullYear(), m = now.getMonth() + 1;
+  if (m > 11){ m = 0; y++; }
+  if (!dlpHas(y, m)){ // mimo nahraný rok → nejbližší dostupný měsíc
+    const ys = Object.keys(DLP).map(Number).sort();
+    const last = ys[ys.length - 1];
+    if (y > last){ y = last; m = 11; } else if (y < ys[0]){ y = ys[0]; m = 0; }
+  }
+  volY = y; volM = m;
+  fillVol(); vol.hidden = false; vol.scrollTop = 0;
+  document.getElementById("volClose").focus();
+}
+function closeVol(){ vol.hidden = true; }
+function stepVol(dir){
+  let y = volY, m = volM + dir;
+  if (m < 0){ m = 11; y--; } if (m > 11){ m = 0; y++; }
+  if (!dlpHas(y, m)) return;
+  volY = y; volM = m; fillVol();
+}
+function volCount(y, m){
+  const row = dlpOf(SELF, y, m) || "", sel = volDays(y, m);
+  let d = 0, n = 0; sel.forEach(x => { const c = row[x-1]; if (c === "D") d++; else if (c === "N") n++; });
+  return {dni:sel.length, d, n};
+}
+function fmtH(h){ return String(h).replace(".", ","); }
+function fillVol(){
+  if (!SELF) return;
+  const y = volY, m = volM, row = dlpOf(SELF, y, m) || "";
+  const n = new Date(y, m + 1, 0).getDate(), offset = (new Date(y, m, 1).getDay() + 6) % 7;
+  const sel = new Set(volDays(y, m));
+  document.getElementById("volWho").textContent = `${SELF} · dlouhodobý plán ${y}`;
+  document.getElementById("volMonth").textContent = `${capM(m)} ${y}`;
+  document.getElementById("volPrev").disabled = !dlpHas(m ? y : y - 1, m ? m - 1 : 11);
+  document.getElementById("volNext").disabled = !dlpHas(m < 11 ? y : y + 1, m < 11 ? m + 1 : 0);
+  let cD = 0, cN = 0;
+  let html = ["Po","Út","St","Čt","Pá","So","Ne"].map(d => `<div class="cal-dow">${d}</div>`).join("");
+  for (let i = 0; i < offset; i++) html += `<div></div>`;
+  for (let d = 1; d <= n; d++){
+    const c = row[d-1] || ".", wd = new Date(y, m, d).getDay();
+    if (c === "D") cD++; if (c === "N") cN++;
+    const cls = c === "D" ? "k-d" : c === "N" ? "k-n" : (wd === 0 || wd === 6 ? "we" : "");
+    const lbl = c === "D" ? "D12" : c === "N" ? "N12" : "";
+    html += `<button type="button" class="cal-day ${cls}${sel.has(d) ? " vsel" : ""}" data-vday="${d}" aria-pressed="${sel.has(d)}" aria-label="${d}. ${m+1}.${lbl ? " " + lbl : ""}${sel.has(d) ? ", volno" : ""}">${d}${lbl ? `<small>${lbl}</small>` : ""}</button>`;
+  }
+  document.getElementById("volGrid").innerHTML = html;
+  document.getElementById("volSum").innerHTML = `<span><i class="k-d"></i>Denní <b>${cD}</b></span><span><i class="k-n"></i>Noční <b>${cN}</b></span><span>Hodin <b>${fmtH((cD + cN) * DLP_H)}</b></span>`;
+  // souhrn vybraného volna – měsíc a celý rok
+  const c = volCount(y, m);
+  let yD = 0, yN = 0, yDni = 0;
+  for (let i = 0; i < 12; i++){ const x = volCount(y, i); yD += x.d; yN += x.n; yDni += x.dni; }
+  const res = document.getElementById("volRes");
+  res.hidden = !yDni;
+  if (yDni) res.innerHTML = `<p><b>${capM(m)}:</b> volno ${c.dni} ${c.dni === 1 ? "den" : c.dni >= 2 && c.dni <= 4 ? "dny" : "dní"}, z toho služeb <b>${c.d + c.n}</b> (denní ${c.d}, noční ${c.n}) = <b>${fmtH((c.d + c.n) * DLP_H)} h</b></p>
+    <p class="vs-y">Celý rok ${y}: služeb ${yD + yN} (denní ${yD}, noční ${yN}) = ${fmtH((yD + yN) * DLP_H)} h</p>`;
+}
+document.getElementById("volGrid").addEventListener("click", async e => {
+  const b = e.target.closest("button[data-vday]"); if (!b || volSaving || !SELF_NO) return;
+  const d = +b.dataset.vday, key = volKey(volY, volM), cur = new Set(volDays(volY, volM));
+  if (cur.has(d)) cur.delete(d); else cur.add(d);
+  const list = [...cur].sort((a, b) => a - b);
+  MY_VOL = {...MY_VOL, [key]: list}; fillVol(); // okamžitá odezva, uložení na pozadí
+  volSaving = true;
+  try {
+    const FV = firebase.firestore.FieldValue;
+    await db.collection("poznamky").doc(SELF_NO).set({volno:{[key]: list.length ? list : FV.delete()}, upraveno:FV.serverTimestamp()}, {merge:true});
+  } catch (err){ alert("Volno se nepodařilo uložit."); }
+  volSaving = false;
+});
+document.getElementById("volPrev").addEventListener("click", () => stepVol(-1));
+document.getElementById("volNext").addEventListener("click", () => stepVol(1));
+document.getElementById("volClose").addEventListener("click", closeVol);
+document.getElementById("volBtn").addEventListener("click", openVol);
 document.getElementById("calClose").addEventListener("click", closeCal);
 document.getElementById("calGrid").addEventListener("click", e => {
   const b = e.target.closest("button.cal-day"); if (!b) return;
