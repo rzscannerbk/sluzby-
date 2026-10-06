@@ -300,7 +300,9 @@ button.cal-day{cursor:pointer}
 .vol-item .vg-sum{display:block;margin-top:6px;padding-top:6px;border-top:1.5px solid rgba(178,58,58,.45);font-weight:600}
 .vol-item small{display:block;color:var(--ink2);font-size:13px}
 .vol-item.edit{outline:2px solid #D04848}
-.vol-tot{font-size:14px;color:var(--ink2);margin:10px 0 0}
+.vol-tot{font-size:15px;color:var(--ink);margin:16px 0 0;padding:10px 12px;border-radius:8px;border:1.5px solid #E07C7C;line-height:1.5}
+.vol-tot b,.vol-tot span{display:block}
+.vol-tot b{font-size:14px;color:var(--ink2);font-weight:600}
 .vol-sum{border:2.5px dashed #D04848;border-radius:12px;padding:10px 14px;margin:16px 0 0;font-size:15px;line-height:1.45}
 .vol-sum p{margin:0}
 .vol-sum p+p{margin-top:4px}
@@ -456,7 +458,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.36</span>
+      <span class="ver" id="verDiag">v4.37</span>
     </div>
   </div>
 </header>
@@ -1332,7 +1334,11 @@ function volGroups(dny){
     return {label, dny:g}; });
 }
 const volRanges = dny => volGroups(dny).map(g => g.label).join(", ");
-const volLine = st => `${st.dni} ${dniTxt(st.dni)} · ${st.d + st.n ? `služeb ${st.d + st.n} (denní ${st.d}, noční ${st.n}) = ${fmtH(st.h)}\u00a0h` : "bez služby"}`;
+// den volna se službou podle dlouhodobého plánu = dovolená, bez služby = volno
+const volLine = st => { const sl = st.d + st.n, vo = st.dni - sl, out = [];
+  if (sl) out.push(`dovolená ${sl} (denní ${st.d}, noční ${st.n}) = ${fmtH(st.h)}\u00a0h`);
+  if (vo) out.push(`volno ${vo} ${dniTxt(vo)}`);
+  const t = out.join(" · "); return t.charAt(0).toUpperCase() + t.slice(1); };
 function openVol(){
   // začíná následujícím měsícem oproti dnešku
   const now = getNow(); let y = now.getFullYear(), m = now.getMonth() + 1;
@@ -1387,14 +1393,16 @@ function fillVol(){
     <div class="btns"><button type="button" class="btn" id="volSave" ${volDraft.size ? "" : "disabled"}>Uložit</button>${volEditId ? `<button type="button" class="btn sec btn-danger" id="volDel">Smazat</button>` : ""}<button type="button" class="btn sec" id="volCancel">Zrušit</button></div>`;
   // uložená volna
   const list = [...MY_VOLP].sort((a, b) => (a.dny[0] < b.dny[0] ? -1 : 1));
-  let tD = 0, tN = 0;
-  const items = list.map(e => { const x = volStats(e.dny); tD += x.d; tN += x.n;
+  const byY = {};
+  list.forEach(e => e.dny.forEach(k => { const y = k.slice(0, 4); (byY[y] = byY[y] || []).push(k); }));
+  const items = list.map(e => { const x = volStats(e.dny);
     const gs = volGroups(e.dny);
     const rows = gs.map(g => `<span class="vg"><b>${g.label}</b>${volLine(volStats(g.dny))}</span>`).join("");
-    const sum = gs.length > 1 ? `<span class="vg-sum">Celkem ${volLine(x)}</span>` : "";
+    const sum = gs.length > 1 ? `<span class="vg-sum">Celkem: ${volLine(x)}</span>` : "";
     return `<div class="vol-row"><button type="button" class="vol-item${e.id === volEditId ? " edit" : ""}" data-vid="${e.id}">${rows}${sum}<small>Klepni pro úpravu</small></button><button type="button" class="vol-share" data-vshare="${e.id}" aria-label="Sdílet volno ${volRanges(e.dny)}"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button></div>`; }).join("");
   document.getElementById("volList").innerHTML = list.length
-    ? `<h3>Naplánované volno</h3>${items}<p class="vol-tot">Celkem za všechna volna: služeb ${tD + tN} (denní ${tD}, noční ${tN}) = ${fmtH((tD + tN) * DLP_H)}\u00a0h</p>` : "";
+    ? `<h3>Naplánované volno</h3>${items}${Object.keys(byY).sort().map(y => { const t = volStats(byY[y]), sl = t.d + t.n;
+        return `<div class="vol-tot"><b>Celkem za kalendářní rok ${y}:</b><span>Dovolená ${sl} (denní ${t.d}, noční ${t.n})</span><span>${fmtH(t.h)} hodin vyčerpáno</span></div>`; }).join("")}` : "";
 }
 async function volWrite(list){
   const FV = firebase.firestore.FieldValue;
@@ -1444,7 +1452,7 @@ function volText(e){
     g.dny.filter(k => dlpCode(k) !== ".").forEach(k => { const d = dparse(k), w = DOW[new Date(d.y, d.m, d.d).getDay()];
       lines.push(`– ${w} ${d.d}. ${d.m+1}. ${dlpCode(k) === "N" ? "N12 noční" : "D12 denní"}`); });
   });
-  lines.push("", `Celkem ${volLine(x)}`);
+  if (volGroups(e.dny).length > 1) lines.push("", `Celkem: ${volLine(x)}`);
   return lines.join("\n").replace(/\u00a0/g, " ");
 }
 async function volShare(id){
