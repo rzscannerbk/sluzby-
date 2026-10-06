@@ -289,6 +289,10 @@ button.cal-day{cursor:pointer}
 .vol-sum .btns{margin-top:10px}
 .vol-list{margin-top:18px}
 .vol-list h3{font-size:13px;font-weight:600;color:var(--ink2);margin:0 0 6px}
+.vol-row{position:relative;margin-top:8px}
+.vol-row .vol-item{margin-top:0;padding-right:58px}
+.vol-share{position:absolute;top:50%;right:8px;transform:translateY(-50%);width:42px;height:42px;border-radius:10px;border:1.5px solid #E07C7C;background:var(--sheet);color:#B23A3A;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.vol-share svg{width:22px;height:22px}
 .vol-item{display:block;width:100%;text-align:left;margin-top:8px;padding:10px 12px;border-radius:8px;border:0;background:rgba(224,124,124,.18);border-left:4px solid #E07C7C;color:var(--ink);font:inherit;font-size:15px;line-height:1.4;cursor:pointer}
 .vol-item b{display:block;font-size:16px}
 .vol-item small{display:block;color:var(--ink2);font-size:13px}
@@ -449,7 +453,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.34</span>
+      <span class="ver" id="verDiag">v4.35</span>
     </div>
   </div>
 </header>
@@ -1379,7 +1383,7 @@ function fillVol(){
   const list = [...MY_VOLP].sort((a, b) => (a.dny[0] < b.dny[0] ? -1 : 1));
   let tD = 0, tN = 0;
   const items = list.map(e => { const x = volStats(e.dny); tD += x.d; tN += x.n;
-    return `<button type="button" class="vol-item${e.id === volEditId ? " edit" : ""}" data-vid="${e.id}"><b>${volRanges(e.dny)}</b>${x.dni} ${dniTxt(x.dni)} · služeb ${x.d + x.n} (denní ${x.d}, noční ${x.n}) = ${fmtH(x.h)} h<small>Klepni pro úpravu</small></button>`; }).join("");
+    return `<div class="vol-row"><button type="button" class="vol-item${e.id === volEditId ? " edit" : ""}" data-vid="${e.id}"><b>${volRanges(e.dny)}</b>${x.dni} ${dniTxt(x.dni)} · služeb ${x.d + x.n} (denní ${x.d}, noční ${x.n}) = ${fmtH(x.h)} h<small>Klepni pro úpravu</small></button><button type="button" class="vol-share" data-vshare="${e.id}" aria-label="Sdílet volno ${volRanges(e.dny)}"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button></div>`; }).join("");
   document.getElementById("volList").innerHTML = list.length
     ? `<h3>Naplánované volno</h3>${items}<p class="vol-tot">Celkem: služeb ${tD + tN} (denní ${tD}, noční ${tN}) = ${fmtH((tD + tN) * DLP_H)} h</p>` : "";
 }
@@ -1423,7 +1427,28 @@ document.getElementById("volRes").addEventListener("click", e => {
   else if (t.id === "volDel") volSaveDraft(true);
   else if (t.id === "volCancel"){ volDraft = new Set(); volEditId = null; fillVol(); }
 });
+function volText(e){
+  // text pro sdílení – podoba se doladí
+  const x = volStats(e.dny), lines = [`Plánované volno – ${SELF}`, `${volRanges(e.dny)} (${x.dni} ${dniTxt(x.dni)})`];
+  const sl = e.dny.slice().sort().filter(k => dlpCode(k) !== ".").map(k => { const d = dparse(k), w = DOW[new Date(d.y, d.m, d.d).getDay()];
+    return `${w} ${d.d}. ${d.m+1}. ${dlpCode(k) === "N" ? "N12 noční" : "D12 denní"}`; });
+  lines.push("", sl.length ? "Služby podle dlouhodobého plánu:" : "Bez služeb podle dlouhodobého plánu.");
+  sl.forEach(t => lines.push("– " + t));
+  lines.push("", `Celkem služeb ${x.d + x.n} (denní ${x.d}, noční ${x.n}) = ${fmtH(x.h)} h`);
+  return lines.join("\n");
+}
+async function volShare(id){
+  const e = MY_VOLP.find(x => x.id === id); if (!e) return;
+  const text = volText(e);
+  if (navigator.share){
+    try { await navigator.share({text}); } catch (err){ /* zavřené sdílení */ }
+    return;
+  }
+  try { await navigator.clipboard.writeText(text); alert("Text volna je zkopírovaný do schránky."); }
+  catch (err){ prompt("Zkopíruj text volna:", text); }
+}
 document.getElementById("volList").addEventListener("click", e => {
+  const sh = e.target.closest("button[data-vshare]"); if (sh){ volShare(sh.dataset.vshare); return; }
   const t = e.target.closest("button[data-vid]"); if (t) volEdit(t.dataset.vid);
 });
 document.getElementById("volPrev").addEventListener("click", () => stepVol(-1));
