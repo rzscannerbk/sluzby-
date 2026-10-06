@@ -274,7 +274,7 @@ button.cal-day{cursor:pointer}
 .cal-day.pressing{transform:scale(.94);transition:transform .2s}
 .note-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
 .vol-open{margin-top:18px;width:100%}
-#vol{z-index:32}
+#vol{z-index:37}
 .vol-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0 4px}
 .vol-nav b{font-family:var(--f-cond);font-weight:600;font-size:24px}
 .vol-nav button{width:44px;height:40px;border-radius:10px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);font-size:20px;cursor:pointer}
@@ -284,6 +284,16 @@ button.cal-day{cursor:pointer}
 .cal-day.vsel:not(.k-d):not(.k-n){background:#F9D3D3;color:#7A1F1F}
 .cal-day.vsel::after{content:"V";position:absolute;top:4px;right:6px;font-family:var(--f-body);font-size:10px;font-weight:700;color:#D04848}
 .cal-day.k-n.vsel::after{color:#FFB3B3}
+.cal-day.vsaved:not(.vsel){box-shadow:inset 0 0 0 3px #E07C7C}
+.cal-day.vsaved:not(.vsel)::after{content:"V";position:absolute;top:4px;right:6px;font-family:var(--f-body);font-size:10px;font-weight:700;color:#E07C7C}
+.vol-sum .btns{margin-top:10px}
+.vol-list{margin-top:18px}
+.vol-list h3{font-size:13px;font-weight:600;color:var(--ink2);margin:0 0 6px}
+.vol-item{display:block;width:100%;text-align:left;margin-top:8px;padding:10px 12px;border-radius:8px;border:0;background:rgba(224,124,124,.18);border-left:4px solid #E07C7C;color:var(--ink);font:inherit;font-size:15px;line-height:1.4;cursor:pointer}
+.vol-item b{display:block;font-size:16px}
+.vol-item small{display:block;color:var(--ink2);font-size:13px}
+.vol-item.edit{outline:2px solid #D04848}
+.vol-tot{font-size:14px;color:var(--ink2);margin:10px 0 0}
 .vol-sum{border:2.5px dashed #D04848;border-radius:12px;padding:10px 14px;margin:16px 0 0;font-size:15px;line-height:1.45}
 .vol-sum p{margin:0}
 .vol-sum p+p{margin-top:4px}
@@ -439,7 +449,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.32</span>
+      <span class="ver" id="verDiag">v4.34</span>
     </div>
   </div>
 </header>
@@ -455,8 +465,9 @@ button.cal-day{cursor:pointer}
     </div>
     <div class="cal-sum" id="volSum"></div>
     <div class="cal-grid" id="volGrid"></div>
-    <p class="note-hint">Služby podle dlouhodobého plánu. Klepnutím na den ho označíš jako volno, dalším klepnutím označení zrušíš.</p>
+    <p class="note-hint">Služby podle dlouhodobého plánu. Klepni na dny volna a dej Uložit. Uložené volno upravíš klepnutím na něj v seznamu dole.</p>
     <div class="vol-sum" id="volRes" hidden></div>
+    <div class="vol-list" id="volList"></div>
   </div>
 </div>
 <div class="full" id="full" role="dialog" aria-modal="true" aria-label="Detail služby" hidden>
@@ -1033,7 +1044,7 @@ function fillCal(){
   document.getElementById("calSum").innerHTML = sum.join("");
 }
 /* ---------- osobní poznámky ke dnům (jen ve vlastním kalendáři) ---------- */
-let MY_VOL = {}, MY_NOTES = {}, MY_SNOTES = {}, unsubNotes = null, noteDay = null, snoteRef = null, snoteIdx = -1, snoteDate = null, snoteKind = null;
+let MY_VOLP = [], MY_NOTES = {}, MY_SNOTES = {}, unsubNotes = null, noteDay = null, snoteRef = null, snoteIdx = -1, snoteDate = null, snoteKind = null;
 // poznámky ke službě: dřív jeden text, nově seznam textů
 const snotesOf = key => { const v = MY_SNOTES[key]; return Array.isArray(v) ? v.filter(Boolean) : v ? [String(v)] : []; };
 function shiftNoteKey(date, kind){ return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}|${kind}`; }
@@ -1044,7 +1055,7 @@ function startNotes(){
   unsubNotes = db.collection("poznamky").doc(SELF_NO).onSnapshot(s => {
     MY_NOTES = (s.exists && s.data().dny) || {};
     MY_SNOTES = (s.exists && s.data().sluzby) || {};
-    MY_VOL = (s.exists && s.data().volno) || {};
+    MY_VOLP = volLoad(s.exists ? s.data() : {});
     if (calName) fillCal();
     if (!vol.hidden) fillVol();
     render();
@@ -1282,41 +1293,65 @@ const DLP_ANY = name => Object.values(DLP).some(r => r && r[name]);
 const capM = m => MONTHS[m].charAt(0).toUpperCase() + MONTHS[m].slice(1);
 const vol = document.getElementById("vol");
 let volY = 0, volM = 0, volSaving = false;
-const volKey = (y, m) => `${y}-${String(m+1).padStart(2,"0")}`;
+let volDraft = new Set(), volEditId = null; // rozpracovaný výběr dnů „YYYY-MM-DD“
+const dkey = (y, m, d) => `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+const dparse = k => { const [y, m, d] = k.split("-").map(Number); return {y, m:m-1, d}; };
 const dlpOf = (name, y, m) => { const r = DLP[y] && DLP[y][name]; return r ? (r.split("|")[m] || "") : null; };
 const dlpHas = (y, m) => !!dlpOf(SELF, y, m);
-function volDays(y, m){ const v = MY_VOL[volKey(y, m)]; return Array.isArray(v) ? v.map(Number) : []; }
+const dlpCode = k => { const x = dparse(k), r = dlpOf(SELF, x.y, x.m) || ""; return r[x.d-1] || "."; };
+function volLoad(data){
+  if (Array.isArray(data.volnoPlany)) return data.volnoPlany.filter(e => e && Array.isArray(e.dny) && e.dny.length);
+  // převod z první verze (dny po měsících)
+  const old = data.volno || {}, out = [];
+  Object.keys(old).sort().forEach(ym => { const [y, m] = ym.split("-").map(Number);
+    const dny = (old[ym] || []).map(Number).sort((a, b) => a - b).map(d => dkey(y, m-1, d));
+    if (dny.length) out.push({id:"v" + ym, dny}); });
+  return out;
+}
+function volStats(dny){
+  let d = 0, n = 0; dny.forEach(k => { const c = dlpCode(k); if (c === "D") d++; else if (c === "N") n++; });
+  return {dni:dny.length, d, n, h:(d + n) * DLP_H};
+}
+const dniTxt = n => n === 1 ? "den" : n >= 2 && n <= 4 ? "dny" : "dní";
+function volRanges(dny){
+  // souvislé úseky: „9.–15. 11. 2026“, přes měsíc „28. 11.–5. 12. 2026“
+  const ks = [...dny].sort(), out = []; let st = null, pv = null;
+  const next = k => { const x = dparse(k), t = new Date(x.y, x.m, x.d + 1); return dkey(t.getFullYear(), t.getMonth(), t.getDate()); };
+  ks.forEach(k => { if (pv && next(pv) === k) pv = k; else { if (st) out.push([st, pv]); st = pv = k; } });
+  if (st) out.push([st, pv]);
+  return out.map(([a, b]) => { const x = dparse(a), z = dparse(b);
+    if (a === b) return `${x.d}. ${x.m+1}. ${x.y}`;
+    if (x.m === z.m && x.y === z.y) return `${x.d}.–${z.d}. ${x.m+1}. ${x.y}`;
+    return `${x.d}. ${x.m+1}.–${z.d}. ${z.m+1}. ${z.y}`; }).join(", ");
+}
 function openVol(){
   // začíná následujícím měsícem oproti dnešku
   const now = getNow(); let y = now.getFullYear(), m = now.getMonth() + 1;
   if (m > 11){ m = 0; y++; }
-  if (!dlpHas(y, m)){ // mimo nahraný rok → nejbližší dostupný měsíc
+  if (!dlpHas(y, m)){
     const ys = Object.keys(DLP).map(Number).sort();
-    const last = ys[ys.length - 1];
-    if (y > last){ y = last; m = 11; } else if (y < ys[0]){ y = ys[0]; m = 0; }
+    if (y > ys[ys.length - 1]){ y = ys[ys.length - 1]; m = 11; } else if (y < ys[0]){ y = ys[0]; m = 0; }
   }
-  volY = y; volM = m;
+  volY = y; volM = m; volDraft = new Set(); volEditId = null;
   fillVol(); vol.hidden = false; vol.scrollTop = 0;
   document.getElementById("volClose").focus();
 }
-function closeVol(){ vol.hidden = true; }
+function closeVol(){
+  if (volDraft.size && !confirm("Rozpracované volno není uložené. Zavřít bez uložení?")) return;
+  volDraft = new Set(); volEditId = null; vol.hidden = true;
+}
 function stepVol(dir){
   let y = volY, m = volM + dir;
   if (m < 0){ m = 11; y--; } if (m > 11){ m = 0; y++; }
   if (!dlpHas(y, m)) return;
   volY = y; volM = m; fillVol();
 }
-function volCount(y, m){
-  const row = dlpOf(SELF, y, m) || "", sel = volDays(y, m);
-  let d = 0, n = 0; sel.forEach(x => { const c = row[x-1]; if (c === "D") d++; else if (c === "N") n++; });
-  return {dni:sel.length, d, n};
-}
 function fmtH(h){ return String(h).replace(".", ","); }
 function fillVol(){
   if (!SELF) return;
   const y = volY, m = volM, row = dlpOf(SELF, y, m) || "";
   const n = new Date(y, m + 1, 0).getDate(), offset = (new Date(y, m, 1).getDay() + 6) % 7;
-  const sel = new Set(volDays(y, m));
+  const saved = new Map(); MY_VOLP.forEach(e => { if (e.id !== volEditId) e.dny.forEach(k => saved.set(k, e.id)); });
   document.getElementById("volWho").textContent = `${SELF} · dlouhodobý plán ${y}`;
   document.getElementById("volMonth").textContent = `${capM(m)} ${y}`;
   document.getElementById("volPrev").disabled = !dlpHas(m ? y : y - 1, m ? m - 1 : 11);
@@ -1325,35 +1360,71 @@ function fillVol(){
   let html = ["Po","Út","St","Čt","Pá","So","Ne"].map(d => `<div class="cal-dow">${d}</div>`).join("");
   for (let i = 0; i < offset; i++) html += `<div></div>`;
   for (let d = 1; d <= n; d++){
-    const c = row[d-1] || ".", wd = new Date(y, m, d).getDay();
+    const c = row[d-1] || ".", wd = new Date(y, m, d).getDay(), k = dkey(y, m, d);
     if (c === "D") cD++; if (c === "N") cN++;
     const cls = c === "D" ? "k-d" : c === "N" ? "k-n" : (wd === 0 || wd === 6 ? "we" : "");
     const lbl = c === "D" ? "D12" : c === "N" ? "N12" : "";
-    html += `<button type="button" class="cal-day ${cls}${sel.has(d) ? " vsel" : ""}" data-vday="${d}" aria-pressed="${sel.has(d)}" aria-label="${d}. ${m+1}.${lbl ? " " + lbl : ""}${sel.has(d) ? ", volno" : ""}">${d}${lbl ? `<small>${lbl}</small>` : ""}</button>`;
+    const on = volDraft.has(k), sv = saved.has(k);
+    html += `<button type="button" class="cal-day ${cls}${on ? " vsel" : ""}${sv ? " vsaved" : ""}" data-vk="${k}" aria-pressed="${on}" aria-label="${d}. ${m+1}.${lbl ? " " + lbl : ""}${on ? ", vybráno" : sv ? ", naplánované volno" : ""}">${d}${lbl ? `<small>${lbl}</small>` : ""}</button>`;
   }
   document.getElementById("volGrid").innerHTML = html;
   document.getElementById("volSum").innerHTML = `<span><i class="k-d"></i>Denní <b>${cD}</b></span><span><i class="k-n"></i>Noční <b>${cN}</b></span><span>Hodin <b>${fmtH((cD + cN) * DLP_H)}</b></span>`;
-  // souhrn vybraného volna – měsíc a celý rok
-  const c = volCount(y, m);
-  let yD = 0, yN = 0, yDni = 0;
-  for (let i = 0; i < 12; i++){ const x = volCount(y, i); yD += x.d; yN += x.n; yDni += x.dni; }
-  const res = document.getElementById("volRes");
-  res.hidden = !yDni;
-  if (yDni) res.innerHTML = `<p><b>${capM(m)}:</b> volno ${c.dni} ${c.dni === 1 ? "den" : c.dni >= 2 && c.dni <= 4 ? "dny" : "dní"}, z toho služeb <b>${c.d + c.n}</b> (denní ${c.d}, noční ${c.n}) = <b>${fmtH((c.d + c.n) * DLP_H)} h</b></p>
-    <p class="vs-y">Celý rok ${y}: služeb ${yD + yN} (denní ${yD}, noční ${yN}) = ${fmtH((yD + yN) * DLP_H)} h</p>`;
+  // rozpracovaný výběr
+  const res = document.getElementById("volRes"), st = volStats([...volDraft]);
+  res.hidden = !volDraft.size && !volEditId;
+  if (!res.hidden) res.innerHTML = `<p><b>${volEditId ? "Úprava volna" : "Nové volno"}:</b> ${volDraft.size ? volRanges([...volDraft]) : "žádný den"}</p>
+    <p>${st.dni} ${dniTxt(st.dni)}, z toho služeb <b>${st.d + st.n}</b> (denní ${st.d}, noční ${st.n}) = <b>${fmtH(st.h)} h</b></p>
+    <div class="btns"><button type="button" class="btn" id="volSave" ${volDraft.size ? "" : "disabled"}>Uložit</button>${volEditId ? `<button type="button" class="btn sec btn-danger" id="volDel">Smazat</button>` : ""}<button type="button" class="btn sec" id="volCancel">Zrušit</button></div>`;
+  // uložená volna
+  const list = [...MY_VOLP].sort((a, b) => (a.dny[0] < b.dny[0] ? -1 : 1));
+  let tD = 0, tN = 0;
+  const items = list.map(e => { const x = volStats(e.dny); tD += x.d; tN += x.n;
+    return `<button type="button" class="vol-item${e.id === volEditId ? " edit" : ""}" data-vid="${e.id}"><b>${volRanges(e.dny)}</b>${x.dni} ${dniTxt(x.dni)} · služeb ${x.d + x.n} (denní ${x.d}, noční ${x.n}) = ${fmtH(x.h)} h<small>Klepni pro úpravu</small></button>`; }).join("");
+  document.getElementById("volList").innerHTML = list.length
+    ? `<h3>Naplánované volno</h3>${items}<p class="vol-tot">Celkem: služeb ${tD + tN} (denní ${tD}, noční ${tN}) = ${fmtH((tD + tN) * DLP_H)} h</p>` : "";
 }
-document.getElementById("volGrid").addEventListener("click", async e => {
-  const b = e.target.closest("button[data-vday]"); if (!b || volSaving || !SELF_NO) return;
-  const d = +b.dataset.vday, key = volKey(volY, volM), cur = new Set(volDays(volY, volM));
-  if (cur.has(d)) cur.delete(d); else cur.add(d);
-  const list = [...cur].sort((a, b) => a - b);
-  MY_VOL = {...MY_VOL, [key]: list}; fillVol(); // okamžitá odezva, uložení na pozadí
+async function volWrite(list){
+  const FV = firebase.firestore.FieldValue;
+  await db.collection("poznamky").doc(SELF_NO).set({volnoPlany:list, volno:FV.delete(), upraveno:FV.serverTimestamp()}, {merge:true});
+}
+async function volSaveDraft(del){
+  if (volSaving || !SELF_NO) return;
+  let list = MY_VOLP.filter(e => e.id !== volEditId);
+  if (!del){
+    if (!volDraft.size) return;
+    list.push({id:volEditId || Date.now().toString(36), dny:[...volDraft].sort()});
+  } else if (!confirm("Smazat toto naplánované volno?")) return;
   volSaving = true;
-  try {
-    const FV = firebase.firestore.FieldValue;
-    await db.collection("poznamky").doc(SELF_NO).set({volno:{[key]: list.length ? list : FV.delete()}, upraveno:FV.serverTimestamp()}, {merge:true});
-  } catch (err){ alert("Volno se nepodařilo uložit."); }
+  try { await volWrite(list); MY_VOLP = list; volDraft = new Set(); volEditId = null; fillVol(); }
+  catch (err){ alert("Volno se nepodařilo uložit."); }
   volSaving = false;
+}
+function volEdit(id){
+  if (volDraft.size && volEditId !== id && !confirm("Rozpracovaný výběr se zahodí. Pokračovat?")) return;
+  const e = MY_VOLP.find(x => x.id === id); if (!e) return;
+  volEditId = id; volDraft = new Set(e.dny);
+  const f = dparse(e.dny.slice().sort()[0]); if (dlpHas(f.y, f.m)){ volY = f.y; volM = f.m; }
+  fillVol(); vol.scrollTop = 0;
+}
+document.getElementById("volGrid").addEventListener("click", e => {
+  const b = e.target.closest("button[data-vk]"); if (!b) return;
+  const k = b.dataset.vk;
+  const owner = MY_VOLP.find(x => x.id !== volEditId && x.dny.includes(k));
+  if (owner){ // den patří jinému uloženému volnu → otevřít ho k úpravě
+    if (!volDraft.size) volEdit(owner.id); else alert("Tento den už je v jiném naplánovaném volnu.");
+    return;
+  }
+  if (volDraft.has(k)) volDraft.delete(k); else volDraft.add(k);
+  fillVol();
+});
+document.getElementById("volRes").addEventListener("click", e => {
+  const t = e.target.closest("button"); if (!t) return;
+  if (t.id === "volSave") volSaveDraft(false);
+  else if (t.id === "volDel") volSaveDraft(true);
+  else if (t.id === "volCancel"){ volDraft = new Set(); volEditId = null; fillVol(); }
+});
+document.getElementById("volList").addEventListener("click", e => {
+  const t = e.target.closest("button[data-vid]"); if (t) volEdit(t.dataset.vid);
 });
 document.getElementById("volPrev").addEventListener("click", () => stepVol(-1));
 document.getElementById("volNext").addEventListener("click", () => stepVol(1));
