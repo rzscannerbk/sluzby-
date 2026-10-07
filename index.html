@@ -458,7 +458,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.39</span>
+      <span class="ver" id="verDiag">v4.40</span>
     </div>
   </div>
 </header>
@@ -2410,7 +2410,9 @@ function checkViewport(){
   const portrait = screen.height > screen.width && innerHeight > innerWidth;
   const extra = Math.max(0, screen.height - innerHeight);
   // po roztažení iOS přidělí plnou výšku – oprava proto zůstává zapnutá (jinak by se přepínala dokola)
-  if (!portrait || !standalone || NO_TALL_FIX) tallFixOn = false;
+  // jen iPhone/iPad – na Androidu je výška displeje vždy větší než plocha stránky (systémové lišty) a oprava by schovala spodní lištu
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (!ios || !portrait || !standalone || NO_TALL_FIX) tallFixOn = false;
   else if (extra > 20 && extra < 120) tallFixOn = true;
   const fix = tallFixOn;
   const sig = fix + "|" + extra;
