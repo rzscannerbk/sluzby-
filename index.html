@@ -458,7 +458,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.38</span>
+      <span class="ver" id="verDiag">v4.39</span>
     </div>
   </div>
 </header>
@@ -1036,9 +1036,8 @@ function fillCal(){
     const label = parts.map(p => p.code).join("+");
     const work = hasD || hasN || hasP;
     const aria = `${d}. ${MONTH+1}.${label ? ", " + label : ", volno"}${st ? ", stálá služba" : ""}`;
-    html += work
-      ? `<button type="button" class="${cls.join(" ")}" data-day="${d}" data-d="${d}" data-kind="${hasN && !hasD ? "N" : "D"}" aria-label="${aria}">${d}<small>${label}</small></button>`
-      : `<div class="${cls.join(" ")}" data-d="${d}" aria-label="${aria}">${d}${label ? `<small>${label}</small>` : ""}</div>`;
+    // každý den je tlačítko – klepnutí přesune časovou osu na ten den
+    html += `<button type="button" class="${cls.join(" ")}" data-day="${d}" data-d="${d}" data-kind="${hasN && !hasD ? "N" : "D"}" aria-label="${aria}">${d}${label ? `<small>${label}</small>` : ""}</button>`;
   }
   document.getElementById("calGrid").innerHTML = html;
   document.getElementById("calIcs").hidden = calName !== SELF;
