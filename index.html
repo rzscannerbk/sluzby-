@@ -52,6 +52,10 @@
 :root.tall-fix body{height:calc(var(--app-h) - env(safe-area-inset-top,0px));overflow:hidden}
 :root.tall-fix .full,:root.tall-fix .gate{bottom:auto;height:var(--app-h)}
 :root.tall-fix .top{padding-bottom:30px}
+/* Android: viditelná plocha menší než rozložení stránky → zmenšit na viditelnou výšku */
+:root.vh-fix{height:var(--app-h);overflow:hidden}
+:root.vh-fix body{height:calc(var(--app-h) - env(safe-area-inset-top,0px));overflow:hidden}
+:root.vh-fix .full,:root.vh-fix .gate{bottom:auto;height:var(--app-h)}
 :root.tall-fix .full{padding-bottom:22px}
 :root.tall-fix .full-close,:root.tall-fix .note-open,:root.tall-fix .swap-open{bottom:calc(var(--fsab) + 28px)}
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);background:var(--paper)}
@@ -458,7 +462,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.40</span>
+      <span class="ver" id="verDiag">v4.41</span>
     </div>
   </div>
 </header>
@@ -2403,8 +2407,40 @@ document.getElementById("verDiag").addEventListener("click", () => {
   pr.remove();
   alert(out);
 });
+function viewDiag(){
+  const vv = window.visualViewport, top = document.querySelector(".top").getBoundingClientRect();
+  alert([
+    "verze: " + (document.getElementById("verDiag") || {}).textContent,
+    "zařízení: " + navigator.userAgent.replace(/^.*?\(/, "(").slice(0, 60),
+    "screen: " + screen.width + "×" + screen.height,
+    "innerHeight: " + innerHeight + " · clientHeight: " + document.documentElement.clientHeight,
+    "visualViewport: " + (vv ? Math.round(vv.height) + " (scale " + vv.scale + ")" : "-"),
+    "lišta: " + Math.round(top.top) + "–" + Math.round(top.bottom),
+    "třídy: " + (document.documentElement.className || "-"),
+    "na ploše: " + (matchMedia("(display-mode: standalone)").matches || navigator.standalone ? "ano" : "ne")
+  ].join("\n"));
+}
+let diagT = null;
+document.getElementById("right").addEventListener("pointerdown", () => { clearTimeout(diagT); diagT = setTimeout(viewDiag, 1500); });
+["pointerup","pointercancel","pointerleave","pointermove"].forEach(t => document.getElementById("right").addEventListener(t, e => { if (t !== "pointermove" || Math.abs(e.movementY) > 3) clearTimeout(diagT); }));
 const NO_TALL_FIX = false; // při potížích přepnout na true = chování jako ve v4.21
-let lastVP = "", tallFixOn = false;
+let lastVP = "", tallFixOn = false, vhFixOn = false, lastVH = "";
+function checkVisible(){
+  // Android: kdyby spodní lišta nebo rozložení přesahovaly skutečně viditelnou plochu, zmenšit stránku
+  const root = document.documentElement, vv = window.visualViewport;
+  const ae = document.activeElement;
+  if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return; // otevřená klávesnice – neměnit
+  const visH = Math.round(vv ? vv.height * (vv.scale || 1) : innerHeight), lay = root.clientHeight;
+  const bar = document.querySelector(".top"), barB = bar ? bar.getBoundingClientRect().bottom : 0;
+  if (!vhFixOn && (barB > visH + 2 || lay > visH + 2)) vhFixOn = true;
+  const sig = vhFixOn + "|" + visH + "|" + lay;
+  if (sig === lastVH) return;
+  lastVH = sig;
+  root.classList.toggle("vh-fix", vhFixOn);
+  if (vhFixOn){ root.style.setProperty("--app-h", visH + "px"); root.style.setProperty("--extra", Math.min(0, visH - lay) + "px"); }
+  if (typeof measure === "function"){ try { measure(); update(); } catch (e){} }
+}
+if (window.visualViewport) visualViewport.addEventListener("resize", () => setTimeout(checkViewport, 100));
 function checkViewport(){
   const standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
   const portrait = screen.height > screen.width && innerHeight > innerWidth;
@@ -2415,6 +2451,7 @@ function checkViewport(){
   if (!ios || !portrait || !standalone || NO_TALL_FIX) tallFixOn = false;
   else if (extra > 20 && extra < 120) tallFixOn = true;
   const fix = tallFixOn;
+  if (!ios) return checkVisible();
   const sig = fix + "|" + extra;
   if (sig === lastVP) return;
   lastVP = sig;
