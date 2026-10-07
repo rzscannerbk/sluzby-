@@ -27,7 +27,7 @@ self.addEventListener("notificationclick", e => {
 });
 
 // Při každé změně souborů zvyš verzi, aby se stará cache smazala.
-const VERSION = "sluzby-v60";
+const VERSION = "sluzby-v61";
 const LIB_CACHE = "sluzby-knihovny";
 const CORE = [
   "./",
