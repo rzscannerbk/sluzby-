@@ -382,7 +382,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v2.2</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v2.3</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -411,7 +411,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v2.2";
+const DESK_VER = "desktop v2.3";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
@@ -509,7 +509,7 @@ function start(){
     unsubs.push(col.where("zaCislo", "==", SELF_NO).where("stav", "==", "prijato").onSnapshot(s => { MY_ZA = s.docs.map(d => ({id:d.id, ...d.data()})); render(); }, () => {}));
     unsubs.push(db.collection("poznamky").doc(SELF_NO).onSnapshot(s => { const dd = s.exists ? s.data() : {}; MY_VOLP = volLoad(dd); MY_SNOTES = dd.sluzby || {}; render(); }, () => {}));
   }
-  render();
+  render();  if (OPEN_REQ) openFromPush(OPEN_REQ);
 }
 function stop(){
   if (PRES){ PRES.stop(); PRES = null; }
@@ -715,6 +715,16 @@ document.addEventListener("click", e => {
   render(); window.scrollTo({top:0, behavior:"smooth"});
 });
 
+/* ---------- otevření výměn z notifikace ---------- */
+let OPEN_REQ = new URLSearchParams(location.search).get("open");
+if (OPEN_REQ){ try { history.replaceState(null, "", location.pathname); } catch (e) {} }
+function openFromPush(what){
+  if (what !== "vymeny") return;
+  const b = document.querySelector('.nav .item[data-view="vymeny"]');
+  if (!b){ OPEN_REQ = what; return; }
+  OPEN_REQ = null; if ($("det") && !$("det").hidden) closeDet(); b.click();
+}
+if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.type === "open") openFromPush(e.data.open); });
 /* ---------- navigace ---------- */
 document.querySelectorAll(".nav .item[data-view]").forEach(b => b.addEventListener("click", () => {
   VIEW = b.dataset.view; SW = null; PROP = null;

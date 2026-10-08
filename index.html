@@ -480,7 +480,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.47</span>
+      <span class="ver" id="verDiag">v4.48</span>
     </div>
   </div>
 </header>
@@ -943,6 +943,7 @@ function start(){
     unsubOfficers = db.collection(COLLECTION).doc("straznici").onSnapshot(s => {
       OFFICERS = (s.exists && s.data().cisla) || {};
       resolveSelf(); updateBadge(); renderVym(); startNotes();
+      if (OPEN_REQ && SELF) openFromPush(OPEN_REQ);
       if (PRES && SELF && !PRES.named){ PRES.named = true; PRES.beat(); } // jméno do záznamu přítomnosti jen jednou
       fillSelect(); render();
     }, () => {});
@@ -1538,8 +1539,9 @@ function reqGo(e, admin){
 let CAL_REQ = null; // {mesic, days:{den:"give"|"take"}, text}
 function reqMarks(r){
   const od = r.od || {}, za = r.za || {}, days = {};
-  const alts = [...(r.moznosti || []), ...(r.navrhy || [])].map(parseProp).filter(x => x.den);
-  const other = [...(za.den ? [za] : []), ...alts];
+  // u návrhu platí jen navržené služby – původní nabídka (za / varianty) už neplatí
+  const alts = (r.stav === "navrh" ? (r.navrhy || []) : (r.moznosti || [])).map(parseProp).filter(x => x.den);
+  const other = r.stav === "navrh" ? alts : [...(za.den ? [za] : []), ...alts];
   if (od.jmeno === SELF){ days[od.den] = "give"; other.forEach(x => { if (!days[x.den]) days[x.den] = "take"; }); }
   else if (za.jmeno === SELF || (r.skupina || []).includes(SELF_NO) || (r.skupina || []).includes(SELF)){
     if (od.den) days[od.den] = "take"; other.forEach(x => { if (!days[x.den]) days[x.den] = "give"; });
@@ -1729,6 +1731,21 @@ function renderVym(){
 }
 function openVym(){ vym.hidden = false; vym.scrollTop = 0; renderVym(); document.getElementById("vymClose").focus(); }
 function closeVym(){ vym.hidden = true; }
+/* klepnutí na notifikaci → rovnou okno výměn (?open=vymeny nebo zpráva od service workeru) */
+let OPEN_REQ = new URLSearchParams(location.search).get("open");
+if (OPEN_REQ){ try { history.replaceState(null, "", location.pathname); } catch (e) {} }
+function openFromPush(what){
+  if (what !== "vymeny") return;
+  if (!SELF){ OPEN_REQ = what; return; } // ještě není načtený strážník – otevře se po načtení
+  OPEN_REQ = null;
+  if (!cal.hidden) closeCal();
+  if (!full.hidden) closeFull();
+  if (!swp.hidden) closeSwp();
+  if (!adm.hidden) closeAdm();
+  vol.hidden = true;
+  openVym();
+}
+if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.type === "open") openFromPush(e.data.open); });
 document.getElementById("btnSwap").addEventListener("click", openVym);
 document.getElementById("vymClose").addEventListener("click", closeVym);
 
@@ -2141,7 +2158,7 @@ function getMessaging(){
     messaging.onMessage(async p => {   // zpráva při otevřené stránce – ukázat stejně jako na pozadí
       const n = p.notification || {};
       const reg = await navigator.serviceWorker.ready;
-      reg.showNotification(n.title || "Služby", {body:n.body || "", icon:"icon-192.png", badge:"badge-96.png", data:{link:"./"}});
+      reg.showNotification(n.title || "Služby", {body:n.body || "", icon:"icon-192.png", badge:"badge-96.png", data:{link:(p.fcmOptions && p.fcmOptions.link) || "./"}});
     });
   }
   return messaging;

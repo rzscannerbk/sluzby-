@@ -1,4 +1,24 @@
 // Služby MP Blansko – service worker
+// Klepnutí na notifikaci – zaregistrováno PŘED knihovnou Firebase, aby se použilo i pro zprávy FCM.
+// Odkaz „?open=vymeny“ otevře okno výměn: běžící stránce pošle zprávu, jinak ji otevře s parametrem.
+self.addEventListener("notificationclick", e => {
+  const n = e.notification, d = n.data || {}, f = d.FCM_MSG;
+  const link = f ? ((f.fcmOptions && f.fcmOptions.link) || (f.notification && f.notification.click_action)) : d.link;
+  e.stopImmediatePropagation();
+  n.close();
+  const url = new URL(link || "./", self.registration.scope);
+  const open = url.searchParams.get("open");
+  e.waitUntil(clients.matchAll({type:"window", includeUncontrolled:true}).then(list => {
+    const mine = list.filter(c => c.url.startsWith(self.registration.scope));
+    const w = mine.find(c => c.focused) || mine.find(c => !c.url.includes("desktop")) || mine[0];
+    if (w){
+      if (open) w.postMessage({type:"open", open});
+      return w.focus ? w.focus() : null;
+    }
+    return clients.openWindow(url.href);
+  }));
+});
+
 // --- notifikace (Firebase Cloud Messaging) ---
 self.window = self; // firebase-config.js zapisuje do window
 try {
@@ -14,20 +34,10 @@ try {
   }
 } catch (e) { /* bez notifikací stránka funguje dál */ }
 
-// klepnutí na upozornění zobrazené stránkou (při otevřené stránce)
-self.addEventListener("notificationclick", e => {
-  const d = e.notification.data || {};
-  if (d.FCM_MSG) return; // ty obslouží knihovna Firebase
-  e.notification.close();
-  const url = new URL(d.link || "./", self.registration.scope).href;
-  e.waitUntil(clients.matchAll({type:"window", includeUncontrolled:true}).then(list => {
-    const w = list.find(c => c.url.startsWith(self.registration.scope));
-    return w ? w.focus() : clients.openWindow(url);
-  }));
-});
+
 
 // Při každé změně souborů zvyš verzi, aby se stará cache smazala.
-const VERSION = "sluzby-v78";
+const VERSION = "sluzby-v79";
 const LIB_CACHE = "sluzby-knihovny";
 const CORE = [
   "./",

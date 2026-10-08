@@ -4,6 +4,7 @@
    - nový nebo upravený plán */
 const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onRequest } = require("firebase-functions/v2/https");
 const { setGlobalOptions, logger } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 
@@ -13,13 +14,15 @@ const db = admin.firestore();
 
 const BASE_URL = "https://rzscannerbk.github.io/sluzby-/";
 const ICON = BASE_URL + "icon-192.png";
+const VYM = BASE_URL + "?open=vymeny"; // klepnutí na notifikaci o výměně otevře okno výměn
+const BADGE = BASE_URL + "badge-96.png"; // jednobarevná ikona do horní lišty Androidu
 const TZ = "Europe/Prague";
 const MONTHS = ["leden","únor","březen","duben","květen","červen","červenec","srpen","září","říjen","listopad","prosinec"];
 const MONTHS_GEN = ["leden","únor","březen","duben","květen","červen","červenec","srpen","září","říjen","listopad","prosinec"];
 const DOW = ["ne","po","út","st","čt","pá","so"];
 const KIND = { D: "denní", N: "noční" };
-const CODES = { D12: [7, 19], N12: [19, 7], N13: [19, 8], Nz7: [19, 24] };
-const kindOf = c => { c = String(c).replace(/\*$/, ""); return c === "D12" ? "D" : (c === "N12" || c === "N13" || c === "Nz7") ? "N" : null; };
+const CODES = { D12: [7, 19], D8: [10, 18], N12: [19, 7], N13: [19, 8], Nz7: [19, 24] };
+const kindOf = c => { c = String(c).replace(/\*$/, ""); return (c === "D12" || c === "D8") ? "D" : (c === "N12" || c === "N13" || c === "Nz7") ? "N" : null; };
 const surname = n => String(n || "").split(" ")[0];
 
 /* ---------- odesílání ---------- */
@@ -34,7 +37,7 @@ async function send(tokens, title, body, link = BASE_URL) {
     const chunk = tokens.slice(i, i + 500);
     const res = await admin.messaging().sendEachForMulticast({
       tokens: chunk,
-      webpush: { notification: { title, body, icon: ICON, badge: ICON }, fcmOptions: { link } }
+      webpush: { notification: { title, body, icon: ICON, badge: BADGE }, fcmOptions: { link } }
     });
     // neplatné tokeny (odinstalováno, odhlášeno) uklidit
     const dead = [];
@@ -65,17 +68,21 @@ exports.vymenaNova = onDocumentCreated("vymeny/{id}", async ev => {
     const body = r.typ === "vymena"
       ? `Výměna služeb: ${r.od.jmeno} (${co}) ⇄ ${r.za.jmeno} (${fmtShift(r.mesic, r.za)}).`
       : `Služba ${co} převedena: ${r.od.jmeno} → ${r.za.jmeno}.`;
-    return send(t, "Změna administrátorem", body + (r.pozn ? ` „${r.pozn}“` : ""));
+    return send(t, "Změna administrátorem", body + (r.pozn ? ` „${r.pozn}“` : ""), VYM);
   }
   if (r.stav !== "ceka") return;
   if (r.typ === "nabidka") {
     const t = await tokensFor(x => String(x.cislo) !== String(r.odCislo));
-    return send(t, "Nabídka služby", `${r.od.jmeno} nabízí službu ${co}.${r.pozn ? " „" + r.pozn + "“" : ""}`);
+    return send(t, "Nabídka služby", `${r.od.jmeno} nabízí službu ${co}.${r.pozn ? " „" + r.pozn + "“" : ""}`, VYM);
   }
-  const body = r.typ === "vymena"
+  const pp = t => { const [den, kind, kod] = String(t).split("|"); return { den: +den, kind, kod }; };
+  const body = r.typ === "vymena" && r.moznosti && !r.za.den
+    ? `${r.od.jmeno} chce vyměnit svou ${co} za jednu z tvých služeb: ${r.moznosti.map(t => fmtShift(r.mesic, pp(t))).join(", ")}. Vyber si v přehledu výměn.`
+    : r.typ === "vymena"
     ? `${r.od.jmeno} chce vyměnit svou ${co} za tvoji ${fmtShift(r.mesic, r.za)}.`
     : `${r.od.jmeno} tě žádá o převzetí služby ${co}.`;
-  return send(await toNumber(r.zaCislo), r.typ === "vymena" ? "Žádost o výměnu služby" : "Žádost o převzetí služby", body + (r.pozn ? ` „${r.pozn}“` : ""));
+  const skup = Array.isArray(r.skupina) && r.skupina.length > 1 ? " Žádost dostali i další kolegové – platí, kdo přijme první." : "";
+  return send(await toNumber(r.zaCislo), r.typ === "vymena" ? "Žádost o výměnu služby" : "Žádost o převzetí služby", body + (r.pozn ? ` „${r.pozn}“` : "") + skup, VYM);
 });
 
 exports.vymenaZmena = onDocumentUpdated("vymeny/{id}", async ev => {
@@ -83,20 +90,50 @@ exports.vymenaZmena = onDocumentUpdated("vymeny/{id}", async ev => {
   if (!a || !b || a.stav === b.stav) return;
   const co = fmtShift(b.mesic, b.od);
   const kdo = b.za && b.za.jmeno;
+  const parseProp = t => { const [den, kind, kod] = String(t).split("|"); return { den: +den, kind, kod }; };
+  // žádost poslaná víc kolegům: po přijetí ostatní zrušit
+  if (b.stav === "prijato" && a.stav !== "prijato" && Array.isArray(b.skupina)) {
+    await Promise.all(b.skupina.filter(id => id !== ev.params.id).map(async id => {
+      const ref = db.collection("vymeny").doc(id);
+      await db.runTransaction(async tx => {
+        const s = await tx.get(ref);
+        if (s.exists && ["ceka", "navrh"].includes(s.data().stav))
+          tx.update(ref, { stav: "zruseno", duvod: "jinde", vyrizeno: admin.firestore.FieldValue.serverTimestamp() });
+      });
+    })).catch(e => logger.error("rušení skupiny", e));
+  }
+  if (b.stav === "zruseno" && b.duvod === "jinde") {
+    return send(await toNumber(b.zaCislo), "Žádost už neplatí", `Výměnu služby ${co} (${b.od.jmeno}) už vzal jiný kolega.`, VYM);
+  }
+  if (a.stav === "ceka" && b.stav === "navrh") {
+    const co2 = (b.navrhy || []).map(t => fmtShift(b.mesic, parseProp(t))).join(", ");
+    return send(await toNumber(b.odCislo), "Návrh jiné služby", `${kdo} místo ${b.typ === "vymena" ? (a.za && a.za.den ? "služby " + fmtShift(b.mesic, a.za) : "tebou nabízených variant") : "služby " + co} nabízí: ${co2}. Vyber si v přehledu výměn.`, VYM);
+  }
+  if (a.stav === "navrh" && b.stav === "prijato") {
+    return send(await toNumber(b.zaCislo), "Návrh přijat", `${b.od.jmeno} si vybral tvoji ${fmtShift(b.mesic, b.za)} – výměna za jeho ${co} je provedena.`, VYM);
+  }
+  if (a.stav === "navrh" && b.stav === "odmitnuto") {
+    return send(await toNumber(b.zaCislo), "Návrh odmítnut", `${b.od.jmeno} odmítl tvoje návrhy ke službě ${co}.`, VYM);
+  }
+  if (a.stav === "navrh" && b.stav === "zruseno") {
+    return send(await toNumber(b.zaCislo), "Žádost zrušena", `${b.od.jmeno} zrušil žádost – služba ${co}.`, VYM);
+  }
   if (a.stav === "ceka" && b.stav === "prijato") {
     const title = b.typ === "nabidka" ? "Nabídka přijata" : "Žádost přijata";
-    const body = b.typ === "nabidka" ? `${kdo} vzal tvoji službu ${co}.` : `${kdo} přijal tvoji žádost – služba ${co}.`;
-    return send(await toNumber(b.odCislo), title, body);
+    const body = b.typ === "nabidka" ? `${kdo} vzal tvoji službu ${co}.`
+      : b.moznosti && b.za && b.za.den ? `${kdo} přijal výměnu – za tvoji ${co} ti dá svou ${fmtShift(b.mesic, b.za)}.`
+      : `${kdo} přijal tvoji žádost – služba ${co}.`;
+    return send(await toNumber(b.odCislo), title, body, VYM);
   }
   if (a.stav === "ceka" && b.stav === "odmitnuto") {
-    return send(await toNumber(b.odCislo), "Žádost odmítnuta", `${kdo} odmítl tvoji žádost – služba ${co}.`);
+    return send(await toNumber(b.odCislo), "Žádost odmítnuta", `${kdo} odmítl tvoji žádost – služba ${co}.`, VYM);
   }
   if (a.stav === "ceka" && b.stav === "zruseno" && b.zaCislo) {
-    return send(await toNumber(b.zaCislo), "Žádost zrušena", `${b.od.jmeno} zrušil žádost – služba ${co}.`);
+    return send(await toNumber(b.zaCislo), "Žádost zrušena", `${b.od.jmeno} zrušil žádost – služba ${co}.`, VYM);
   }
   if (a.stav === "prijato" && b.stav === "zruseno") {
     const t = [...await toNumber(b.odCislo), ...(b.zaCislo ? await toNumber(b.zaCislo) : [])];
-    return send(t, "Výměna zrušena správcem", `Výměna služby ${co} (${surname(b.od.jmeno)} → ${surname(kdo)}) byla zrušena. Platí původní plán.`);
+    return send(t, "Výměna zrušena správcem", `Výměna služby ${co} (${surname(b.od.jmeno)} → ${surname(kdo)}) byla zrušena. Platí původní plán.`, VYM);
   }
 });
 
@@ -199,4 +236,80 @@ exports.pripominka = onSchedule({ schedule: "0 * * * *", timeZone: TZ }, async (
     }
   }
   await Promise.all(jobs);
+});
+
+
+/* ---------- 4) kalendář služeb k odběru (.ics) ---------- */
+const ICS = { D12: [7, 19, 0], D8: [10, 18, 0], N12: [19, 7, 1], N13: [19, 8, 1], Nz7: [19, 24, 0], D2: [8, 10, 0] };
+const icsEsc = t => String(t).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+function icsFold(line) {
+  const out = []; let cur = "";
+  for (const ch of line) { if (cur.length >= 70) { out.push(cur); cur = " "; } cur += ch; }
+  out.push(cur); return out.join("\r\n");
+}
+function icsTime(y, m, d, h) { // m od 1, přetečení dní a hodin ošetří Date.UTC
+  const t = new Date(Date.UTC(y, m - 1, d, h));
+  const p = n => String(n).padStart(2, "0");
+  return `${t.getUTCFullYear()}${p(t.getUTCMonth() + 1)}${p(t.getUTCDate())}T${p(t.getUTCHours())}0000`;
+}
+exports.kalendar = onRequest({ invoker: "public" }, async (req, res) => {
+  const k = String(req.query.k || "");
+  if (!/^[A-Za-z0-9]{20,64}$/.test(k)) { res.status(404).send("Nenalezeno"); return; }
+  const t = await db.collection("kalendare").doc(k).get();
+  if (!t.exists) { res.status(404).send("Nenalezeno"); return; }
+  const cislo = String(t.data().cislo);
+  const cisla = ((await db.collection("planSluzeb").doc("straznici").get()).data() || {}).cisla || {};
+  const me = Object.keys(cisla).find(n => String(cisla[n]) === cislo);
+  if (!me) { res.status(404).send("Nenalezeno"); return; }
+
+  const now = pragueNow();
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MP Blansko//Plan sluzeb//CS", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    "X-WR-CALNAME:Služby MP Blansko", "X-WR-TIMEZONE:Europe/Prague", "REFRESH-INTERVAL;VALUE=DURATION:PT6H", "X-PUBLISHED-TTL:PT6H",
+    "BEGIN:VTIMEZONE", "TZID:Europe/Prague",
+    "BEGIN:DAYLIGHT", "TZOFFSETFROM:+0100", "TZOFFSETTO:+0200", "TZNAME:CEST", "DTSTART:19700329T020000", "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU", "END:DAYLIGHT",
+    "BEGIN:STANDARD", "TZOFFSETFROM:+0200", "TZOFFSETTO:+0100", "TZNAME:CET", "DTSTART:19701025T030000", "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU", "END:STANDARD",
+    "END:VTIMEZONE"];
+
+  for (let off = -1; off <= 2; off++) {
+    const base = new Date(Date.UTC(now.y, now.m - 1 + off, 1));
+    const y = base.getUTCFullYear(), m = base.getUTCMonth() + 1;
+    const T = await effectivePlan(`${y}-${String(m).padStart(2, "0")}`);
+    if (!T || !T[me]) continue;
+    const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    for (let d = 1; d <= days; d++) {
+      const parts = (T[me][d - 1] || ".") === "." ? [] : T[me][d - 1].split("+");
+      for (const part of parts) {
+        const code = part.replace(/\*$/, ""), sp = ICS[code]; if (!sp) continue;
+        const stala = part.endsWith("*");
+        let title, desc;
+        if (code === "D2") {
+          const ucast = Object.keys(T).filter(n => (T[n][d - 1] || "").split("+").includes("D2"));
+          title = "Porada"; desc = `Porada MP\nÚčastníci: ${ucast.join(", ")}`;
+        } else {
+          const k2 = kindOf(code);
+          let st = null; const hl = [];
+          for (const [n, arr] of Object.entries(T)) {
+            (arr[d - 1] || ".").split("+").forEach(p => { if (kindOf(p) === k2) { if (p.endsWith("*")) st = n; else hl.push(n); } });
+          }
+          hl.sort((a, b) => a.localeCompare(b, "cs"));
+          title = (k2 === "N" ? "Noc" : "Den") + (stala ? " - stálá" : "");
+          desc = `Stálá služba: ${st || "–"}\nHlídka: ${hl.join(", ")}`;
+        }
+        L.push("BEGIN:VEVENT",
+          `UID:${y}${String(m).padStart(2, "0")}${String(d).padStart(2, "0")}-${code}-${cislo}@sluzby-mp-blansko`,
+          `DTSTAMP:${stamp}`,
+          `DTSTART;TZID=Europe/Prague:${icsTime(y, m, d, sp[0])}`,
+          `DTEND;TZID=Europe/Prague:${icsTime(y, m, d + sp[2], sp[1])}`,
+          icsFold(`SUMMARY:${icsEsc(title)}`),
+          icsFold(`DESCRIPTION:${icsEsc(desc)}`),
+          "END:VEVENT");
+      }
+    }
+  }
+  L.push("END:VCALENDAR");
+  res.set("Content-Type", "text/calendar; charset=utf-8");
+  res.set("Content-Disposition", 'inline; filename="sluzby.ics"');
+  res.set("Cache-Control", "no-cache, max-age=0");
+  res.send(L.join("\r\n") + "\r\n");
 });
