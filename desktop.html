@@ -186,6 +186,42 @@ h1,h2,h3{font-family:var(--f-cond);font-weight:700;margin:0;line-height:1.05}
 .det-btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
 .det-btns .btn.sec{background:var(--sheet)}
 
+/* můj plán */
+.mine{flex:999 1 740px;min-width:0}
+.pgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.pw{text-align:center;font-family:var(--f-cond);font-weight:600;font-size:16px;color:var(--ink2);padding-bottom:2px}
+.pw.we{color:#8A5A1E}
+.pc{min-height:112px;border-radius:12px;background:var(--sheet);border:2px solid transparent;padding:8px 9px;display:flex;flex-direction:column;gap:5px;cursor:pointer;transition:transform .1s;position:relative}
+.pc.blank{background:transparent;cursor:default}
+.pc.we:not(.has){background:#F1EDE3}
+.pc.past{opacity:.6}
+.pc:not(.blank):hover{border-color:var(--ink)}
+.pc.has.D{background:var(--dayBg);border-color:var(--dayBd)}
+.pc.has.N{background:var(--nightBg);color:#F2F0FF;border-color:var(--nightBg)}
+.pc.has.P{background:#D6EBF8;border-color:var(--pd)}
+.pc.has.A{background:var(--absBg);border-color:#E7B3B3}
+.pc.today{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue)}
+.pc:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue),0 10px 24px rgba(30,99,198,.35);transform:translateY(-3px);opacity:1;z-index:2}
+.pc.has.D:focus{background:#FFE27A}
+.pc.has.N:focus{background:#5B4FD0;border-color:#BFD2FF;box-shadow:0 0 0 3px #BFD2FF,0 10px 24px rgba(30,99,198,.45)}
+.pc-h{display:flex;align-items:baseline;justify-content:space-between}
+.pc-h b{font-family:var(--f-cond);font-size:24px;line-height:1}
+.pc-h .tod{font-size:12px;font-weight:700;color:var(--blue)}
+.pc.N .pc-h .tod{color:#BFD2FF}
+.chip{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:13px;line-height:1.25}
+.chip b{font-family:var(--f-cond);font-size:16px}
+.chip i{font-style:normal;font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px}
+.chip .stb{background:var(--green);color:#fff}
+.chip .swb{border:1px dashed currentColor;font-weight:600}
+.pev{margin-top:auto;font-size:12px;font-weight:600;color:#A33A3A;line-height:1.2}
+.pc.N .pev{color:#FFC2C2}
+.msum{display:flex;gap:10px}
+.msum div{flex:1;border-radius:10px;background:#EEF0F4;padding:8px 10px;display:flex;flex-direction:column}
+.msum b{font-family:var(--f-cond);font-size:30px;line-height:1}
+.msum span{font-size:13px;color:var(--ink2)}
+button.next.lnk{width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;text-align:left;cursor:pointer;font:inherit;color:inherit;padding:0 4px}
+button.next.lnk:hover{background:#EEF0F4}
+
 /* měsíc */
 .matrix{background:var(--sheet);border-radius:14px;padding:14px;overflow-x:auto}
 .mgrid{display:grid;gap:3px;font-size:12px;min-width:1040px}
@@ -309,9 +345,6 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
       <button class="item" type="button" data-view="vymeny">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>
         Výměny služeb<span class="badge" id="navBadge" hidden>0</span></button>
-      <button class="item" type="button" id="navCal">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="12" cy="15.5" r="2.2"/></svg>
-        Můj kalendář</button>
       <button class="item" type="button" data-view="volno" id="navVolno">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.5"/></svg>
         Plánování volna</button>
@@ -325,7 +358,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v1.9</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v2.0</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -354,7 +387,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v1.9";
+const DESK_VER = "desktop v2.0";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
@@ -674,7 +707,7 @@ function draw(){
   else if (VIEW === "vymeny") MAIN.innerHTML = vymHTML();
   else if (VIEW === "volno") MAIN.innerHTML = volHTML();
   else if (VIEW === "admin") MAIN.innerHTML = admHTML();
-  else { MAIN.innerHTML = PMODE === "week" ? weekHTML() : monthHTML(); kfFocus(); if (FLASH && MAIN.querySelector(".col.flash")) setTimeout(() => { FLASH = null; }, 3500); }
+  else { MAIN.innerHTML = PMODE === "week" ? weekHTML() : PMODE === "mine" ? mineHTML() : monthHTML(); kfFocus(); if (FLASH && MAIN.querySelector(".col.flash")) setTimeout(() => { FLASH = null; }, 3500); }
 }
 
 /* ----- týden ----- */
@@ -716,9 +749,8 @@ function planBar(title, sub){
     <button type="button" class="sq" data-nav="-1" aria-label="${PMODE === "week" ? "Předchozí týden" : "Předchozí měsíc"}">‹</button>
     <button type="button" class="sq" data-nav="1" aria-label="${PMODE === "week" ? "Další týden" : "Další měsíc"}">›</button>
     <h1>${esc(title)}</h1>${sub ? `<span class="wk">${esc(sub)}</span>` : ""}
-    <div class="seg push" role="group" aria-label="Zobrazení"><button type="button" data-mode="week" aria-pressed="${PMODE === "week"}">Týden</button><button type="button" data-mode="month" aria-pressed="${PMODE === "month"}">Měsíc</button></div>
-    <label class="lbl">Zvýraznit <select id="meSel"><option value="">nikoho</option>${names.map(n => `<option${n === ME ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
-    <button type="button" class="btn sec" data-mycal>Můj kalendář</button>
+    <div class="seg push" role="group" aria-label="Zobrazení"><button type="button" data-mode="week" aria-pressed="${PMODE === "week"}">Týden</button><button type="button" data-mode="month" aria-pressed="${PMODE === "month"}">Měsíc</button><button type="button" data-mode="mine" aria-pressed="${PMODE === "mine"}">Můj plán</button></div>
+    ${PMODE === "mine" ? "" : `<label class="lbl">Zvýraznit <select id="meSel"><option value="">nikoho</option>${names.map(n => `<option${n === ME ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label>`}
     <button type="button" class="btn" data-nav="0">Dnes</button>
     ${PMODE === "month" ? `<button type="button" class="btn sec" onclick="window.print()">Tisk</button>` : ""}
   </div>`;
@@ -741,6 +773,49 @@ function railHTML(){
 }
 
 /* ----- měsíc ----- */
+/* ----- můj plán (měsíc přihlášeného strážníka) ----- */
+const SHIFT_LBL = {D12:["Den", "7–19"], D8:["Den", "10–18"], N12:["Noc", "19–7"], N13:["Noc", "19–8"], Nz7:["Noc", "19–24"], Nk8:["Dojezd noci", "0–8"], D2:["Porada", "8–10"], DOV:["Dovolená", ""], ZdV:["Zdravotní volno", ""]};
+const SHIFT_H = {D12:12, D8:8, N12:12, N13:13, Nz7:5, Nk8:8, D2:2};
+function mineHTML(){
+  const {y, m} = MY_, id = docId(y, m), o = month(id), now = getNow();
+  const title = `Můj plán · ${cap(MONTHS[m])} ${y}`;
+  if (!SELF) return `${planBar(title)}<div class="panel"><p class="empty">Účet se nepodařilo spárovat se strážníkem.</p></div>`;
+  if (!o.okP) return `${planBar(title)}<p class="status">Načítám plán…</p>`;
+  if (!o.exists) return `${planBar(title)}<div class="panel"><p class="empty">Plán na ${MONTHS[m]} ${y} zatím není nahraný.</p></div>`;
+  const off = (new Date(y, m, 1).getDay() + 6) % 7;
+  let cD = 0, cN = 0, cP = 0, cS = 0, cA = 0, hrs = 0;
+  const list = [];
+  let cells = ["Po","Út","St","Čt","Pá","So","Ne"].map((d, i) => `<div class="pw${i > 4 ? " we" : ""}">${d}</div>`).join("");
+  for (let i = 0; i < off; i++) cells += `<div class="pc blank"></div>`;
+  for (let d = 1; d <= o.len; d++){
+    const date = new Date(y, m, d), wd = date.getDay(), today = sameDay(date, now), past = date < new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const toks = tokens(o.T, SELF, d).filter(c => c !== ".");
+    let kind = "", chips = "";
+    toks.forEach(c => {
+      const code = c.replace(/\*$/, ""), def = CODES[code] || {}, st = c.endsWith("*"), lbl = SHIFT_LBL[code] || [code, ""];
+      const k = def.k === "D" ? "D" : def.k === "N" || def.k === "K" ? "N" : def.k === "P" ? "P" : "A";
+      if (!kind || k === "D" || k === "N") kind = kind === "D" || kind === "N" ? kind : k;
+      if (/^(D12|D8)$/.test(code)) cD++;
+      if (/^(N12|N13|Nz7)$/.test(code)) cN++;
+      if (code === "D2") cP++;
+      if (st) cS++;
+      if (k === "A") cA++;
+      hrs += SHIFT_H[code] || 0;
+      const sw = o.notes[`${d}|${def.k}|${SELF}`];
+      chips += `<span class="chip ${k}"><b>${lbl[0]}</b>${lbl[1] ? ` ${lbl[1]}` : ""}${st ? `<i class="stb">stálá</i>` : ""}${sw ? `<i class="swb">⇄ ${esc(sw)}</i>` : ""}</span>`;
+      if (k === "D" || k === "N" || k === "P") list.push({d, wd, code, k, st, sw});
+    });
+    const ev = o.ev[d] || o.ev[String(d)] || "";
+    const dk = kind === "N" ? "N" : "D";
+    cells += `<div class="pc${kind ? " has " + kind : ""}${today ? " today" : ""}${past ? " past" : ""}${wd === 0 || wd === 6 ? " we" : ""}" data-det="${id}|${d}|${dk}" data-pd="${d}" tabindex="-1" role="button" aria-label="${d}. ${m + 1}.${toks.length ? " " + toks.join(" ") : " volno"}">
+      <div class="pc-h"><b>${d}</b>${today ? `<span class="tod">dnes</span>` : ""}</div>${chips}${ev ? `<span class="pev">${esc(ev)}</span>` : ""}</div>`;
+  }
+  const sum = `<section class="panel"><h2>Souhrn – ${MONTHS[m]}</h2>
+      <div class="msum"><div><b>${cD}</b><span>denních</span></div><div><b>${cN}</b><span>nočních</span></div><div><b>${hrs}</b><span>hodin</span></div></div>
+      <div class="cal-sum" style="margin:10px 0 0">${cP ? `<span><i style="background:var(--pd)"></i>Porada <b>${cP}</b></span>` : ""}<span><i style="background:var(--green)"></i>Stálá <b>${cS}</b></span>${cA ? `<span><i style="background:var(--absBg)"></i>Dovolená / ZdV <b>${cA}</b></span>` : ""}</div></section>`;
+  const lst = `<section class="panel"><h2>Moje služby</h2>${list.map(x => `<button type="button" class="next lnk" data-det="${id}|${x.d}|${x.k === "N" ? "N" : "D"}"><i style="background:${x.k === "D" ? "var(--day)" : x.k === "P" ? "var(--pd)" : "var(--night)"}"></i><span>${DOW[x.wd]} ${x.d}. ${m + 1}. ${x.k === "D" ? "denní" : x.k === "P" ? "porada" : "noční"}${x.st ? " (stálá)" : ""}${x.sw ? ` · ⇄ ${esc(x.sw)}` : ""}</span><b>${x.code}</b></button>`).join("") || `<p class="empty">V tomto měsíci nemáš žádnou službu.</p>`}</section>`;
+  return `${planBar(title)}<div class="planwrap"><div class="mine"><div class="pgrid">${cells}</div><p class="hint" style="margin-top:10px">Klikni na den – otevře se detail služby. Šipky na klávesnici procházejí dny, Enter otevře detail.</p></div><aside class="rail">${sum}${lst}</aside></div>`;
+}
 function monthHTML(){
   const {y, m} = MY_, id = docId(y, m), o = month(id), now = getNow();
   const title = `${cap(MONTHS[m])} ${y}`;
@@ -786,17 +861,16 @@ MAIN.addEventListener("click", e => {
     else { if (d === 0) MY_ = {y:now.getFullYear(), m:now.getMonth()}; else { const t = new Date(MY_.y, MY_.m + d, 1); MY_ = {y:t.getFullYear(), m:t.getMonth()}; } }
     render(); return;
   }
-  const md = e.target.closest("[data-mode]"); if (md){ PMODE = md.dataset.mode; if (PMODE === "month"){ MY_ = {y:WEEK.getFullYear(), m:addDays(WEEK, 3).getMonth()}; } render(); return; }
+  const md = e.target.closest("[data-mode]"); if (md){ const prev = PMODE; PMODE = md.dataset.mode; if (PMODE !== "week" && prev === "week"){ const t = addDays(WEEK, 3); MY_ = {y:t.getFullYear(), m:t.getMonth()}; } if (PMODE === "week" && prev !== "week"){ const now = getNow(); WEEK = (now.getFullYear() === MY_.y && now.getMonth() === MY_.m) ? mondayOf(now) : mondayOf(new Date(MY_.y, MY_.m, 1)); } render(); return; }
   const sb = e.target.closest("[data-swap]"); if (sb){ closeDet(); const [id, d, k] = sb.dataset.swap.split("|"); openSwap(id, +d, k); return; }
   if (e.target.closest("[data-mycal]")){ openMyCal(); return; }
   const mn = e.target.closest("[data-mname]"); if (mn){ ME = ME === mn.dataset.mname ? "" : mn.dataset.mname; render(); return; }
   const dt = e.target.closest("[data-det]"); if (dt){ const [id, d, k] = dt.dataset.det.split("|");
-    KF = dt.classList.contains("mc") ? {mode:"month", r:+dt.dataset.r, d:+dt.dataset.d} : {mode:"week", key:`${id}|${d}`, k};
+    KF = dt.classList.contains("mc") ? {mode:"month", r:+dt.dataset.r, d:+dt.dataset.d} : PMODE === "mine" ? {mode:"mine", d:+d} : {mode:"week", key:`${id}|${d}`, k};
     openDet(id, +d, k); return; }
 });
-MAIN.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".card[data-det], .mc[data-det]")){ e.preventDefault(); e.target.click(); } });
+MAIN.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".card[data-det], .mc[data-det], .pc[data-det]")){ e.preventDefault(); e.target.click(); } });
 
-$("navCal").addEventListener("click", openMyCal);
 
 /* ----- procházení šipkami na klávesnici ----- */
 let KF = null; // týden {mode:"week", key:"YYYY-MM|d", k}, měsíc {mode:"month", r, d}
@@ -804,6 +878,7 @@ function kfEl(){
   if (!KF) return null;
   if (KF.mode === "week" && PMODE === "week") return MAIN.querySelector(`.card[data-det="${KF.key}|${KF.k}"]`);
   if (KF.mode === "month" && PMODE === "month") return MAIN.querySelector(`.mc[data-r="${KF.r}"][data-d="${KF.d}"]`);
+  if (KF.mode === "mine" && PMODE === "mine") return MAIN.querySelector(`.pc[data-pd="${KF.d}"]`);
   return null;
 }
 function kfFocus(){ const el = kfEl(); if (el){ el.focus({preventScroll:true}); el.scrollIntoView({block:"nearest", inline:"nearest"}); } }
@@ -825,6 +900,15 @@ document.addEventListener("keydown", e => {
     if (date < WEEK) WEEK = addDays(WEEK, -7);
     if (date >= addDays(WEEK, 7)) WEEK = addDays(WEEK, 7);
     KF = {mode:"week", key:`${idOf(date)}|${date.getDate()}`, k};
+  } else if (PMODE === "mine"){
+    const n = new Date(MY_.y, MY_.m + 1, 0).getDate(), now = getNow();
+    if (!KF || KF.mode !== "mine") KF = {mode:"mine", d:(now.getFullYear() === MY_.y && now.getMonth() === MY_.m) ? now.getDate() : 1};
+    else {
+      let d = KF.d + dx + dy * 7;
+      if (d < 1){ const t = new Date(MY_.y, MY_.m - 1, 1); MY_ = {y:t.getFullYear(), m:t.getMonth()}; d = new Date(MY_.y, MY_.m + 1, 0).getDate() + d; }
+      else if (d > n){ const t = new Date(MY_.y, MY_.m + 1, 1); MY_ = {y:t.getFullYear(), m:t.getMonth()}; d = d - n; }
+      KF.d = d;
+    }
   } else {
     const rows = new Set([...MAIN.querySelectorAll(".mc[data-r]")].map(x => +x.dataset.r)), R = rows.size;
     const n = new Date(MY_.y, MY_.m + 1, 0).getDate();
