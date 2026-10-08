@@ -279,6 +279,9 @@ button.cal-day{cursor:pointer}
 .note-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
 .vol-open{margin-top:18px;width:100%}
 #vol{z-index:37}
+.req[data-id]{cursor:pointer}
+.req .go{display:block;margin-top:8px;font-size:13px;font-weight:600;color:var(--ink2);text-decoration:underline;text-underline-offset:3px}
+
 .desk-link{display:none}
 @media (min-width:1100px) and (hover:hover){.desk-link{display:flex;position:fixed;top:12px;right:12px;z-index:25;align-items:center;gap:8px;min-height:40px;padding:0 14px;border-radius:10px;background:var(--ink);color:var(--paper,#fff);font-weight:600;font-size:14px;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.18)}}
 .vol-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0 4px}
@@ -464,7 +467,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.42</span>
+      <span class="ver" id="verDiag">v4.45</span>
     </div>
   </div>
 </header>
@@ -562,6 +565,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="sluzby-core.js"></script>
+<script>document.head.insertAdjacentHTML("beforeend", `<style>${PRES_CSS}</style>`);</script>
 <script>
 const FOCAL = 0.3;
 const STORE_KEY = "sluzby-osa-zvyraznit";
@@ -865,6 +869,7 @@ document.getElementById("resetBtn").addEventListener("click", async () => {
 document.getElementById("logout").addEventListener("click", async () => {
   if (!auth) return;
   try { await pushRemoveToken(); } catch(e) {}
+  if (PRES){ await PRES.logout(); PRES = null; }
   auth.signOut();
 });
 
@@ -898,9 +903,10 @@ function loadMonth(y, m, scrollMode){
     const d = snap.data();
     PLAN = d.plan || {}; EVENTS = d.udalosti || {}; YEAR = y; MONTH = m;
     rebuild(); fillSelect(); render();
-    if (pendingScroll === "now") goNow(false);
-    else if (pendingScroll === "top") left.scrollTop = 0;
-    pendingScroll = null;
+    const ps = pendingScroll; pendingScroll = null;
+    if (ps === "now") goNow(false);
+    else if (ps === "top") left.scrollTop = 0;
+    else if (ps && ps.den) requestAnimationFrame(() => scrollToDay(ps.den, ps.kind));
   }, err => {
     clearTimeout(offlineTimer); setStatus("");
     renderEmpty("Plán se nepodařilo načíst", err.code === "permission-denied"
@@ -913,14 +919,19 @@ function start(){
     unsubOfficers = db.collection(COLLECTION).doc("straznici").onSnapshot(s => {
       OFFICERS = (s.exists && s.data().cisla) || {};
       resolveSelf(); updateBadge(); renderVym(); startNotes();
+      if (PRES && SELF && !PRES.named){ PRES.named = true; PRES.beat(); } // jméno do záznamu přítomnosti jen jednou
       fillSelect(); render();
     }, () => {});
   }
   resolveSelf(); startSwaps(); startNotes(); pushRefresh();
+  if (SELF_NO && !PRES) PRES = presenceStart({db, firebase, cislo:SELF_NO, email:SELF_EMAIL, jmeno:() => SELF, typ:"mobil", verze:APP_VER});
   const n = getNow();
   loadMonth(n.getFullYear(), n.getMonth(), "now");
 }
+let PRES = null;
+const APP_VER = (document.getElementById("verDiag") || {}).textContent || "";
 function stop(){
+  if (PRES){ PRES.stop(); PRES = null; }
   if (unsubMonth){ unsubMonth(); unsubMonth = null; }
   if (unsubOfficers){ unsubOfficers(); unsubOfficers = null; }
   stopSwaps(); stopNotes(); SELF = null; SELF_NO = null; updateSelfLabel();
@@ -1439,6 +1450,41 @@ document.getElementById("calGrid").addEventListener("click", e => {
   scrollLeftTo(target.offsetTop, true);
 });
 
+/* přechod na den v časové ose (i v jiném měsíci) */
+function scrollToDay(den, kind){
+  const gi = GROUPS.findIndex(g => !g.prev && g.date.getDate() === den);
+  const g = left.querySelectorAll(".group")[gi]; if (!g) return;
+  const target = (kind === "N" && g.querySelector(".card.night")) || g;
+  scrollLeftTo(target.offsetTop, true);
+}
+function goToDay(mesic, den, kind){
+  const [y, m] = ymOf(mesic);
+  if (!vym.hidden) closeVym();
+  if (!adm.hidden) closeAdm();
+  if (!full.hidden) closeFull();
+  if (y === YEAR && m === MONTH && PLAN) scrollToDay(den, kind);
+  else loadMonth(y, m, {den, kind});
+}
+// den, kdy má přihlášený strážník jít do služby (v administraci den toho, kdo výměnu nabízí)
+function reqDay(r, admin){
+  const od = r.od || {}, za = r.za || {};
+  if (admin) return {den:od.den, kind:od.kind};
+  if (za.jmeno === SELF) return {den:od.den, kind:od.kind};
+  if (od.jmeno === SELF){
+    if (za.den) return {den:za.den, kind:za.kind};
+    const alt = (r.moznosti || r.navrhy || [])[0];
+    if (alt){ const x = parseProp(alt); return {den:x.den, kind:x.kind}; }
+  }
+  return {den:od.den, kind:od.kind};
+}
+function reqGo(e, admin){
+  if (e.target.closest("button, a, summary, select, input, textarea, label")) return;
+  const box = e.target.closest(".req[data-id]"); if (!box) return;
+  const id = box.dataset.id;
+  const r = [...PENDING, ...SWAPS_MONTH, ...MY_OD, ...MY_ZA].find(x => x.id === id); if (!r || !r.mesic) return;
+  const t = reqDay(r, admin); if (t.den) goToDay(r.mesic, t.den, t.kind);
+}
+
 /* ================= výměny služeb ================= */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen pro zobrazení tlačítek – oprávnění hlídají pravidla Firestore
@@ -1539,7 +1585,7 @@ const ST_LBL = {ceka:"Čeká", navrh:"Návrh", prijato:"Přijato", odmitnuto:"Od
 function reqCard(r, actions){
   const props = r.stav === "navrh" && r.odCislo !== SELF_NO
     ? `<span class="pz">Navrženo místo toho: ${(r.navrhy || []).map(t => fmtS(r.mesic, parseProp(t))).join(", ")}</span>` : "";
-  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${r.skupina && r.skupina.length > 1 && (r.stav === "ceka" || r.stav === "navrh") ? `<span class="pz">Žádost dostalo ${r.skupina.length} kolegů – platí, kdo přijme první.</span>` : ""}${r.duvod === "jinde" ? `<span class="pz">Výměnu vzal jiný kolega.</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div></div>`;
+  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${r.skupina && r.skupina.length > 1 && (r.stav === "ceka" || r.stav === "navrh") ? `<span class="pz">Žádost dostalo ${r.skupina.length} kolegů – platí, kdo přijme první.</span>` : ""}${r.duvod === "jinde" ? `<span class="pz">Výměnu vzal jiný kolega.</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div><span class="go">Zobrazit v plánu ›</span></div>`;
 }
 let PROP = null; // {id, picks:[]} – rozpracovaný návrh u žádosti
 function propChoiceHTML(r){
@@ -1719,6 +1765,7 @@ async function reqAction(e){
   }
 }
 vymBody.addEventListener("click", reqAction);
+vymBody.addEventListener("click", e => reqGo(e, false));
 
 /* --- nová žádost --- */
 const swp = document.getElementById("swp"), swpBody = document.getElementById("swpBody");
@@ -2151,14 +2198,25 @@ function admReq(){
   if (ADM.typ === "vymena" && ADM.toShift) Object.assign(r.za, ADM.toShift);
   return r;
 }
+let ONLINE = {}, unsubOnline = null;
+function admTabsHTML(){
+  const on = Object.values(ONLINE).filter(o => o.prihlasen !== false && o.posledni && o.posledni.toMillis && getNow() - o.posledni.toMillis() < ONLINE_MS).length;
+  return `<div class="seg seg2" role="tablist" aria-label="Administrace" style="margin-bottom:14px">
+    <button type="button" data-atab="zmeny" aria-pressed="${ADM.tab !== "uziv"}">Změny služeb</button>
+    <button type="button" data-atab="uziv" aria-pressed="${ADM.tab === "uziv"}">Uživatelé${on ? ` · ${on} online` : ""}</button></div>`;
+}
 function renderAdm(){
+  if (ADM.tab === "uziv"){
+    admBody.innerHTML = `<h2 id="admTitle">Administrace</h2>${admTabsHTML()}${presenceHTML(OFFICERS, ONLINE, getNow().getTime(), {mobil:APP_VER})}`;
+    return;
+  }
   const id = docId(YEAR, MONTH);
   const names = Object.keys(EFF_T || {}).filter(n => OFFICERS[n] || true).sort((a,b) => a.localeCompare(b, "cs"));
   const opt = (sel, excl) => `<option value="">Vyber strážníka</option>` + names.filter(n => n !== excl).map(n => `<option ${n === sel ? "selected" : ""}>${esc(n)}</option>`).join("");
   const ready = ADM.from && ADM.fromShift && ADM.to && (ADM.typ === "prevzeti" || ADM.toShift);
   let checks = {e:[], w:[], i:[]};
   if (ready) checks = simulate(EFF_T, admReq(), null, YEAR, MONTH);
-  admBody.innerHTML = `<h2 id="admTitle">Administrace služeb</h2>
+  admBody.innerHTML = `<h2 id="admTitle">Administrace</h2>${admTabsHTML()}
     <p class="sub">${cap(MONTHS[MONTH])} ${YEAR} – změna platí hned, bez potvrzení strážníků.</p>
     <div class="seg seg2" role="group" aria-label="Typ změny">
       ${[["prevzeti","Převést službu"],["vymena","Vyměnit služby"]].map(([k,l]) => `<button type="button" data-atyp="${k}" aria-pressed="${ADM.typ === k}">${l}</button>`).join("")}
@@ -2183,14 +2241,19 @@ function admLogHTML(){
 }
 function openAdm(){
   if (!isAdminUI() || !PLAN) return;
-  ADM = {typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
+  ADM = {tab:"zmeny", typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
+  if (!unsubOnline) unsubOnline = db.collection(ONLINE_COL).onSnapshot(s => {
+    ONLINE = {}; s.docs.forEach(d => { ONLINE[d.id] = d.data(); });
+    if (ADM && !adm.hidden) renderAdm();
+  }, () => {});
   setMenu(false);
   adm.hidden = false; adm.scrollTop = 0; renderAdm();
   document.getElementById("admClose").focus();
 }
-function closeAdm(){ adm.hidden = true; ADM = null; }
+function closeAdm(){ adm.hidden = true; ADM = null; if (unsubOnline){ unsubOnline(); unsubOnline = null; } }
+setInterval(() => { if (ADM && !adm.hidden && ADM.tab === "uziv") renderAdm(); }, 30e3);
 document.getElementById("admClose").addEventListener("click", closeAdm);
-admBody.addEventListener("click", e => { if (e.target.closest("button[data-act]")) reqAction(e); });
+admBody.addEventListener("click", e => { if (e.target.closest("button[data-act]")) reqAction(e); else reqGo(e, true); });
 document.getElementById("admBtn").addEventListener("click", openAdm);
 admBody.addEventListener("input", e => { if (e.target.id === "admPozn") ADM.pozn = e.target.value; });
 admBody.addEventListener("change", e => {
@@ -2198,6 +2261,7 @@ admBody.addEventListener("change", e => {
   if (e.target.id === "admTo"){ ADM.to = e.target.value; ADM.toShift = null; renderAdm(); }
 });
 admBody.addEventListener("click", async e => {
+  const tb = e.target.closest("[data-atab]"); if (tb){ ADM.tab = tb.dataset.atab; renderAdm(); return; }
   const t = e.target.closest("[data-atyp]"); if (t){ ADM.typ = t.dataset.atyp; ADM.toShift = null; renderAdm(); return; }
   const o = e.target.closest(".pick");
   if (o){
