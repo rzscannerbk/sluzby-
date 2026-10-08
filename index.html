@@ -247,6 +247,19 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .pname{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;text-align:left;cursor:pointer;text-decoration:none}
 .pname.me{font-weight:600;text-decoration:underline solid;text-decoration-thickness:2px;text-decoration-color:currentColor}
 .cal{z-index:35}
+.cal.over{z-index:42}.cal.over .full-close{z-index:43}
+.cal-req{background:var(--sheet);border:1.5px solid #D04848;border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:14px;line-height:1.35}
+.cal-req p{margin:0 0 6px}
+.cal-req ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+.cal-req li{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px}
+.cal-req .xl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:1px 6px;border-radius:5px;color:#fff;background:#D04848}
+.cal-req li.take .xl{background:#2E9E5B}
+.cal-req .xt{opacity:.75}
+.cal-req .xn{flex-basis:100%;font-size:13px;background:rgba(224,124,124,.18);border-left:3px solid #E07C7C;border-radius:4px;padding:3px 7px}
+.cal .cal-day.x-give{box-shadow:0 0 0 3.5px #D04848;z-index:1}
+.cal .cal-day.x-take{box-shadow:0 0 0 3.5px #2E9E5B;z-index:1}
+.cal-day .xm{position:absolute;left:0;right:0;top:-8px;margin:auto;width:max-content;font-style:normal;font-size:9.5px;font-weight:700;line-height:1;padding:2px 4px;border-radius:4px;color:#fff;background:#D04848}
+.cal-day.x-take .xm{background:#2E9E5B}
 .cal .full-close{z-index:36}
 .cal-sheet{flex:1 0 auto;background:var(--sheet);border:1.5px solid var(--ink);border-radius:16px;padding:20px 16px calc(var(--sab) + 90px)}
 .cal-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
@@ -467,7 +480,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.46</span>
+      <span class="ver" id="verDiag">v4.47</span>
     </div>
   </div>
 </header>
@@ -508,6 +521,7 @@ button.cal-day{cursor:pointer}
       <p class="sub-txt">Odběr se sám aktualizuje i po výměnách a opravách plánu. Adresu nikomu neposílej – kdo ji má, vidí tvoje služby.</p>
       <button type="button" class="link-btn" id="subReset">Zneplatnit adresu a vytvořit novou</button>
     </div>
+    <div class="cal-req" id="calReq" hidden></div>
     <div class="cal-sum" id="calSum"></div>
     <div class="cal-grid" id="calGrid"></div>
     <p class="note-hint" id="calHint" hidden>Podrž prst na dni a přidáš k němu poznámku.</p>
@@ -915,6 +929,7 @@ function loadMonth(y, m, scrollMode){
     const ps = pendingScroll; pendingScroll = null;
     if (ps === "now") goNow(false);
     else if (ps === "top") left.scrollTop = 0;
+    else if (ps && ps.cal){ if (CAL_REQ && SELF) openCal(SELF); }
     else if (ps && ps.den) requestAnimationFrame(() => scrollToDay(ps.den, ps.kind));
   }, err => {
     clearTimeout(offlineTimer); setStatus("");
@@ -1041,14 +1056,18 @@ function fillCal(){
     if (date < today) cls.push("past");
     if (date.getTime() === today.getTime()) cls.push("today");
     const own = calName === SELF;
-    if (own && MY_NOTES[noteKey(d)]) cls.push("note");
+    const sn = own ? [...snotesOf(noteKey(d) + "|D"), ...snotesOf(noteKey(d) + "|N")] : [];
+    if (own && (MY_NOTES[noteKey(d)] || sn.length)) cls.push("note");
+    const xm = CAL_REQ && CAL_REQ.days[d];
+    if (xm) cls.push("x-" + xm);
     const label = parts.map(p => p.code).join("+");
     const work = hasD || hasN || hasP;
     const aria = `${d}. ${MONTH+1}.${label ? ", " + label : ", volno"}${st ? ", stálá služba" : ""}`;
     // každý den je tlačítko – klepnutí přesune časovou osu na ten den
-    html += `<button type="button" class="${cls.join(" ")}" data-day="${d}" data-d="${d}" data-kind="${hasN && !hasD ? "N" : "D"}" aria-label="${aria}">${d}${label ? `<small>${label}</small>` : ""}</button>`;
+    html += `<button type="button" class="${cls.join(" ")}" data-day="${d}" data-d="${d}" data-kind="${hasN && !hasD ? "N" : "D"}" aria-label="${aria}${xm ? (xm === "give" ? ", dáváš" : ", bereš") : ""}">${d}${label ? `<small>${label}</small>` : ""}${xm ? `<em class="xm">${xm === "give" ? "dávám" : "beru"}</em>` : ""}</button>`;
   }
   document.getElementById("calGrid").innerHTML = html;
+  fillCalReq(toks);
   document.getElementById("calIcs").hidden = calName !== SELF;
   if (calName !== SELF) subBox.hidden = true;
   renderNotes();
@@ -1144,10 +1163,14 @@ function renderNotes(){
   if (!own){ box.innerHTML = ""; document.getElementById("noteEd").hidden = true; return; }
   const pref = `${YEAR}-${String(MONTH+1).padStart(2,"0")}-`;
   const keys = Object.keys(MY_NOTES).filter(k => k.startsWith(pref) && MY_NOTES[k]).sort();
-  box.innerHTML = keys.length ? `<h3>Moje poznámky</h3><ul>${keys.map(k => {
+  const sk = Object.keys(MY_SNOTES).filter(k => k.startsWith(pref) && snotesOf(k).length).sort();
+  box.innerHTML = (keys.length ? `<h3>Moje poznámky</h3><ul>${keys.map(k => {
     const d = +k.slice(-2);
     return `<li><button type="button" data-note-d="${d}"><b>${noteDate(d)}</b>${esc(MY_NOTES[k])}</button></li>`;
-  }).join("")}</ul>` : "";
+  }).join("")}</ul>` : "") + (sk.length ? `<h3>Poznámky ke službám</h3><ul>${sk.map(k => {
+    const d = +k.slice(8, 10), kd = k.slice(-1);
+    return `<li><button type="button" data-day="${d}" data-kind="${kd}" class="sn-go"><b>${noteDate(d)} ${kd === "N" ? "noční" : "denní"}</b>${snotesOf(k).map(esc).join("<br>")}</button></li>`;
+  }).join("")}</ul>` : "");
 }
 function openNote(d){
   if (calName !== SELF || !SELF_NO) return;
@@ -1179,7 +1202,9 @@ document.getElementById("snoteDel").addEventListener("click", () => saveSnote(tr
 document.getElementById("snoteCancel").addEventListener("click", closeSnote);
 document.getElementById("noteDel").addEventListener("click", () => saveNote(true));
 document.getElementById("noteCancel").addEventListener("click", closeNote);
-document.getElementById("calNotes").addEventListener("click", e => { const b = e.target.closest("[data-note-d]"); if (b) openNote(+b.dataset.noteD); });
+document.getElementById("calNotes").addEventListener("click", e => {
+  const s = e.target.closest(".sn-go"); if (s){ const fromVym = !!CAL_REQ; closeCal(); if (!full.hidden) closeFull(); if (fromVym && !vym.hidden) closeVym(); scrollToDay(+s.dataset.day, s.dataset.kind); return; }
+  const b = e.target.closest("[data-note-d]"); if (b) openNote(+b.dataset.noteD); });
 // dlouhé podržení dne
 let lpTimer = null, lpFired = false, lpStart = null, lpEl = null;
 const calGridEl = document.getElementById("calGrid");
@@ -1296,12 +1321,26 @@ document.getElementById("subReset").addEventListener("click", () => {
   if (confirm("Stará adresa přestane fungovat a odběry s ní se přestanou aktualizovat. Pokračovat?")) showSub(true);
 });
 
+function fillCalReq(toks){
+  const box = document.getElementById("calReq");
+  if (!CAL_REQ || calName !== SELF){ box.hidden = true; return; }
+  const ds = Object.keys(CAL_REQ.days).map(Number).sort((a, b) => a - b);
+  const rows = ds.map(d => {
+    const tok = toks[d-1] || ".", x = new Date(YEAR, MONTH, d), give = CAL_REQ.days[d] === "give";
+    const notes = [MY_NOTES[noteKey(d)], ...snotesOf(noteKey(d) + "|D"), ...snotesOf(noteKey(d) + "|N")].filter(Boolean);
+    return `<li class="${give ? "give" : "take"}"><span class="xl">${give ? "dávám" : "beru"}</span><b>${DOW[x.getDay()]} ${d}. ${MONTH+1}.</b> <span class="xt">${tok === "." ? "volno" : esc(tok.replace(/\*/g, " stálá"))}</span>${notes.length ? `<span class="xn">${notes.map(esc).join("<br>")}</span>` : ""}</li>`;
+  }).join("");
+  box.innerHTML = `<p>${CAL_REQ.text}</p><ul>${rows}</ul>`;
+  box.hidden = false;
+}
 function openCal(name){
+  if (name !== SELF || vym.hidden) CAL_REQ = null;
+  cal.classList.toggle("over", !!CAL_REQ);
   calName = name; fillCal();
   cal.hidden = false; cal.scrollTop = 0;
   document.getElementById("calClose").focus();
 }
-function closeCal(){ cal.hidden = true; calName = null; closeNote(); subBox.hidden = true; }
+function closeCal(){ cal.hidden = true; calName = null; closeNote(); subBox.hidden = true; CAL_REQ = null; cal.classList.remove("over"); document.getElementById("calReq").hidden = true; }
 /* ================= plánování volna (dlouhodobý plán) ================= */
 // dlouhodobý plán 2026: měsíce oddělené „|“, znak = den (D denní D12, N noční N12, . volno)
 const vol = document.getElementById("vol");
@@ -1451,7 +1490,8 @@ document.getElementById("calGrid").addEventListener("click", e => {
   const b = e.target.closest("button.cal-day"); if (!b) return;
   const d = +b.dataset.day;
   const gi = GROUPS.findIndex(g => !g.prev && g.date.getDate() === d);
-  closeCal(); if (!full.hidden) closeFull();
+  const fromVym = !!CAL_REQ;
+  closeCal(); if (!full.hidden) closeFull(); if (fromVym && !vym.hidden) closeVym();
   const g = left.querySelectorAll(".group")[gi];
   if (!g) return;
   // noční služba → na noční kartu, jinak na začátek dne
@@ -1491,7 +1531,26 @@ function reqGo(e, admin){
   const box = e.target.closest(".req[data-id]"); if (!box) return;
   const id = box.dataset.id;
   const r = [...PENDING, ...SWAPS_MONTH, ...MY_OD, ...MY_ZA].find(x => x.id === id); if (!r || !r.mesic) return;
+  if (!admin && SELF){ openReqCal(r); return; }
   const t = reqDay(r, admin); if (t.den) goToDay(r.mesic, t.den, t.kind);
+}
+/* můj kalendář s vyznačenými dny výměny (otevírá se nad přehledem výměn) */
+let CAL_REQ = null; // {mesic, days:{den:"give"|"take"}, text}
+function reqMarks(r){
+  const od = r.od || {}, za = r.za || {}, days = {};
+  const alts = [...(r.moznosti || []), ...(r.navrhy || [])].map(parseProp).filter(x => x.den);
+  const other = [...(za.den ? [za] : []), ...alts];
+  if (od.jmeno === SELF){ days[od.den] = "give"; other.forEach(x => { if (!days[x.den]) days[x.den] = "take"; }); }
+  else if (za.jmeno === SELF || (r.skupina || []).includes(SELF_NO) || (r.skupina || []).includes(SELF)){
+    if (od.den) days[od.den] = "take"; other.forEach(x => { if (!days[x.den]) days[x.den] = "give"; });
+  } else if (od.den) days[od.den] = "take"; // nabídka všem
+  return days;
+}
+function openReqCal(r){
+  const [y, m] = ymOf(r.mesic);
+  CAL_REQ = {mesic:r.mesic, days:reqMarks(r), text:reqText(r)};
+  if (y === YEAR && m === MONTH && PLAN){ openCal(SELF); return; }
+  loadMonth(y, m, {cal:true});
 }
 
 /* ================= výměny služeb ================= */
@@ -1591,10 +1650,10 @@ function balanceHTML(){
     ${rows || `<p class="empty-s">Zatím žádné převzaté služby.</p>`}`;
 }
 const ST_LBL = {ceka:"Čeká", navrh:"Návrh", prijato:"Přijato", odmitnuto:"Odmítnuto", zruseno:"Zrušeno"};
-function reqCard(r, actions){
+function reqCard(r, actions, go){
   const props = r.stav === "navrh" && r.odCislo !== SELF_NO
     ? `<span class="pz">Navrženo místo toho: ${(r.navrhy || []).map(t => fmtS(r.mesic, parseProp(t))).join(", ")}</span>` : "";
-  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${r.skupina && r.skupina.length > 1 && (r.stav === "ceka" || r.stav === "navrh") ? `<span class="pz">Žádost dostalo ${r.skupina.length} kolegů – platí, kdo přijme první.</span>` : ""}${r.duvod === "jinde" ? `<span class="pz">Výměnu vzal jiný kolega.</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div><span class="go">Zobrazit v plánu ›</span></div>`;
+  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${r.skupina && r.skupina.length > 1 && (r.stav === "ceka" || r.stav === "navrh") ? `<span class="pz">Žádost dostalo ${r.skupina.length} kolegů – platí, kdo přijme první.</span>` : ""}${r.duvod === "jinde" ? `<span class="pz">Výměnu vzal jiný kolega.</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div><span class="go">${go || "Zobrazit v plánu"} ›</span></div>`;
 }
 let PROP = null; // {id, picks:[]} – rozpracovaný návrh u žádosti
 function propChoiceHTML(r){
@@ -1648,7 +1707,7 @@ function propPickHTML(r){
 }
 function renderVym(){
   if (vym.hidden) return;
-  const reqHTML = reqCard;
+  const reqHTML = (r, a) => reqCard(r, a, "Můj kalendář");
   const forMe = PENDING.filter(r => r.stav === "ceka" && r.zaCislo === SELF_NO);
   const propsForMe = PENDING.filter(r => r.stav === "navrh" && r.odCislo === SELF_NO);
   const offersAll = PENDING.filter(r => r.stav === "ceka" && r.zaCislo == null && r.odCislo !== SELF_NO);
@@ -2082,7 +2141,7 @@ function getMessaging(){
     messaging.onMessage(async p => {   // zpráva při otevřené stránce – ukázat stejně jako na pozadí
       const n = p.notification || {};
       const reg = await navigator.serviceWorker.ready;
-      reg.showNotification(n.title || "Služby", {body:n.body || "", icon:"icon-192.png", badge:"icon-192.png", data:{link:"./"}});
+      reg.showNotification(n.title || "Služby", {body:n.body || "", icon:"icon-192.png", badge:"badge-96.png", data:{link:"./"}});
     });
   }
   return messaging;
