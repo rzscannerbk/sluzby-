@@ -213,6 +213,22 @@ h1,h2,h3{font-family:var(--f-cond);font-weight:700;margin:0;line-height:1.05}
 .chip i{font-style:normal;font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px}
 .chip .stb{background:var(--green);color:#fff}
 .chip .swb{border:1px dashed currentColor;font-weight:600}
+.pteam{display:flex;flex-wrap:wrap;gap:2px 8px;font-size:12.5px;line-height:1.3;margin-top:2px}
+.pteam small{font-weight:700;opacity:.8}
+.pteam .pst{background:var(--green);color:#fff;font-weight:600;padding:0 5px;border-radius:4px}
+.pteam .me{font-weight:700;text-decoration:underline;text-underline-offset:2px}
+.pteam .swb{font-style:normal;font-size:10.5px;border:1px dashed currentColor;border-radius:4px;padding:0 3px}
+.pmeta{font-size:11.5px;line-height:1.25;opacity:.8}
+.pnote{font-size:12px;line-height:1.3;background:rgba(224,124,124,.22);border-left:3px solid #E07C7C;border-radius:4px;padding:3px 6px}
+.pc.N .pnote{background:rgba(255,255,255,.14)}
+.det-notes{background:var(--sheet);border-radius:14px;padding:14px 16px;border-left:5px solid #E07C7C;box-shadow:0 10px 30px rgba(0,0,0,.2);display:flex;flex-direction:column;gap:8px}
+.dn-h{font-weight:700;color:#A33A3A}
+.dn-h span{font-weight:500;color:var(--ink2);font-size:13px}
+.dn{display:flex;flex-direction:column;gap:6px;padding:8px 0;border-top:1px dashed #E7B3B3}
+.dn:first-of-type{border-top:0;padding-top:0}
+.dn p{margin:0;white-space:pre-wrap;font-size:16px;line-height:1.4}
+.dn-b{display:flex;gap:8px;justify-content:flex-end}
+.dn textarea{font-size:16px}
 .pev{margin-top:auto;font-size:12px;font-weight:600;color:#A33A3A;line-height:1.2}
 .pc.N .pev{color:#FFC2C2}
 .msum{display:flex;gap:10px}
@@ -358,7 +374,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v2.0</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v2.1</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -387,7 +403,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v2.0";
+const DESK_VER = "desktop v2.1";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
@@ -401,7 +417,14 @@ const MONTHS_GEN = ["ledna","února","března","dubna","května","června","čer
 
 let auth = null, db = null;
 let SELF = null, SELF_NO = null, SELF_EMAIL = "", OFFICERS = {}, ME = "";
-let PENDING = [], MY_OD = [], MY_ZA = [], MY_VOLP = [];
+let PENDING = [], MY_OD = [], MY_ZA = [], MY_VOLP = [], MY_SNOTES = {};
+// poznámky ke službě – stejný záznam jako v mobilu: poznamky/{číslo}.sluzby["RRRR-MM-DD|D/N"] = [texty]
+const snKey = (y, m, d, k) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}|${k}`;
+const snotesOf = key => { const v = MY_SNOTES[key]; return Array.isArray(v) ? v.filter(Boolean) : v ? [String(v)] : []; };
+async function writeSnotes(key, list){
+  const FV = firebase.firestore.FieldValue;
+  await db.collection("poznamky").doc(SELF_NO).set(list.length ? {sluzby:{[key]:list}, upraveno:FV.serverTimestamp()} : {sluzby:{[key]:FV.delete()}}, {merge:true});
+}
 const M = {};          // měsíce: id → {plan, ev, swaps, T, notes, len, okP, okS}
 const unsubs = [];
 let VIEW = "plan", PMODE = "week", WEEK = null, MY_ = {y:0, m:0};
@@ -476,7 +499,7 @@ function start(){
     const col = db.collection(SWAP_COL);
     unsubs.push(col.where("odCislo", "==", SELF_NO).where("stav", "==", "prijato").onSnapshot(s => { MY_OD = s.docs.map(d => ({id:d.id, ...d.data()})); render(); }, () => {}));
     unsubs.push(col.where("zaCislo", "==", SELF_NO).where("stav", "==", "prijato").onSnapshot(s => { MY_ZA = s.docs.map(d => ({id:d.id, ...d.data()})); render(); }, () => {}));
-    unsubs.push(db.collection("poznamky").doc(SELF_NO).onSnapshot(s => { MY_VOLP = volLoad(s.exists ? s.data() : {}); if (VIEW === "volno") render(); }, () => {}));
+    unsubs.push(db.collection("poznamky").doc(SELF_NO).onSnapshot(s => { const dd = s.exists ? s.data() : {}; MY_VOLP = volLoad(dd); MY_SNOTES = dd.sluzby || {}; render(); }, () => {}));
   }
   render();
 }
@@ -701,7 +724,7 @@ let rq = false;
 function render(){ if (rq) return; rq = true; requestAnimationFrame(() => { rq = false; draw(); }); }
 function draw(){
   if ($("app").hidden) return;
-  if (DET && !$("det").hidden) $("detBody").innerHTML = detHTML();
+  if (DET && !$("det").hidden && DET.edit === undefined) $("detBody").innerHTML = detHTML();
   setNav();
   if (SW) MAIN.innerHTML = swapHTML();
   else if (VIEW === "vymeny") MAIN.innerHTML = vymHTML();
@@ -807,8 +830,25 @@ function mineHTML(){
     });
     const ev = o.ev[d] || o.ev[String(d)] || "";
     const dk = kind === "N" ? "N" : "D";
+    // obsah karty služby: stálá, hlídka, porada, nepřítomní a moje poznámky
+    let body = "";
+    const info = (kind === "D" || kind === "N" || kind === "P") ? dayInfo(date) : null;
+    if (info){
+      const slots = [];
+      if (toks.some(c => /^(D12|D8)/.test(c)) || kind === "P") slots.push(["D", info.D]);
+      if (toks.some(c => /^(N1[23]|Nz7)/.test(c))) slots.push(["N", info.N]);
+      slots.forEach(([sk, sl]) => {
+        const who = p => `<span class="${p.name === SELF ? "me" : ""}">${esc(shortName(p.name))}${p.note && p.name !== SELF ? ` <i class="swb">⇄ ${esc(p.note)}</i>` : ""}</span>`;
+        body += `<div class="pteam">${slots.length > 1 ? `<small>${sk === "D" ? "Den" : "Noc"}:</small> ` : ""}${sl.stala ? `<span class="pst">${esc(shortName(sl.stala.name))}</span>` : ""}${sl.hl.map(who).join("")}</div>`;
+      });
+      if (dk === "D" && info.P.length && kind !== "P") body += `<div class="pmeta">Porada: ${info.P.map(p => esc(p.name.split(" ")[0])).join(", ")}</div>`;
+      const abs = [info.A.DOV ? "DOV " + info.A.DOV.map(n => n.split(" ")[0]).join(", ") : "", info.A.ZdV ? "ZdV " + info.A.ZdV.map(n => n.split(" ")[0]).join(", ") : ""].filter(Boolean).join(" · ");
+      if (abs) body += `<div class="pmeta">${esc(abs)}</div>`;
+    }
+    const myNotes = ["D", "N"].flatMap(k2 => snotesOf(snKey(y, m, d, k2)));
+    if (myNotes.length) body += `<div class="pnote">${myNotes.map(esc).join("<br>")}</div>`;
     cells += `<div class="pc${kind ? " has " + kind : ""}${today ? " today" : ""}${past ? " past" : ""}${wd === 0 || wd === 6 ? " we" : ""}" data-det="${id}|${d}|${dk}" data-pd="${d}" tabindex="-1" role="button" aria-label="${d}. ${m + 1}.${toks.length ? " " + toks.join(" ") : " volno"}">
-      <div class="pc-h"><b>${d}</b>${today ? `<span class="tod">dnes</span>` : ""}</div>${chips}${ev ? `<span class="pev">${esc(ev)}</span>` : ""}</div>`;
+      <div class="pc-h"><b>${d}</b>${today ? `<span class="tod">dnes</span>` : ""}</div>${chips}${body}${ev ? `<span class="pev">${esc(ev)}</span>` : ""}</div>`;
   }
   const sum = `<section class="panel"><h2>Souhrn – ${MONTHS[m]}</h2>
       <div class="msum"><div><b>${cD}</b><span>denních</span></div><div><b>${cN}</b><span>nočních</span></div><div><b>${hrs}</b><span>hodin</span></div></div>
@@ -973,14 +1013,24 @@ function detHTML(){
       <div class="det-lbl">Hlídka</div>${s.hl.length ? `<ul class="det-hl">${s.hl.map(pers).join("")}</ul>` : `<p class="empty">Nikdo další</p>`}
       ${extra.length ? `<div class="det-extra">${extra.join("")}</div>` : ""}
     </div>
+    ${SELF_NO ? notesBoxHTML(snKey(y, m, DET.d, k)) : ""}
     <div class="det-btns">
+      ${SELF_NO && DET.edit === undefined ? `<button type="button" class="btn sec" data-nadd>Přidat poznámku</button>` : ""}
       ${mine && ws > now ? `<button type="button" class="btn" data-swap="${DET.id}|${DET.d}|${k}">Vyměnit…</button>` : ""}
       <button type="button" class="btn sec" data-detk="${k === "N" ? "D" : "N"}">${k === "N" ? "Denní služba" : "Noční služba"} tohoto dne</button>
       <button type="button" class="btn sec" id="detClose">Zavřít</button>
     </div>`;
 }
+function notesBoxHTML(key){
+  const list = snotesOf(key), ed = DET.edit;
+  if (!list.length && ed === undefined) return "";
+  const items = list.map((t, i) => ed === i ? editorHTML(t) : `<div class="dn"><p>${esc(t)}</p>${ed === undefined ? `<div class="dn-b"><button type="button" class="btn sec sm" data-nedit="${i}">Upravit</button><button type="button" class="btn danger sm" data-ndel="${i}">Smazat</button></div>` : ""}</div>`).join("");
+  return `<div class="det-notes"><div class="dn-h">${list.length > 1 ? "Moje poznámky" : "Moje poznámka"} <span>– vidíš jen ty</span></div>${items}${ed === -1 ? editorHTML("") : ""}<div class="checks" id="nMsg"></div></div>`;
+}
+const editorHTML = t => `<div class="dn ed"><textarea id="nText" rows="3" maxlength="500" placeholder="Text poznámky ke službě">${esc(t)}</textarea><div class="dn-b"><button type="button" class="btn sm" data-nsave>Uložit</button><button type="button" class="btn sec sm" data-ncancel>Zrušit</button></div></div>`;
 function openDet(id, d, k){ DET = {id, d, k}; $("det").hidden = false; $("detBody").innerHTML = detHTML(); $("detBody").focus({preventScroll:true}); }
-function closeDet(){ if (!DET) return; DET = null; $("det").hidden = true; $("detBody").innerHTML = ""; kfFocus(); }
+function closeDet(){ if (!DET) return; DET = null; $("det").hidden = true; $("detBody").innerHTML = ""; if (DIRTY){ DIRTY = false; render(); } kfFocus(); }
+let DIRTY = false;
 $("det").addEventListener("click", e => {
   if (e.target.id === "det" || e.target.id === "detClose"){ closeDet(); return; }
   const cn = e.target.closest("[data-calnav]");
@@ -989,10 +1039,30 @@ $("det").addEventListener("click", e => {
   if (cd){ const [d, k] = cd.dataset.calday.split("|"), date = new Date(DET.y, DET.m, +d);
     closeDet(); SW = null; VIEW = "plan"; PMODE = "week"; WEEK = mondayOf(date); FLASH = {date, kind:k};
     KF = {mode:"week", key:`${idOf(date)}|${date.getDate()}`, k}; render(); return; }
-  const sw = e.target.closest("[data-detk]"); if (sw){ DET.k = sw.dataset.detk; $("detBody").innerHTML = detHTML(); return; }
+  const sw = e.target.closest("[data-detk]"); if (sw){ DET.k = sw.dataset.detk; DET.edit = undefined; $("detBody").innerHTML = detHTML(); return; }
+  const redraw = (focus) => { $("detBody").innerHTML = detHTML(); if (focus && $("nText")){ const t = $("nText"); t.focus(); t.setSelectionRange(t.value.length, t.value.length); } };
+  const key = () => { const [y, m] = ymOf(DET.id); return snKey(y, m, DET.d, DET.k); };
+  if (e.target.closest("[data-nadd]")){ DET.edit = -1; redraw(true); return; }
+  const ne = e.target.closest("[data-nedit]"); if (ne){ DET.edit = +ne.dataset.nedit; redraw(true); return; }
+  if (e.target.closest("[data-ncancel]")){ DET.edit = undefined; redraw(); return; }
+  const nd = e.target.closest("[data-ndel]");
+  if (nd){ if (!confirm("Smazat tuto poznámku?")) return; const list = snotesOf(key()); list.splice(+nd.dataset.ndel, 1);
+    writeSnotes(key(), list).then(() => { MY_SNOTES[key()] = list; DIRTY = true; redraw(); }).catch(() => { $("nMsg").innerHTML = `<p class="e">Poznámku se nepodařilo smazat.</p>`; }); return; }
+  if (e.target.closest("[data-nsave]")){
+    const txt = ($("nText").value || "").trim(), list = snotesOf(key());
+    if (DET.edit >= 0){ if (txt) list[DET.edit] = txt; else list.splice(DET.edit, 1); } else if (txt) list.push(txt);
+    else { DET.edit = undefined; redraw(); return; }
+    e.target.disabled = true;
+    writeSnotes(key(), list).then(() => { MY_SNOTES[key()] = list; DET.edit = undefined; DIRTY = true; redraw(); })
+      .catch(err => { e.target.disabled = false; $("nMsg").innerHTML = `<p class="e">${err && err.code === "permission-denied" ? "Uložení zamítnuto pravidly Firestore." : "Poznámku se nepodařilo uložit."}</p>`; });
+    return; }
   const sb = e.target.closest("[data-swap]"); if (sb){ const [id, d, k] = sb.dataset.swap.split("|"); closeDet(); openSwap(id, +d, k); }
 });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && DET) closeDet(); });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape" || !DET) return;
+  if (DET.edit !== undefined){ DET.edit = undefined; $("detBody").innerHTML = detHTML(); $("detBody").focus({preventScroll:true}); return; }
+  closeDet();
+});
 MAIN.addEventListener("change", e => { if (e.target.id === "meSel"){ ME = e.target.value; render(); } });
 
 /* ----- výměny – přehled ----- */
