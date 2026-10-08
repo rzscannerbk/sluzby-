@@ -23,6 +23,7 @@ button,select,input,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 button:disabled{cursor:default;opacity:.45}
 :focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+button:focus-visible,a:focus-visible,select:focus-visible{outline:none;box-shadow:0 0 0 2px var(--sheet),0 0 0 5px var(--blue)}
 h1,h2,h3{font-family:var(--f-cond);font-weight:700;margin:0;line-height:1.05}
 [hidden]{display:none!important}
 
@@ -150,6 +151,7 @@ h1,h2,h3{font-family:var(--f-cond);font-weight:700;margin:0;line-height:1.05}
 .mc[data-det]{cursor:pointer}
 .mc[data-det]:hover{outline:2px solid var(--ink);outline-offset:1px}
 .det{position:fixed;inset:0;z-index:50;background:rgba(20,26,44,.45);display:flex;align-items:center;justify-content:center;padding:24px}
+.det-box:focus{outline:none}
 .det-box{width:min(520px,100%);max-height:calc(100vh - 48px);overflow:auto;display:flex;flex-direction:column;gap:14px}
 .det-card{border-radius:18px;padding:22px 24px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
 .det-card.day{background:var(--dayBg);border:2px solid var(--dayBd)}
@@ -171,6 +173,16 @@ h1,h2,h3{font-family:var(--f-cond);font-weight:700;margin:0;line-height:1.05}
 .det-extra{margin-top:16px;padding-top:12px;border-top:1px dashed currentColor;font-size:15px;line-height:1.4;opacity:.9}
 .det-extra p{margin:0 0 4px}
 .det-extra .dev{font-weight:600}
+.cal-card{background:var(--sheet);border:2px solid var(--ink)}
+.cal-who{font-size:14px;color:var(--ink2);font-weight:600}
+.mc-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 10px}
+.mc-top h2{font-size:30px}
+.cal-sum{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 12px;font-size:14px;color:var(--ink2)}
+.cal-sum span{display:inline-flex;align-items:center;gap:6px}
+.cal-sum b{color:var(--ink)}
+.cal-sum i{width:12px;height:12px;border-radius:4px;display:inline-block}
+.cal-card .cd{height:56px}
+.cal-card .cd:not(:disabled):hover{outline:2px solid var(--ink);outline-offset:1px}
 .det-btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
 .det-btns .btn.sec{background:var(--sheet)}
 
@@ -297,6 +309,9 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
       <button class="item" type="button" data-view="vymeny">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>
         Výměny služeb<span class="badge" id="navBadge" hidden>0</span></button>
+      <button class="item" type="button" id="navCal">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><circle cx="12" cy="15.5" r="2.2"/></svg>
+        Můj kalendář</button>
       <button class="item" type="button" data-view="volno" id="navVolno">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.5"/></svg>
         Plánování volna</button>
@@ -310,11 +325,11 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v1.7</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v1.9</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
-  <div class="det" id="det" role="dialog" aria-modal="true" aria-label="Detail služby" hidden><div class="det-box" id="detBody"></div></div>
+  <div class="det" id="det" role="dialog" aria-modal="true" aria-label="Detail služby" hidden><div class="det-box" id="detBody" tabindex="-1"></div></div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -339,7 +354,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v1.7";
+const DESK_VER = "desktop v1.9";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
@@ -637,7 +652,7 @@ document.addEventListener("click", e => {
 });
 
 /* ---------- navigace ---------- */
-document.querySelectorAll(".nav .item").forEach(b => b.addEventListener("click", () => {
+document.querySelectorAll(".nav .item[data-view]").forEach(b => b.addEventListener("click", () => {
   VIEW = b.dataset.view; SW = null; PROP = null;
   if (VIEW === "volno") openVol();
   if (VIEW === "admin" && !unsubOnline && isAdmin()) unsubOnline = db.collection(ONLINE_COL).onSnapshot(s => { ONLINE = {}; s.docs.forEach(d => { ONLINE[d.id] = d.data(); }); if (VIEW === "admin") render(); }, () => {});
@@ -703,6 +718,7 @@ function planBar(title, sub){
     <h1>${esc(title)}</h1>${sub ? `<span class="wk">${esc(sub)}</span>` : ""}
     <div class="seg push" role="group" aria-label="Zobrazení"><button type="button" data-mode="week" aria-pressed="${PMODE === "week"}">Týden</button><button type="button" data-mode="month" aria-pressed="${PMODE === "month"}">Měsíc</button></div>
     <label class="lbl">Zvýraznit <select id="meSel"><option value="">nikoho</option>${names.map(n => `<option${n === ME ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
+    <button type="button" class="btn sec" data-mycal>Můj kalendář</button>
     <button type="button" class="btn" data-nav="0">Dnes</button>
     ${PMODE === "month" ? `<button type="button" class="btn sec" onclick="window.print()">Tisk</button>` : ""}
   </div>`;
@@ -772,12 +788,15 @@ MAIN.addEventListener("click", e => {
   }
   const md = e.target.closest("[data-mode]"); if (md){ PMODE = md.dataset.mode; if (PMODE === "month"){ MY_ = {y:WEEK.getFullYear(), m:addDays(WEEK, 3).getMonth()}; } render(); return; }
   const sb = e.target.closest("[data-swap]"); if (sb){ closeDet(); const [id, d, k] = sb.dataset.swap.split("|"); openSwap(id, +d, k); return; }
+  if (e.target.closest("[data-mycal]")){ openMyCal(); return; }
   const mn = e.target.closest("[data-mname]"); if (mn){ ME = ME === mn.dataset.mname ? "" : mn.dataset.mname; render(); return; }
   const dt = e.target.closest("[data-det]"); if (dt){ const [id, d, k] = dt.dataset.det.split("|");
     KF = dt.classList.contains("mc") ? {mode:"month", r:+dt.dataset.r, d:+dt.dataset.d} : {mode:"week", key:`${id}|${d}`, k};
     openDet(id, +d, k); return; }
 });
 MAIN.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".card[data-det], .mc[data-det]")){ e.preventDefault(); e.target.click(); } });
+
+$("navCal").addEventListener("click", openMyCal);
 
 /* ----- procházení šipkami na klávesnici ----- */
 let KF = null; // týden {mode:"week", key:"YYYY-MM|d", k}, měsíc {mode:"month", r, d}
@@ -817,7 +836,35 @@ document.addEventListener("keydown", e => {
 
 /* ----- detail služby ----- */
 let DET = null;
+function myCalHTML(){
+  const {y, m} = DET, id = docId(y, m), o = month(id), now = getNow();
+  const head = `<div class="mc-top"><button type="button" class="sq" data-calnav="-1" aria-label="Předchozí měsíc">‹</button><h2>${cap(MONTHS[m])} ${y}</h2><button type="button" class="sq" data-calnav="1" aria-label="Další měsíc">›</button></div>`;
+  if (!o.okP) return `<div class="det-card cal-card">${head}<p class="empty">Načítám…</p></div>`;
+  if (!o.exists) return `<div class="det-card cal-card">${head}<p class="empty">Plán na tento měsíc není nahraný.</p></div>${calBtns()}`;
+  let cD = 0, cN = 0, cP = 0, cS = 0, cA = 0;
+  for (let d = 1; d <= o.len; d++){
+    const t = tokens(o.T, SELF, d).filter(c => c !== ".");
+    if (t.some(c => /^(D12|D8)/.test(c))) cD++;
+    if (t.some(c => /^(N1[23]|Nz7)/.test(c))) cN++;
+    if (t.some(c => /^D2/.test(c))) cP++;
+    if (t.some(c => c.endsWith("*"))) cS++;
+    if (t.some(c => /^(DOV|ZdV)/.test(c))) cA++;
+  }
+  const cal = calHTML(id, SELF, c => ({cls:c.today ? "today" : "", attr:`data-calday="${c.d}|${c.kind || (c.cls === "N" ? "N" : "D")}"`}));
+  const sum = [["var(--day)", "Denní", cD], ["var(--night)", "Noční", cN], ["var(--pd)", "Porada", cP], ["var(--green)", "Stálá", cS], ["var(--absBg)", "Dovolená / ZdV", cA]]
+    .filter(x => x[2] || x[1] !== "Dovolená / ZdV").map(([c, l, n]) => `<span><i style="background:${c}"></i>${l} <b>${n}</b></span>`).join("");
+  return `<div class="det-card cal-card"><div class="cal-who">${esc(SELF || "")}</div>${head}<div class="cal-sum">${sum}</div>${cal}
+      <p class="hint" style="margin-top:12px">Klikni na den – otevře se v týdenním přehledu.</p></div>${calBtns()}`;
+}
+const calBtns = () => `<div class="det-btns"><button type="button" class="btn sec" data-calnav="0">Tento měsíc</button><button type="button" class="btn sec" id="detClose">Zavřít</button></div>`;
+function openMyCal(){
+  if (!SELF) return;
+  const base = PMODE === "month" ? new Date(MY_.y, MY_.m, 1) : addDays(WEEK, 3);
+  DET = {cal:true, y:base.getFullYear(), m:base.getMonth()};
+  $("det").hidden = false; $("detBody").innerHTML = myCalHTML(); $("detBody").focus({preventScroll:true});
+}
 function detHTML(){
+  if (DET.cal) return myCalHTML();
   const [y, m] = ymOf(DET.id), date = new Date(y, m, DET.d), info = dayInfo(date), k = DET.k, now = getNow();
   if (!info || !info.exists) return `<p class="empty">Plán pro tento den není načtený.</p>`;
   const s = k === "N" ? info.N : info.D;
@@ -848,10 +895,16 @@ function detHTML(){
       <button type="button" class="btn sec" id="detClose">Zavřít</button>
     </div>`;
 }
-function openDet(id, d, k){ DET = {id, d, k}; $("det").hidden = false; $("detBody").innerHTML = detHTML(); $("detClose").focus(); }
+function openDet(id, d, k){ DET = {id, d, k}; $("det").hidden = false; $("detBody").innerHTML = detHTML(); $("detBody").focus({preventScroll:true}); }
 function closeDet(){ if (!DET) return; DET = null; $("det").hidden = true; $("detBody").innerHTML = ""; kfFocus(); }
 $("det").addEventListener("click", e => {
   if (e.target.id === "det" || e.target.id === "detClose"){ closeDet(); return; }
+  const cn = e.target.closest("[data-calnav]");
+  if (cn){ const v = +cn.dataset.calnav, now = getNow(), t = v === 0 ? now : new Date(DET.y, DET.m + v, 1); DET.y = t.getFullYear(); DET.m = t.getMonth(); $("detBody").innerHTML = myCalHTML(); return; }
+  const cd = e.target.closest("[data-calday]");
+  if (cd){ const [d, k] = cd.dataset.calday.split("|"), date = new Date(DET.y, DET.m, +d);
+    closeDet(); SW = null; VIEW = "plan"; PMODE = "week"; WEEK = mondayOf(date); FLASH = {date, kind:k};
+    KF = {mode:"week", key:`${idOf(date)}|${date.getDate()}`, k}; render(); return; }
   const sw = e.target.closest("[data-detk]"); if (sw){ DET.k = sw.dataset.detk; $("detBody").innerHTML = detHTML(); return; }
   const sb = e.target.closest("[data-swap]"); if (sb){ const [id, d, k] = sb.dataset.swap.split("|"); closeDet(); openSwap(id, +d, k); }
 });
