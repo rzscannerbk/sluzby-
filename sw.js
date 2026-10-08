@@ -27,11 +27,13 @@ self.addEventListener("notificationclick", e => {
 });
 
 // Při každé změně souborů zvyš verzi, aby se stará cache smazala.
-const VERSION = "sluzby-v64";
+const VERSION = "sluzby-v65";
 const LIB_CACHE = "sluzby-knihovny";
 const CORE = [
   "./",
   "./index.html",
+  "./desktop.html",
+  "./sluzby-core.js",
   "./firebase-config.js",
   "./manifest.webmanifest",
   "./icon-192.png",
