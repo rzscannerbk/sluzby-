@@ -75,7 +75,7 @@ h1,h2,h3{font-family:var(--f-cond);font-weight:700;margin:0;line-height:1.05}
 
 /* týden */
 .planwrap{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
-.week{flex:999 1 740px;min-width:0;overflow-x:auto}
+.week{flex:999 1 740px;min-width:0;overflow-x:auto;padding:8px;margin:-8px}
 .weekgrid{display:grid;grid-template-columns:repeat(7,minmax(104px,1fr));gap:8px}
 .col{display:flex;flex-direction:column;gap:8px}
 .dhead{height:64px;border-radius:12px;background:var(--sheet);border:1.5px solid var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center}
@@ -85,11 +85,13 @@ h1,h2,h3{font-family:var(--f-cond);font-weight:700;margin:0;line-height:1.05}
 .dhead.we .w{color:#8A5A1E}
 .ev{min-height:18px;font-size:13px;font-weight:600;color:#A33A3A;text-align:center;line-height:1.2}
 .card{border-radius:12px;padding:10px 10px 12px;display:flex;flex-direction:column;gap:5px}
-.card.day{background:var(--dayBg);border:1.5px solid var(--dayBd);min-height:210px}
-.card.night{background:var(--nightBg);color:#F2F0FF;min-height:140px}
+.card.day{background:var(--dayBg);border:3px solid var(--dayBd);min-height:210px}
+.card.night{background:var(--nightBg);color:#F2F0FF;border:3px solid var(--nightBg);min-height:140px}
 .card.empty{opacity:.55}
-.card.mine{box-shadow:0 0 0 3px var(--sheet),0 0 0 5px var(--ink)}
-.card.live{box-shadow:0 0 0 3px var(--sheet),0 0 0 5px var(--blue)}
+.card.mine{border-color:var(--ink)}
+.card.night.mine{border-color:#F2D24A}
+.card.live{border-color:var(--blue)}
+.card.night.live{border-color:#8FB2FF}
 .ch{display:flex;justify-content:space-between;align-items:baseline}
 .ch b{font-family:var(--f-cond);font-size:17px}
 .ch span{font-family:var(--f-cond);font-weight:600;font-size:15px;color:var(--dayInk)}
@@ -138,7 +140,10 @@ h1,h2,h3{font-family:var(--f-cond);font-weight:700;margin:0;line-height:1.05}
 .stbadge{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600;background:#E7E9EE;color:var(--ink2);margin-left:6px}
 
 .card[data-det]{cursor:pointer;transition:transform .1s}
-.card[data-det]:focus,.mc[data-det]:focus{outline:3px solid var(--blue);outline-offset:3px;z-index:1;position:relative}
+.card[data-det]:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue),0 10px 24px rgba(30,99,198,.35);transform:translateY(-3px);position:relative;z-index:2}
+.card.day[data-det]:focus{background:#FFE27A}
+.card.night[data-det]:focus{background:#5B4FD0;border-color:#BFD2FF;box-shadow:0 0 0 3px #BFD2FF,0 10px 24px rgba(30,99,198,.45)}
+.mc[data-det]:focus{outline:3px solid var(--blue);outline-offset:1px;transform:scale(1.18);position:relative;z-index:2;box-shadow:0 4px 12px rgba(30,99,198,.4)}
 .bar .wk{font-family:var(--f-cond);font-weight:600;font-size:22px;color:var(--ink2);margin-right:auto}
 .kbd-hint{font-size:12px;color:var(--ink2)}
 .card[data-det]:hover{transform:translateY(-2px)}
@@ -179,7 +184,13 @@ h1,h2,h3{font-family:var(--f-cond);font-weight:700;margin:0;line-height:1.05}
 .mh.today{background:var(--blue);color:#fff}
 .mh.today span{color:#E2EAFF}
 .mn{display:flex;align-items:center;padding:0 6px;border-radius:6px;font-size:13px;font-weight:500;min-height:32px;white-space:nowrap}
-.mn.me{background:var(--dayBg);font-weight:700}
+.mn.me{background:var(--day);font-weight:700}
+button.mn{border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;width:100%}
+button.mn:hover{background:#EEF0F4}
+button.mn.me{background:var(--day)}
+.mt.me{background:var(--day)}
+.mc.hl{box-shadow:inset 0 0 0 2px var(--ink)}
+.mc.hl:not(.D):not(.N):not(.P):not(.A){background:#FBEFB8}
 .mc{position:relative;min-height:32px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--f-cond);font-weight:600;font-size:12px;background:#EEF0F2;color:#9AA1B0}
 .mc.D{background:var(--day);color:var(--ink)}
 .mc.N{background:var(--night);color:#fff}
@@ -299,7 +310,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v1.6</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v1.7</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -328,7 +339,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v1.6";
+const DESK_VER = "desktop v1.7";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
@@ -725,7 +736,8 @@ function monthHTML(){
   for (let d = 1; d <= n; d++){ const w = new Date(y, m, d).getDay(); h += `<div class="mh${isToday(d) ? " today" : (w === 0 || w === 6) ? " we" : ""}"><b>${d}</b><span>${DOW_T[w]}</span></div>`; }
   h += `<div class="mh"><span>D / N</span></div>`;
   names.forEach((name, ri) => {
-    let cD = 0, cN = 0, row = `<div class="mn${name === ME ? " me" : ""}">${esc(name)}</div>`;
+    const hl = name === ME;
+    let cD = 0, cN = 0, row = `<button type="button" class="mn${hl ? " me" : ""}" data-mname="${esc(name)}" title="Zvýraznit řádek">${esc(name)}</button>`;
     for (let d = 1; d <= n; d++){
       const toks = tokens(o.T, name, d).filter(c => c !== ".");
       let cls = "", t = "";
@@ -739,9 +751,9 @@ function monthHTML(){
       }
       const swp = main && Object.keys(o.notes).some(k => k.startsWith(`${d}|`) && k.endsWith(`|${name}`));
       const dk = main ? (kindOf(main) || (cls === "N" ? "N" : "D")) : "D";
-      row += `<div class="mc ${cls}${swp ? " swp" : isToday(d) ? " today" : ""}" data-det="${id}|${d}|${dk}" data-r="${ri}" data-d="${d}" tabindex="-1" title="${esc(name)} – ${d}. ${m + 1}.${t ? " " + t : ""}">${t}${toks.some(c => c.endsWith("*")) ? `<span class="s"></span>` : ""}</div>`;
+      row += `<div class="mc ${cls}${hl ? " hl" : ""}${swp ? " swp" : isToday(d) ? " today" : ""}" data-det="${id}|${d}|${dk}" data-r="${ri}" data-d="${d}" tabindex="-1" title="${esc(name)} – ${d}. ${m + 1}.${t ? " " + t : ""}">${t}${toks.some(c => c.endsWith("*")) ? `<span class="s"></span>` : ""}</div>`;
     }
-    h += row + `<div class="mt${name === ME ? " mn me" : ""}">${cD} / ${cN}</div>`;
+    h += row + `<div class="mt${hl ? " me" : ""}">${cD} / ${cN}</div>`;
   });
   h += `<div class="mn" style="color:var(--ink2);font-size:13px">Události</div>`;
   for (let d = 1; d <= n; d++) h += `<div class="mev">${esc(o.ev[d] || o.ev[String(d)] || "")}</div>`;
@@ -760,6 +772,7 @@ MAIN.addEventListener("click", e => {
   }
   const md = e.target.closest("[data-mode]"); if (md){ PMODE = md.dataset.mode; if (PMODE === "month"){ MY_ = {y:WEEK.getFullYear(), m:addDays(WEEK, 3).getMonth()}; } render(); return; }
   const sb = e.target.closest("[data-swap]"); if (sb){ closeDet(); const [id, d, k] = sb.dataset.swap.split("|"); openSwap(id, +d, k); return; }
+  const mn = e.target.closest("[data-mname]"); if (mn){ ME = ME === mn.dataset.mname ? "" : mn.dataset.mname; render(); return; }
   const dt = e.target.closest("[data-det]"); if (dt){ const [id, d, k] = dt.dataset.det.split("|");
     KF = dt.classList.contains("mc") ? {mode:"month", r:+dt.dataset.r, d:+dt.dataset.d} : {mode:"week", key:`${id}|${d}`, k};
     openDet(id, +d, k); return; }
