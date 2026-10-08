@@ -137,6 +137,38 @@ h1,h2,h3{font-family:var(--f-cond);font-weight:700;margin:0;line-height:1.05}
 .next b{font-family:var(--f-cond);font-weight:600;color:var(--ink2)}
 .stbadge{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600;background:#E7E9EE;color:var(--ink2);margin-left:6px}
 
+.card[data-det]{cursor:pointer;transition:transform .1s}
+.card[data-det]:focus,.mc[data-det]:focus{outline:3px solid var(--blue);outline-offset:3px;z-index:1;position:relative}
+.bar .wk{font-family:var(--f-cond);font-weight:600;font-size:22px;color:var(--ink2);margin-right:auto}
+.kbd-hint{font-size:12px;color:var(--ink2)}
+.card[data-det]:hover{transform:translateY(-2px)}
+.mc[data-det]{cursor:pointer}
+.mc[data-det]:hover{outline:2px solid var(--ink);outline-offset:1px}
+.det{position:fixed;inset:0;z-index:50;background:rgba(20,26,44,.45);display:flex;align-items:center;justify-content:center;padding:24px}
+.det-box{width:min(520px,100%);max-height:calc(100vh - 48px);overflow:auto;display:flex;flex-direction:column;gap:14px}
+.det-card{border-radius:18px;padding:22px 24px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.det-card.day{background:var(--dayBg);border:2px solid var(--dayBd)}
+.det-card.night{background:var(--nightBg);color:#F2F0FF}
+.det-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.det-top h2{font-size:30px}
+.det-live{display:inline-block;margin-top:4px;color:var(--blue);font-weight:700;font-size:14px}
+.det-card.night .det-live{color:#8FB2FF}
+.det-date{text-align:right;font-family:var(--f-cond);font-weight:700;line-height:1}
+.det-date span{display:block;font-size:22px;opacity:.75}
+.det-date b{font-size:40px;opacity:.75}
+.det-card .big{margin-top:8px}
+.det-card .pr{color:inherit;opacity:.85}
+.det-lbl{margin:16px 0 6px;font-size:14px;opacity:.7}
+.det-st{font-size:17px;padding:5px 12px}
+.det-hl{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:18px}
+.det-hl li::before{content:"– ";opacity:.6}
+.det-hl li.me{font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.det-extra{margin-top:16px;padding-top:12px;border-top:1px dashed currentColor;font-size:15px;line-height:1.4;opacity:.9}
+.det-extra p{margin:0 0 4px}
+.det-extra .dev{font-weight:600}
+.det-btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
+.det-btns .btn.sec{background:var(--sheet)}
+
 /* měsíc */
 .matrix{background:var(--sheet);border-radius:14px;padding:14px;overflow-x:auto}
 .mgrid{display:grid;gap:3px;font-size:12px;min-width:1040px}
@@ -267,10 +299,11 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v1.4</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v1.6</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
+  <div class="det" id="det" role="dialog" aria-modal="true" aria-label="Detail služby" hidden><div class="det-box" id="detBody"></div></div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -295,7 +328,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v1.4";
+const DESK_VER = "desktop v1.6";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
@@ -318,6 +351,7 @@ let PROP = null;       // rozpracovaný návrh {id, picks}
 let VOL = {y:0, m:0, draft:new Set(), edit:null};
 
 /* ---------- pomocné ---------- */
+const isoWeek = d => { const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())), n = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - n); const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1)); return Math.ceil(((t - y0) / 864e5 + 1) / 7); };
 const mondayOf = d => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; };
 const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -608,12 +642,13 @@ let rq = false;
 function render(){ if (rq) return; rq = true; requestAnimationFrame(() => { rq = false; draw(); }); }
 function draw(){
   if ($("app").hidden) return;
+  if (DET && !$("det").hidden) $("detBody").innerHTML = detHTML();
   setNav();
   if (SW) MAIN.innerHTML = swapHTML();
   else if (VIEW === "vymeny") MAIN.innerHTML = vymHTML();
   else if (VIEW === "volno") MAIN.innerHTML = volHTML();
   else if (VIEW === "admin") MAIN.innerHTML = admHTML();
-  else { MAIN.innerHTML = PMODE === "week" ? weekHTML() : monthHTML(); if (FLASH && MAIN.querySelector(".col.flash")) setTimeout(() => { FLASH = null; }, 3500); }
+  else { MAIN.innerHTML = PMODE === "week" ? weekHTML() : monthHTML(); kfFocus(); if (FLASH && MAIN.querySelector(".col.flash")) setTimeout(() => { FLASH = null; }, 3500); }
 }
 
 /* ----- týden ----- */
@@ -635,7 +670,7 @@ function weekHTML(){
       const pct = live ? Math.round((now - ws) / (we2 - ws) * 100) : 0;
       const absTxt = k === "D" ? [info.A.DOV ? "DOV " + info.A.DOV.map(n => n.split(" ")[0]).join(", ") : "", info.A.ZdV ? "ZdV " + info.A.ZdV.map(n => n.split(" ")[0]).join(", ") : "", info.P.length ? "Porada D2: " + info.P.length + "×" : ""].filter(Boolean).join(" · ") : "";
       const canSwap = mine && ws > now;
-      return `<div class="card ${k === "D" ? "day" : "night"}${live ? " live" : mine ? " mine" : ""}">
+      return `<div class="card ${k === "D" ? "day" : "night"}${live ? " live" : mine ? " mine" : ""}" data-det="${idOf(dt)}|${dt.getDate()}|${k}" tabindex="-1" role="button" aria-label="Detail – ${k === "D" ? "denní" : "noční"} služba ${dt.getDate()}. ${dt.getMonth() + 1}.">
         <div class="ch"><b>${k === "D" ? "Den" : "Noc"}</b><span>${k === "D" ? (code === "D8" ? "10–18" : "7–19") : (NTIME[code] || "19–8")}</span></div>
         ${live ? `<div class="prog"><i style="width:${pct}%"></i></div>` : ""}
         ${s.stala ? `<span class="st">${esc(shortName(s.stala.name))}${s.stala.note ? ` <span class="sw">⇄ ${esc(s.stala.note)}</span>` : ""}</span>` : ""}
@@ -647,14 +682,14 @@ function weekHTML(){
     const fl = FLASH && sameDay(FLASH.date, dt);
     return `<div class="col${fl ? " flash" : ""}">${head}<div class="ev">${esc(info.ev)}</div>${slot("D", info.D)}${slot("N", info.N)}</div>`;
   }).join("");
-  return `${planBar(title)}<div class="planwrap"><div class="week"><div class="weekgrid">${cols}</div></div>${railHTML()}</div>`;
+  return `${planBar(title, `${isoWeek(addDays(WEEK, 3))}. týden`)}<div class="planwrap"><div class="week"><div class="weekgrid">${cols}</div></div>${railHTML()}</div>`;
 }
-function planBar(title){
+function planBar(title, sub){
   const names = Object.keys(OFFICERS).sort((a, b) => a.localeCompare(b, "cs"));
   return `<div class="bar">
     <button type="button" class="sq" data-nav="-1" aria-label="${PMODE === "week" ? "Předchozí týden" : "Předchozí měsíc"}">‹</button>
     <button type="button" class="sq" data-nav="1" aria-label="${PMODE === "week" ? "Další týden" : "Další měsíc"}">›</button>
-    <h1>${esc(title)}</h1>
+    <h1>${esc(title)}</h1>${sub ? `<span class="wk">${esc(sub)}</span>` : ""}
     <div class="seg push" role="group" aria-label="Zobrazení"><button type="button" data-mode="week" aria-pressed="${PMODE === "week"}">Týden</button><button type="button" data-mode="month" aria-pressed="${PMODE === "month"}">Měsíc</button></div>
     <label class="lbl">Zvýraznit <select id="meSel"><option value="">nikoho</option>${names.map(n => `<option${n === ME ? " selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
     <button type="button" class="btn" data-nav="0">Dnes</button>
@@ -689,7 +724,7 @@ function monthHTML(){
   let h = `<div></div>`;
   for (let d = 1; d <= n; d++){ const w = new Date(y, m, d).getDay(); h += `<div class="mh${isToday(d) ? " today" : (w === 0 || w === 6) ? " we" : ""}"><b>${d}</b><span>${DOW_T[w]}</span></div>`; }
   h += `<div class="mh"><span>D / N</span></div>`;
-  names.forEach(name => {
+  names.forEach((name, ri) => {
     let cD = 0, cN = 0, row = `<div class="mn${name === ME ? " me" : ""}">${esc(name)}</div>`;
     for (let d = 1; d <= n; d++){
       const toks = tokens(o.T, name, d).filter(c => c !== ".");
@@ -703,7 +738,8 @@ function monthHTML(){
         if (toks.some(c => /^(N1[23]|Nz7)/.test(c))) cN++;
       }
       const swp = main && Object.keys(o.notes).some(k => k.startsWith(`${d}|`) && k.endsWith(`|${name}`));
-      row += `<div class="mc ${cls}${swp ? " swp" : isToday(d) ? " today" : ""}" title="${esc(name)} – ${d}. ${m + 1}.${t ? " " + t : ""}">${t}${toks.some(c => c.endsWith("*")) ? `<span class="s"></span>` : ""}</div>`;
+      const dk = main ? (kindOf(main) || (cls === "N" ? "N" : "D")) : "D";
+      row += `<div class="mc ${cls}${swp ? " swp" : isToday(d) ? " today" : ""}" data-det="${id}|${d}|${dk}" data-r="${ri}" data-d="${d}" tabindex="-1" title="${esc(name)} – ${d}. ${m + 1}.${t ? " " + t : ""}">${t}${toks.some(c => c.endsWith("*")) ? `<span class="s"></span>` : ""}</div>`;
     }
     h += row + `<div class="mt${name === ME ? " mn me" : ""}">${cD} / ${cN}</div>`;
   });
@@ -723,8 +759,90 @@ MAIN.addEventListener("click", e => {
     render(); return;
   }
   const md = e.target.closest("[data-mode]"); if (md){ PMODE = md.dataset.mode; if (PMODE === "month"){ MY_ = {y:WEEK.getFullYear(), m:addDays(WEEK, 3).getMonth()}; } render(); return; }
-  const sb = e.target.closest("[data-swap]"); if (sb){ const [id, d, k] = sb.dataset.swap.split("|"); openSwap(id, +d, k); return; }
+  const sb = e.target.closest("[data-swap]"); if (sb){ closeDet(); const [id, d, k] = sb.dataset.swap.split("|"); openSwap(id, +d, k); return; }
+  const dt = e.target.closest("[data-det]"); if (dt){ const [id, d, k] = dt.dataset.det.split("|");
+    KF = dt.classList.contains("mc") ? {mode:"month", r:+dt.dataset.r, d:+dt.dataset.d} : {mode:"week", key:`${id}|${d}`, k};
+    openDet(id, +d, k); return; }
 });
+MAIN.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".card[data-det], .mc[data-det]")){ e.preventDefault(); e.target.click(); } });
+
+/* ----- procházení šipkami na klávesnici ----- */
+let KF = null; // týden {mode:"week", key:"YYYY-MM|d", k}, měsíc {mode:"month", r, d}
+function kfEl(){
+  if (!KF) return null;
+  if (KF.mode === "week" && PMODE === "week") return MAIN.querySelector(`.card[data-det="${KF.key}|${KF.k}"]`);
+  if (KF.mode === "month" && PMODE === "month") return MAIN.querySelector(`.mc[data-r="${KF.r}"][data-d="${KF.d}"]`);
+  return null;
+}
+function kfFocus(){ const el = kfEl(); if (el){ el.focus({preventScroll:true}); el.scrollIntoView({block:"nearest", inline:"nearest"}); } }
+document.addEventListener("keydown", e => {
+  if (!/^Arrow(Left|Right|Up|Down)$/.test(e.key) || e.altKey || e.ctrlKey || e.metaKey) return;
+  if ($("app").hidden || DET || SW || VIEW !== "plan") return;
+  if (e.target.closest && e.target.closest("input, select, textarea")) return;
+  e.preventDefault();
+  const dx = e.key === "ArrowLeft" ? -1 : e.key === "ArrowRight" ? 1 : 0, dy = e.key === "ArrowUp" ? -1 : e.key === "ArrowDown" ? 1 : 0;
+  if (PMODE === "week"){
+    const now = getNow();
+    let date = KF && KF.mode === "week" ? (() => { const [id, d] = KF.key.split("|"); const [y, m] = ymOf(id); return new Date(y, m, +d); })() : null;
+    let k = KF && KF.mode === "week" ? KF.k : "D";
+    if (!date){ date = (now >= WEEK && now < addDays(WEEK, 7)) ? new Date(now.getFullYear(), now.getMonth(), now.getDate()) : new Date(WEEK); }
+    else {
+      if (dy) k = k === "D" ? "N" : "D";
+      if (dx) date = addDays(date, dx);
+    }
+    if (date < WEEK) WEEK = addDays(WEEK, -7);
+    if (date >= addDays(WEEK, 7)) WEEK = addDays(WEEK, 7);
+    KF = {mode:"week", key:`${idOf(date)}|${date.getDate()}`, k};
+  } else {
+    const rows = new Set([...MAIN.querySelectorAll(".mc[data-r]")].map(x => +x.dataset.r)), R = rows.size;
+    const n = new Date(MY_.y, MY_.m + 1, 0).getDate();
+    if (!KF || KF.mode !== "month"){ const now = getNow(); KF = {mode:"month", r:Math.max(0, [...MAIN.querySelectorAll(".mn")].findIndex(x => x.classList.contains("me"))), d:(now.getFullYear() === MY_.y && now.getMonth() === MY_.m) ? now.getDate() : 1}; }
+    else { KF.r = Math.min(R - 1, Math.max(0, KF.r + dy)); KF.d = Math.min(n, Math.max(1, KF.d + dx)); }
+  }
+  render();
+});
+
+/* ----- detail služby ----- */
+let DET = null;
+function detHTML(){
+  const [y, m] = ymOf(DET.id), date = new Date(y, m, DET.d), info = dayInfo(date), k = DET.k, now = getNow();
+  if (!info || !info.exists) return `<p class="empty">Plán pro tento den není načtený.</p>`;
+  const s = k === "N" ? info.N : info.D;
+  const code = k === "D" ? (s.stala ? s.stala.code : (s.hl[0] || {}).code || "D12") : info.nk;
+  const [ws, we] = windowOf(date, code), live = now >= ws && now < we;
+  const hh = d => `${d.getHours()}<sup>${String(d.getMinutes()).padStart(2, "0")}</sup>`;
+  const mine = SELF && [s.stala, ...s.hl].some(p => p && p.name === SELF);
+  const pers = p => `<li class="${p.name === ME ? "me" : ""}">${esc(p.name)}${p.note ? ` <span class="sw">⇄ ${esc(p.note)}</span>` : ""}</li>`;
+  const extra = [];
+  if (k === "D"){
+    if (info.ev) String(info.ev).split(/\s*·\s*/).filter(Boolean).forEach(t => extra.push(`<p class="dev">${esc(t)}</p>`));
+    if (info.P.length) extra.push(`<p><b>Porada 8:00–10:00:</b> ${info.P.map(p => esc(p.name)).join(", ")}</p>`);
+    if (info.A.DOV) extra.push(`<p><b>Dovolená:</b> ${info.A.DOV.map(esc).join(", ")}</p>`);
+    if (info.A.ZdV) extra.push(`<p><b>Zdravotní volno:</b> ${info.A.ZdV.map(esc).join(", ")}</p>`);
+  }
+  return `<div class="det-card ${k === "N" ? "night" : "day"}">
+      <div class="det-top"><div><h2>${k === "N" ? "Noční služba" : "Denní služba"}</h2>${live ? `<span class="det-live">Probíhá</span>` : ""}</div>
+        <div class="det-date"><span>${DOW_FULL[date.getDay()]}</span><b>${DET.d}. ${m + 1}.</b></div></div>
+      <div class="big">${hh(ws)} – ${hh(we)}</div>
+      ${live ? `<div class="prog" style="margin-top:10px;height:8px"><i style="height:8px;width:${Math.round((now - ws) / (we - ws) * 100)}%"></i></div><div class="pr"><span>Uběhlo <b>${durTxt(now - ws)}</b></span><span>Zbývá <b>${durTxt(we - now)}</b></span></div>` : ""}
+      <div class="det-lbl">Stálá služba</div>${s.stala ? `<span class="st det-st">${esc(s.stala.name)}${s.stala.note ? ` <span class="sw">⇄ ${esc(s.stala.note)}</span>` : ""}</span>` : `<p class="empty">V plánu není</p>`}
+      <div class="det-lbl">Hlídka</div>${s.hl.length ? `<ul class="det-hl">${s.hl.map(pers).join("")}</ul>` : `<p class="empty">Nikdo další</p>`}
+      ${extra.length ? `<div class="det-extra">${extra.join("")}</div>` : ""}
+    </div>
+    <div class="det-btns">
+      ${mine && ws > now ? `<button type="button" class="btn" data-swap="${DET.id}|${DET.d}|${k}">Vyměnit…</button>` : ""}
+      <button type="button" class="btn sec" data-detk="${k === "N" ? "D" : "N"}">${k === "N" ? "Denní služba" : "Noční služba"} tohoto dne</button>
+      <button type="button" class="btn sec" id="detClose">Zavřít</button>
+    </div>`;
+}
+function openDet(id, d, k){ DET = {id, d, k}; $("det").hidden = false; $("detBody").innerHTML = detHTML(); $("detClose").focus(); }
+function closeDet(){ if (!DET) return; DET = null; $("det").hidden = true; $("detBody").innerHTML = ""; kfFocus(); }
+$("det").addEventListener("click", e => {
+  if (e.target.id === "det" || e.target.id === "detClose"){ closeDet(); return; }
+  const sw = e.target.closest("[data-detk]"); if (sw){ DET.k = sw.dataset.detk; $("detBody").innerHTML = detHTML(); return; }
+  const sb = e.target.closest("[data-swap]"); if (sb){ const [id, d, k] = sb.dataset.swap.split("|"); closeDet(); openSwap(id, +d, k); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && DET) closeDet(); });
 MAIN.addEventListener("change", e => { if (e.target.id === "meSel"){ ME = e.target.value; render(); } });
 
 /* ----- výměny – přehled ----- */
