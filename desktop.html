@@ -267,7 +267,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v1.3</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v1.4</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -277,7 +277,16 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js"></script>
+<script src="sluzby-core.js?v=4.46"></script>
+<script>
+// pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
+if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
+if (typeof presenceStart === "undefined") window.presenceStart = null;
+if (typeof presenceHTML === "undefined") window.presenceHTML = () => `<p>Přehled uživatelů potřebuje aktuální soubor sluzby-core.js.</p>`;
+if (typeof ONLINE_COL === "undefined") window.ONLINE_COL = "online";
+if (typeof ONLINE_MS === "undefined") window.ONLINE_MS = 180000;
+if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
+</script>
 <script>
 /* =====================================================================
    Služby MP Blansko – verze pro počítač
@@ -286,7 +295,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v1.3";
+const DESK_VER = "desktop v1.4";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
@@ -357,7 +366,7 @@ function start(){
   WEEK = mondayOf(now); MY_ = {y:now.getFullYear(), m:now.getMonth()};
   ADM.y = now.getFullYear(); ADM.m = now.getMonth();
   $("navAdmin").hidden = !isAdmin();
-  if (SELF_NO && !PRES) PRES = presenceStart({db, firebase, cislo:SELF_NO, email:SELF_EMAIL, jmeno:() => SELF, typ:"desktop", verze:DESK_VER});
+  if (SELF_NO && !PRES && presenceStart) PRES = presenceStart({db, firebase, cislo:SELF_NO, email:SELF_EMAIL, jmeno:() => SELF, typ:"desktop", verze:DESK_VER});
   unsubs.push(db.collection(COLLECTION).doc("straznici").onSnapshot(s => {
     OFFICERS = (s.exists && s.data().cisla) || {};
     SELF = SELF_NO ? (Object.keys(OFFICERS).find(n => String(OFFICERS[n]) === SELF_NO) || null) : null;

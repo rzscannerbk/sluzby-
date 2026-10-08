@@ -24,6 +24,22 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":
 const KIND_LBL = {D:"denní", N:"noční"};
 const kindOf = c => { c = c.replace(/\*$/, ""); return (c === "D12" || c === "D8") ? "D" : (c === "N12" || c === "N13" || c === "Nz7") ? "N" : null; };
 const surname = n => String(n).split(" ")[0];
+// 4. pád pro štítek výměny „za …“ (za Hlaváčka, za Pavla Tótha…)
+const ZA_TVAR = {
+  "Hlaváček Michal":"Hlaváčka", "Šenk Kamil":"Šenka", "Tóth Pavel":"Pavla Tótha", "Sehnal Petr":"Sehnala",
+  "Přikryl Miroslav":"Přikryla", "Tóth Ondřej":"Ondřeje Tótha", "Menšík Jaroslav":"Menšíka", "Liška Michal":"Lišku",
+  "Havel Radek":"Havla", "Vašíček Zdeněk":"Vašíčka", "Grénar Martin":"Grénara", "Chalupa Martin":"Chalupu",
+  "Tesař Libor":"Tesaře", "Adámek Jaroslav":"Adámka", "Hofman Radek":"Hofmana", "Parolek Antonín":"Parolka",
+  "Juračka Lukáš":"Juračku", "Škvařil Libor":"Škvařila"
+};
+function zaTvar(n){
+  if (ZA_TVAR[n]) return ZA_TVAR[n];
+  const s = surname(n);                                   // náhradní pravidlo pro jména mimo seznam
+  if (/ek$/.test(s)) return s.slice(0, -2) + "ka";        // Dvořáček → Dvořáčka
+  if (/a$/.test(s)) return s.slice(0, -1) + "u";          // Svoboda → Svobodu
+  if (/[bcčdďfghjklmnňpqrřsštťvwxzž]$/i.test(s)) return s + "a"; // Novák → Nováka
+  return s;
+}
 
 /* --- efektivní plán = plán + přijaté výměny --- */
 function tokensOf(plan){
@@ -48,8 +64,8 @@ function applySwaps(plan, swaps, len){
   const T = tokensOf(plan), notes = {};
   swaps.filter(r => r.stav === "prijato").sort((a,b) => tsMs(a.vyrizeno) - tsMs(b.vyrizeno)).forEach(r => {
     if (!r.za || !r.za.jmeno) return;
-    if (moveShift(T, r.od.jmeno, r.za.jmeno, r.od.den, r.od.kind, len)) notes[`${r.od.den}|${r.od.kind}|${r.za.jmeno}`] = `za ${surname(r.od.jmeno)}`;
-    if (r.typ === "vymena" && r.za.den && moveShift(T, r.za.jmeno, r.od.jmeno, r.za.den, r.za.kind, len)) notes[`${r.za.den}|${r.za.kind}|${r.od.jmeno}`] = `za ${surname(r.za.jmeno)}`;
+    if (moveShift(T, r.od.jmeno, r.za.jmeno, r.od.den, r.od.kind, len)) notes[`${r.od.den}|${r.od.kind}|${r.za.jmeno}`] = `za ${zaTvar(r.od.jmeno)}`;
+    if (r.typ === "vymena" && r.za.den && moveShift(T, r.za.jmeno, r.od.jmeno, r.za.den, r.za.kind, len)) notes[`${r.za.den}|${r.za.kind}|${r.od.jmeno}`] = `za ${zaTvar(r.za.jmeno)}`;
   });
   return {T, notes};
 }
@@ -169,3 +185,96 @@ function volStatsFor(name, dny){
   let d = 0, n = 0; dny.forEach(k => { const c = dlpCodeFor(name, k); if (c === "D") d++; else if (c === "N") n++; });
   return {dni:dny.length, d, n, h:(d + n) * DLP_H};
 }
+
+/* =================== přítomnost uživatelů (online/{služební číslo}) ===================
+   Každá verze si při otevření a pak každé 2 minuty (jen když je na obrazovce) zapíše,
+   kdy byla aktivní. Čte jen administrátor (pravidla Firestore). */
+const ONLINE_COL = "online";
+const ONLINE_MS = 3 * 60 * 1000;      // „právě online“ = aktivita za poslední 3 minuty
+function devicePlatform(){
+  const ua = navigator.userAgent;
+  if (/iPhone|iPod/.test(ua)) return "iPhone";
+  if (/iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) return "iPad";
+  if (/Android/.test(ua)) return "Android";
+  if (/Windows/.test(ua)) return "Windows";
+  if (/Mac/.test(ua)) return "Mac";
+  return "jiné";
+}
+function presenceStart(opts){
+  // opts: {db, firebase, cislo, email, jmeno:() => string, typ:"mobil"|"desktop", verze}
+  const ref = opts.db.collection(ONLINE_COL).doc(String(opts.cislo)), FV = opts.firebase.firestore.FieldValue;
+  const standalone = !!(navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches));
+  let last = 0;
+  const beat = force => {
+    if (!force && (document.hidden || Date.now() - last < 60e3)) return;
+    last = Date.now();
+    const jm = opts.jmeno() || "";
+    ref.set({
+      ...(jm ? {jmeno:jm} : {}), email:opts.email, prihlasen:true, posledni:FV.serverTimestamp(),
+      zarizeni:{[opts.typ]:{posledni:FV.serverTimestamp(), verze:opts.verze, platforma:devicePlatform(), naPlose:standalone}}
+    }, {merge:true}).catch(() => {});
+  };
+  beat(true);
+  const t = setInterval(() => beat(false), 120e3);
+  const vis = () => beat(true); // při odchodu i návratu zapsat čas aktivity
+  document.addEventListener("visibilitychange", vis);
+  return {
+    beat:() => beat(true),
+    stop(){ clearInterval(t); document.removeEventListener("visibilitychange", vis); },
+    async logout(){ clearInterval(t); document.removeEventListener("visibilitychange", vis);
+      try { await ref.set({prihlasen:false, odhlasen:FV.serverTimestamp()}, {merge:true}); } catch (e){} }
+  };
+}
+function fmtSeen(ms, now){
+  if (!ms) return "";
+  const d = new Date(ms), diff = now - ms, hm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+  if (diff < ONLINE_MS) return "teď";
+  if (diff < 60 * 60e3) return `před ${Math.max(1, Math.round(diff / 60e3))} min`;
+  const t0 = new Date(now); t0.setHours(0, 0, 0, 0);
+  if (ms >= t0.getTime()) return `dnes ${hm}`;
+  if (ms >= t0.getTime() - 864e5) return `včera ${hm}`;
+  return `${d.getDate()}. ${d.getMonth() + 1}.${d.getFullYear() !== new Date(now).getFullYear() ? " " + d.getFullYear() : ""} ${hm}`;
+}
+function presenceHTML(officers, online, now, verze){
+  // officers: {jméno: číslo}, online: {číslo: data}, verze: {mobil:"v4.43", desktop:"v1.1"}
+  const ms = x => (x && x.toMillis) ? x.toMillis() : 0;
+  const rows = Object.keys(officers).sort((a, b) => a.localeCompare(b, "cs")).map(name => {
+    const o = online[String(officers[name])] || null, last = o ? ms(o.posledni) : 0;
+    const on = !!o && o.prihlasen !== false && now - last < ONLINE_MS;
+    const t0 = new Date(now); t0.setHours(0, 0, 0, 0);
+    const st = !o ? "nikdy" : on ? "online" : o.prihlasen === false ? "odhlasen" : (last >= t0.getTime() ? "dnes" : "davno");
+    const dev = o && o.zarizeni ? Object.entries(o.zarizeni).map(([typ, z]) => ({typ, ...z, ms:ms(z.posledni)})).sort((a, b) => b.ms - a.ms) : [];
+    return {name, st, last, dev, on};
+  });
+  // aktuální verze = nejvyšší, kterou někdo má (zvlášť pro mobil a desktop); starší jsou červeně
+  const vnum = v => String(v || "").replace(/[^0-9.]/g, "").split(".").map(Number);
+  const newer = (a, b) => { const x = vnum(a), y = vnum(b); for (let i = 0; i < Math.max(x.length, y.length); i++){ if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
+  const top = {...(verze || {})};
+  rows.forEach(r => r.dev.forEach(z => { if (z.verze && (!top[z.typ] || newer(z.verze, top[z.typ]))) top[z.typ] = z.verze; }));
+  verze = top;
+  const cnt = k => rows.filter(r => r.st === k).length;
+  const logged = rows.filter(r => r.st !== "nikdy" && r.st !== "odhlasen").length;
+  const LBL = {online:"online", dnes:"aktivní dnes", davno:"přihlášen", odhlasen:"odhlášen", nikdy:"zatím bez záznamu"};
+  const sorted = rows.slice().sort((a, b) => (b.on - a.on) || (b.last - a.last) || a.name.localeCompare(b.name, "cs"));
+  return `<div class="pres-sum">
+      <div><b class="pres-on">${cnt("online")}</b><span>právě online</span></div>
+      <div><b>${logged}</b><span>přihlášeno z ${rows.length}</span></div>
+      <div><b>${cnt("nikdy")}</b><span>bez záznamu</span></div>
+    </div>
+    <div class="pres-list">${sorted.map(r => `<div class="pres-row">
+      <span class="pres-dot ${r.st}" aria-hidden="true"></span>
+      <div class="pres-main"><b>${esc(r.name)}</b><span>${LBL[r.st]}${r.last && !r.on ? " · " + fmtSeen(r.last, now) : ""}</span></div>
+      <div class="pres-dev">${r.dev.map(z => `<span class="${verze[z.typ] && z.verze && newer(verze[z.typ], z.verze) ? "old" : ""}" title="${esc(z.typ)} ${esc(z.verze || "")}">${z.typ === "desktop" ? "počítač" : "mobil"} · ${esc(z.platforma || "")}${z.typ === "mobil" && z.naPlose === false ? " (prohlížeč)" : ""} · ${esc(z.verze || "?")} · ${fmtSeen(z.ms, now)}</span>`).join("") || "<span>–</span>"}</div>
+    </div>`).join("")}</div>
+    <p class="pres-note">Online = aktivita za poslední 3 minuty. Údaje se sbírají od verze, která přítomnost zapisuje – kdo si ji ještě neotevřel, je „bez záznamu“. Červeně = stará verze aplikace.</p>`;
+}
+const PRES_CSS = `.pres-sum{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 14px}
+.pres-sum div{flex:1 1 100px;border-radius:12px;padding:10px 12px;background:rgba(127,140,170,.12);display:flex;flex-direction:column}
+.pres-sum b{font-size:28px;line-height:1.1}.pres-sum .pres-on{color:#2E9E5B}.pres-sum span{font-size:13px;opacity:.8}
+.pres-list{display:flex;flex-direction:column}
+.pres-row{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid rgba(127,140,170,.25);flex-wrap:wrap}
+.pres-dot{width:12px;height:12px;border-radius:50%;flex:none;background:#C3C8D2}
+.pres-dot.online{background:#2E9E5B;box-shadow:0 0 0 3px rgba(46,158,91,.25)}.pres-dot.dnes{background:#E3B341}.pres-dot.davno{background:#8C96B2}.pres-dot.odhlasen{background:transparent;border:2px solid #8C96B2}.pres-dot.nikdy{background:transparent;border:2px dashed #C3C8D2}
+.pres-main{flex:1 1 160px;display:flex;flex-direction:column;line-height:1.3}.pres-main span{font-size:13px;opacity:.8}
+.pres-dev{flex:2 1 220px;display:flex;flex-direction:column;font-size:13px;opacity:.85;line-height:1.35}.pres-dev .old{color:#C0392B;font-weight:600}
+.pres-note{font-size:12px;opacity:.75;margin:10px 0 0}`;

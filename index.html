@@ -467,7 +467,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.45</span>
+      <span class="ver" id="verDiag">v4.46</span>
     </div>
   </div>
 </header>
@@ -564,7 +564,16 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js"></script>
+<script src="sluzby-core.js?v=4.46"></script>
+<script>
+// pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
+if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
+if (typeof presenceStart === "undefined") window.presenceStart = null;
+if (typeof presenceHTML === "undefined") window.presenceHTML = () => `<p>Přehled uživatelů potřebuje aktuální soubor sluzby-core.js.</p>`;
+if (typeof ONLINE_COL === "undefined") window.ONLINE_COL = "online";
+if (typeof ONLINE_MS === "undefined") window.ONLINE_MS = 180000;
+if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
+</script>
 <script>document.head.insertAdjacentHTML("beforeend", `<style>${PRES_CSS}</style>`);</script>
 <script>
 const FOCAL = 0.3;
@@ -924,7 +933,7 @@ function start(){
     }, () => {});
   }
   resolveSelf(); startSwaps(); startNotes(); pushRefresh();
-  if (SELF_NO && !PRES) PRES = presenceStart({db, firebase, cislo:SELF_NO, email:SELF_EMAIL, jmeno:() => SELF, typ:"mobil", verze:APP_VER});
+  if (SELF_NO && !PRES && presenceStart) PRES = presenceStart({db, firebase, cislo:SELF_NO, email:SELF_EMAIL, jmeno:() => SELF, typ:"mobil", verze:APP_VER});
   const n = getNow();
   loadMonth(n.getFullYear(), n.getMonth(), "now");
 }

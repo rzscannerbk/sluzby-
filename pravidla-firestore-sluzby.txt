@@ -1,0 +1,86 @@
+PRAVIDLA FIRESTORE – část pro Plán služeb (projekt rz-scanner)
+==============================================================
+Bloky leží uvnitř  match /databases/{database}/documents { ... }
+vedle bloků RZ Scanneru (prestupky atd.). Používají funkce isSignedIn() a isAdmin(),
+které jsou definované na začátku pravidel RZ Scanneru (isAdmin = juracka.1048@rzscanner.cz).
+
+    match /planSluzeb/{doc} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /vymeny/{id} {
+      // služební číslo z e-mailu ve tvaru prijmeni.cislo@...
+      function myNum() {
+        return request.auth.token.email.split('@')[0].split('[.]')[1];
+      }
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || (isSignedIn()
+        && request.resource.data.odCislo == myNum()
+        && request.resource.data.stav == 'ceka'
+        && request.resource.data.zaCislo != myNum());
+      allow update: if isAdmin() || (isSignedIn() && (
+          // příjemce přijme nebo odmítne
+          // (u žádosti s variantami jen odmítnutí – přijetí jde přes výběr varianty níže)
+          (resource.data.stav == 'ceka' && resource.data.zaCislo == myNum()
+            && (request.resource.data.stav == 'odmitnuto'
+                || (request.resource.data.stav == 'prijato' && !('moznosti' in resource.data)))
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stav', 'vyrizeno']))
+          // příjemce vybere jednu z 2–3 variant, které mu autor nabídl – výměna se provede
+       || (resource.data.stav == 'ceka' && resource.data.zaCislo == myNum()
+            && ('moznosti' in resource.data)
+            && request.resource.data.stav == 'prijato'
+            && request.resource.data.za.cislo == resource.data.za.cislo
+            && request.resource.data.za.jmeno == resource.data.za.jmeno
+            && (string(request.resource.data.za.den) + '|' + request.resource.data.za.kind + '|' + request.resource.data.za.kod) in resource.data.moznosti
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stav', 'vyrizeno', 'za']))
+          // nabídka všem: kdokoli kromě autora ji vezme
+       || (resource.data.stav == 'ceka' && resource.data.zaCislo == null && resource.data.odCislo != myNum()
+            && request.resource.data.stav == 'prijato'
+            && request.resource.data.zaCislo == myNum()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stav', 'vyrizeno', 'zaCislo', 'za']))
+          // příjemce navrhne 1–3 své služby
+       || (resource.data.stav == 'ceka' && resource.data.zaCislo == myNum()
+            && request.resource.data.stav == 'navrh'
+            && request.resource.data.navrhy.size() >= 1 && request.resource.data.navrhy.size() <= 3
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stav', 'navrhy', 'navrhnuto']))
+          // autor si vybere jeden z návrhů – výměna se provede
+       || (resource.data.stav == 'navrh' && resource.data.odCislo == myNum()
+            && request.resource.data.stav == 'prijato'
+            && request.resource.data.za.cislo == resource.data.za.cislo
+            && (string(request.resource.data.za.den) + '|' + request.resource.data.za.kind + '|' + request.resource.data.za.kod) in resource.data.navrhy
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stav', 'vyrizeno', 'za', 'typ']))
+          // autor žádost zruší nebo návrhy odmítne
+       || (resource.data.stav in ['ceka', 'navrh'] && resource.data.odCislo == myNum()
+            && request.resource.data.stav in ['zruseno', 'odmitnuto']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stav', 'vyrizeno']))
+      ));
+      allow delete: if isAdmin();
+    }
+
+    match /pushTokens/{token} {
+      function myNumP() {
+        return request.auth.token.email.split('@')[0].split('[.]')[1];
+      }
+      allow read, delete: if isSignedIn() && resource.data.cislo == myNumP();
+      allow create, update: if isSignedIn() && request.resource.data.cislo == myNumP();
+    }
+
+    // přítomnost uživatelů – každý zapisuje jen svůj záznam, číst smí jen administrátor
+    match /online/{cislo} {
+      allow read: if isAdmin();
+      allow write: if isSignedIn()
+        && request.auth.token.email.split('@')[0].split('[.]')[1] == cislo;
+    }
+
+    match /poznamky/{cislo} {
+      allow read, write: if isSignedIn()
+        && request.auth.token.email.split('@')[0].split('[.]')[1] == cislo;
+    }
+
+    match /kalendare/{klic} {
+      allow read, delete: if isSignedIn()
+        && resource.data.cislo == request.auth.token.email.split('@')[0].split('[.]')[1];
+      allow create: if isSignedIn()
+        && request.resource.data.cislo == request.auth.token.email.split('@')[0].split('[.]')[1];
+    }
