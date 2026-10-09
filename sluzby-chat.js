@@ -144,6 +144,11 @@ const STYLE = `
 .ch-row.on{outline:2.5px solid var(--ink,#1D2A4D)}
 .ch-av{flex:none;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--f-cond,sans-serif);font-weight:700;font-size:16px;background:var(--ink,#1D2A4D);color:var(--paper,#fff)}
 .ch-av.all{background:#2E7D4F;color:#fff}
+.ch-av.img{background:#fff center/cover no-repeat;color:transparent;box-shadow:0 0 0 1px rgba(127,127,127,.25)}
+.ch-adm .ch-fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px;margin-top:8px}
+.ch-adm .ch-fg>div{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font-size:12px;line-height:1.2;position:relative}
+.ch-adm .ch-fg .ch-av{width:56px;height:56px;font-size:20px;border:0;padding:0;cursor:pointer}
+.ch-adm .ch-fg .ch-fx{position:absolute;top:-4px;right:calc(50% - 36px);width:22px;height:22px;border-radius:50%;border:0;background:#C0392B;color:#fff;font-size:13px;line-height:22px;padding:0;cursor:pointer}
 .ch-rb{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .ch-rt{display:flex;align-items:baseline;gap:8px}
 .ch-rt b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
@@ -295,6 +300,12 @@ CH.init = function(opts){
     applyAllowed();
     if (O.onAdminChange) O.onAdminChange();
   }, () => { S.set = null; applyAllowed(); }));
+  // profilové fotky v kroužcích (nahrává správce v administraci): nastaveni/chatFoto {fotky:{<číslo>|vsichni: dataURL}}
+  S.unsubs.push(db.collection("nastaveni").doc("chatFoto").onSnapshot(s => {
+    S.fotky = (s.exists && s.data().fotky) || {};
+    if (S.open){ renderList(); if (S.view === "thread" || S.two) renderHead(); }
+    if (O.onAdminChange) O.onAdminChange();
+  }, () => { S.fotky = {}; }));
   window.addEventListener("resize", layout);
   // iPhone: okno chatu se drží přesně viditelné plochy nad klávesnicí (stejně jako chat v KoKrŠNeKu).
   // Android to řeší sám – index.html má v meta viewport interactive-widget=resizes-content, takže se stránka nad klávesnici zmenší.
@@ -439,11 +450,17 @@ function backToList(){
 }
 
 /* ---------- seznam vláken ---------- */
+function initials(n){ return String(n).split(" ").map(x => x[0]).slice(0, 2).join(""); }
+function avHTML(key, letters, cls){
+  const f = S.fotky && S.fotky[key];
+  return f ? `<span class="ch-av img" style="background-image:url('${f}')" aria-hidden="true"></span>` : `<span class="ch-av${cls ? " " + cls : ""}">${esc(letters)}</span>`;
+}
 function rowHTML(id, t){
   const un = unreadOf(t), mut = isMuted(t), last = t && t.posledni;
   const title = titleOf(id, t);
   const lastTxt = last ? `${String(last.od) === String(O.me) ? "Ty: " : (id === "vsichni" ? surname(last.jmeno || nameOf(last.od)) + ": " : "")}${last.text || ""}` : "Zatím žádné zprávy";
-  const av = id === "vsichni" ? `<span class="ch-av all">VŠ</span>` : `<span class="ch-av">${esc(title.split(" ").map(x => x[0]).slice(0, 2).join(""))}</span>`;
+  const peer = id.startsWith("dm_") ? id.split("_").slice(1).find(c => c !== String(O.me)) || String(O.me) : null;
+  const av = id === "vsichni" ? avHTML("vsichni", "VŠ", "all") : avHTML(peer, initials(title));
   return `<button type="button" class="ch-row${S.tid === id && S.two ? " on" : ""}" data-cht="${esc(id)}">${av}<span class="ch-rb"><span class="ch-rt"><b>${esc(title)}</b><small>${whenShort(last && ms(last.at))}</small></span><span class="ch-rl"><span>${esc(lastTxt)}</span>${mut ? `<i class="ch-mute" title="Ztlumeno">🔕</i>` : ""}${un ? `<i class="ch-un${mut ? " mut" : ""}">${un > 99 ? "99+" : un}</i>` : ""}</span></span></button>`;
 }
 function hCardHTML(id, t){
@@ -997,6 +1014,21 @@ function bind(root){
     O.db.collection("nastaveni").doc("chat").set({testeri:list}, {merge:true}).catch(() => alert("Uložení zamítnuto pravidly Firestore."));
   });
   document.addEventListener("click", e => {
+    const fx = e.target.closest("[data-chfx]");
+    if (fx && O && O.isAdmin){
+      if (!confirm("Odebrat fotku?")) return;
+      O.db.collection("nastaveni").doc("chatFoto").set({fotky:{[fx.dataset.chfx]:FV().delete()}}, {merge:true}).catch(() => alert("Uložení zamítnuto pravidly Firestore."));
+      return;
+    }
+    const fp = e.target.closest("[data-chfp]");
+    if (fp && O && O.isAdmin){
+      const key = fp.dataset.chfp, inp = document.createElement("input");
+      inp.type = "file"; inp.accept = "image/*";
+      inp.onchange = () => { const f = inp.files && inp.files[0]; if (!f) return;
+        avatarFrom(f).then(url => O.db.collection("nastaveni").doc("chatFoto").set({fotky:{[key]:url}}, {merge:true}))
+          .catch(err => alert(err && err.code === "permission-denied" ? "Uložení zamítnuto pravidly Firestore." : "Fotku se nepodařilo načíst.")); };
+      inp.click(); return;
+    }
     const b = e.target.closest("[data-chadm]"); if (!b || !O || !O.isAdmin) return;
     const v = b.dataset.chadm;
     if (v === "vsem" && !confirm("Spustit chat pro všechny strážníky?")) return;
@@ -1005,6 +1037,21 @@ function bind(root){
 }
 
 /* ---------- administrace ---------- */
+function avatarFrom(file){ // čtvercový výřez ze středu, 160 × 160 px JPEG (~10 kB)
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const side = Math.min(img.width, img.height), N = 160, c = document.createElement("canvas"); c.width = c.height = N;
+      // u portrétů je obličej spíš v horní části – výřez se bere z horní třetiny
+      const sx = (img.width - side) / 2, sy = img.height > img.width ? Math.min((img.height - side) / 3, img.height - side) : 0;
+      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, N, N); g.drawImage(img, sx, sy, side, side, 0, 0, N, N);
+      res(c.toDataURL("image/jpeg", .82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("fotka")); };
+    img.src = url;
+  });
+}
 CH.adminHTML = function(){
   if (!O || !O.isAdmin) return "";
   if (S.set === undefined) return `<section class="ch-adm"><h3>Chat</h3><p>Načítám nastavení…</p></section>`;
@@ -1014,7 +1061,11 @@ CH.adminHTML = function(){
     <p>Stav: <b>${S.set.vsem ? "spuštěno pro všechny" : "testovací provoz – jen testeři"}</b></p>
     ${S.set.vsem ? `<button type="button" class="ch-ab sec" data-chadm="test">Vrátit jen testerům</button>` : `<button type="button" class="ch-ab" data-chadm="vsem">Spustit pro všechny</button>`}
     <p style="margin-top:12px">Testeři${S.set.vsem ? " (při spuštění pro všechny nehrají roli)" : ""}:</p>
-    <div class="ch-tg">${list.map(([n, c]) => `<label><input type="checkbox" data-chadm-t="${esc(c)}" ${t.includes(String(c)) ? "checked" : ""}> ${esc(n)}</label>`).join("")}</div></section>`;
+    <div class="ch-tg">${list.map(([n, c]) => `<label><input type="checkbox" data-chadm-t="${esc(c)}" ${t.includes(String(c)) ? "checked" : ""}> ${esc(n)}</label>`).join("")}</div></section>
+    <section class="ch-adm"><h3>Fotky v chatu</h3>
+    <p>Klepni na kroužek a vyber fotku – ořízne se na čtverec a zmenší. Kdo fotku nemá, zůstanou mu iniciály.</p>
+    <div class="ch-fg">${[["Zpráva všem", "vsichni"], ...list].map(([n, c]) => { const k = String(c), has = S.fotky && S.fotky[k];
+      return `<div>${has ? `<span class="ch-av img" data-chfp="${esc(k)}" role="button" style="background-image:url('${has}')"></span><button type="button" class="ch-fx" data-chfx="${esc(k)}" aria-label="Odebrat fotku">✕</button>` : `<span class="ch-av${k === "vsichni" ? " all" : ""}" data-chfp="${esc(k)}" role="button">${esc(k === "vsichni" ? "VŠ" : initials(n))}</span>`}${esc(n)}</div>`; }).join("")}</div></section>`;
 };
 
 window.SluzbyChat = CH;
