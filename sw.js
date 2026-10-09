@@ -12,7 +12,7 @@ self.addEventListener("notificationclick", e => {
     const mine = list.filter(c => c.url.startsWith(self.registration.scope));
     const w = mine.find(c => c.focused) || mine.find(c => !c.url.includes("desktop")) || mine[0];
     if (w){
-      if (open) w.postMessage({type:"open", open});
+      if (open) w.postMessage({type:"open", open, t:url.searchParams.get("t")});
       return w.focus ? w.focus() : null;
     }
     return clients.openWindow(url.href);
@@ -37,7 +37,7 @@ try {
 
 
 // Při každé změně souborů zvyš verzi, aby se stará cache smazala.
-const VERSION = "sluzby-v79";
+const VERSION = "sluzby-v80";
 const LIB_CACHE = "sluzby-knihovny";
 const CORE = [
   "./",
@@ -45,6 +45,8 @@ const CORE = [
   "./desktop.html",
   "./sluzby-core.js",
   "./sluzby-core.js?v=4.46",
+  "./sluzby-chat.js",
+  "./sluzby-chat.js?v=4.49",
   "./firebase-config.js",
   "./manifest.webmanifest",
   "./icon-192.png",

@@ -447,6 +447,7 @@ button.cal-day{cursor:pointer}
 
 <header class="top">
   <button class="btn-swap" id="btnSwap" type="button" aria-label="Výměny služeb">⇄<span class="badge" id="swapBadge" hidden>0</span></button>
+  <button class="btn-swap btn-chat" id="btnChat" type="button" aria-label="Chat" hidden><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg><span class="badge" id="chatBadge" hidden>0</span></button>
   <div class="top-main">
     <div class="mnav">
       <button id="prevM" type="button" aria-label="Předchozí měsíc">‹</button>
@@ -480,7 +481,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.48</span>
+      <span class="ver" id="verDiag">v4.49</span>
     </div>
   </div>
 </header>
@@ -579,6 +580,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="sluzby-core.js?v=4.46"></script>
+<script src="sluzby-chat.js?v=4.49"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -942,8 +944,8 @@ function start(){
   if (!unsubOfficers){
     unsubOfficers = db.collection(COLLECTION).doc("straznici").onSnapshot(s => {
       OFFICERS = (s.exists && s.data().cisla) || {};
-      resolveSelf(); updateBadge(); renderVym(); startNotes();
-      if (OPEN_REQ && SELF) openFromPush(OPEN_REQ);
+      resolveSelf(); updateBadge(); renderVym(); startNotes(); chatStart();
+      if (OPEN_REQ && SELF) openFromPush(OPEN_REQ, OPEN_T);
       if (PRES && SELF && !PRES.named){ PRES.named = true; PRES.beat(); } // jméno do záznamu přítomnosti jen jednou
       fillSelect(); render();
     }, () => {});
@@ -955,7 +957,18 @@ function start(){
 }
 let PRES = null;
 const APP_VER = (document.getElementById("verDiag") || {}).textContent || "";
+/* chat (modul sluzby-chat.js) */
+function chatStart(){
+  if (!window.SluzbyChat || !SELF_NO || !db) return;
+  SluzbyChat.init({db, firebase, me:SELF_NO, meName:() => SELF || SELF_EMAIL, officers:() => OFFICERS, isAdmin:isAdminUI(), now:getNow,
+    onAllowed: ok => { document.getElementById("btnChat").hidden = !ok; },
+    onBadge: n => { const b = document.getElementById("chatBadge"); b.hidden = !n; b.textContent = n > 99 ? "99+" : n; },
+    onAdminChange: () => { if (!adm.hidden && ADM.tab === "uziv") renderAdm(); }});
+}
+document.getElementById("btnChat").addEventListener("click", () => { if (window.SluzbyChat) SluzbyChat.open(); });
 function stop(){
+  if (window.SluzbyChat) SluzbyChat.stop();
+  document.getElementById("btnChat").hidden = true;
   if (PRES){ PRES.stop(); PRES = null; }
   if (unsubMonth){ unsubMonth(); unsubMonth = null; }
   if (unsubOfficers){ unsubOfficers(); unsubOfficers = null; }
@@ -1732,12 +1745,13 @@ function renderVym(){
 function openVym(){ vym.hidden = false; vym.scrollTop = 0; renderVym(); document.getElementById("vymClose").focus(); }
 function closeVym(){ vym.hidden = true; }
 /* klepnutí na notifikaci → rovnou okno výměn (?open=vymeny nebo zpráva od service workeru) */
-let OPEN_REQ = new URLSearchParams(location.search).get("open");
+let OPEN_REQ = new URLSearchParams(location.search).get("open"), OPEN_T = new URLSearchParams(location.search).get("t");
 if (OPEN_REQ){ try { history.replaceState(null, "", location.pathname); } catch (e) {} }
-function openFromPush(what){
-  if (what !== "vymeny") return;
-  if (!SELF){ OPEN_REQ = what; return; } // ještě není načtený strážník – otevře se po načtení
-  OPEN_REQ = null;
+function openFromPush(what, t){
+  if (what !== "vymeny" && what !== "chat") return;
+  if (!SELF){ OPEN_REQ = what; OPEN_T = t; return; } // ještě není načtený strážník – otevře se po načtení
+  OPEN_REQ = null; OPEN_T = null;
+  if (what === "chat"){ if (window.SluzbyChat){ if (t) SluzbyChat.openThread(t); else SluzbyChat.open(); } return; }
   if (!cal.hidden) closeCal();
   if (!full.hidden) closeFull();
   if (!swp.hidden) closeSwp();
@@ -1745,7 +1759,7 @@ function openFromPush(what){
   vol.hidden = true;
   openVym();
 }
-if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.type === "open") openFromPush(e.data.open); });
+if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.type === "open") openFromPush(e.data.open, e.data.t); });
 document.getElementById("btnSwap").addEventListener("click", openVym);
 document.getElementById("vymClose").addEventListener("click", closeVym);
 
@@ -2157,6 +2171,8 @@ function getMessaging(){
     messaging = firebase.messaging();
     messaging.onMessage(async p => {   // zpráva při otevřené stránce – ukázat stejně jako na pozadí
       const n = p.notification || {};
+      const lk = (p.fcmOptions && p.fcmOptions.link) || "", tm = /[?&]t=([^&]+)/.exec(lk);
+      if (tm && window.SluzbyChat && SluzbyChat.isViewing(decodeURIComponent(tm[1]))) return; // vlákno je právě otevřené
       const reg = await navigator.serviceWorker.ready;
       reg.showNotification(n.title || "Služby", {body:n.body || "", icon:"icon-192.png", badge:"badge-96.png", data:{link:(p.fcmOptions && p.fcmOptions.link) || "./"}});
     });
@@ -2292,7 +2308,7 @@ function admTabsHTML(){
 }
 function renderAdm(){
   if (ADM.tab === "uziv"){
-    admBody.innerHTML = `<h2 id="admTitle">Administrace</h2>${admTabsHTML()}${presenceHTML(OFFICERS, ONLINE, getNow().getTime(), {mobil:APP_VER})}`;
+    admBody.innerHTML = `<h2 id="admTitle">Administrace</h2>${admTabsHTML()}${presenceHTML(OFFICERS, ONLINE, getNow().getTime(), {mobil:APP_VER})}${window.SluzbyChat ? SluzbyChat.adminHTML() : ""}`;
     return;
   }
   const id = docId(YEAR, MONTH);

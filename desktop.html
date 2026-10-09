@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
+  --ch-left:232px;
   --bg:#E6E9E3; --sheet:#FAFAF7; --ink:#1E2A4A; --ink2:#4D5670; --line:#DDE1E7;
   --day:#F2D24A; --dayBg:#FAEFB8; --dayBd:#D9BE3A; --dayInk:#5C5420;
   --night:#4B3F9E; --nightBg:#3B3486; --nightInk:#C9C4F2;
@@ -40,7 +41,7 @@ h1,h2,h3{font-family:var(--f-cond);font-weight:700;margin:0;line-height:1.05}
 
 /* rozvržení */
 .app{display:flex;min-height:100vh}
-.nav{flex:0 0 232px;background:var(--ink);color:#EEF0F4;padding:26px 16px;display:flex;flex-direction:column;gap:26px;position:sticky;top:0;height:100vh}
+.nav{flex:0 0 232px;--ch-left:232px;background:var(--ink);color:#EEF0F4;padding:26px 16px;display:flex;flex-direction:column;gap:26px;position:sticky;top:0;height:100vh}
 .brand{padding:0 8px}
 .brand b{display:block;font-family:var(--f-cond);font-size:28px;line-height:1}
 .brand span{font-size:13px;color:#AEB6CC}
@@ -369,6 +370,9 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
       <button class="item" type="button" data-view="vymeny">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>
         Výměny služeb<span class="badge" id="navBadge" hidden>0</span></button>
+      <button class="item" type="button" id="navChat" hidden>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg>
+        Chat<span class="badge" id="chatBadge" hidden>0</span></button>
       <button class="item" type="button" data-view="volno" id="navVolno">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.5"/></svg>
         Plánování volna</button>
@@ -382,7 +386,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v2.3</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v2.4</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -394,6 +398,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="sluzby-core.js?v=4.46"></script>
+<script src="sluzby-chat.js?v=4.49"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -411,7 +416,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v2.3";
+const DESK_VER = "desktop v2.4";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
@@ -498,6 +503,7 @@ function start(){
     $("whoName").textContent = SELF || SELF_EMAIL;
     $("navVolno").hidden = !(SELF && DLP_ANY(SELF));
     if (PRES && SELF && !PRES.named){ PRES.named = true; PRES.beat(); }
+    chatStart();
     render();
   }, () => {}));
   unsubs.push(db.collection(SWAP_COL).where("stav", "in", ["ceka", "navrh"]).onSnapshot(s => {
@@ -509,9 +515,21 @@ function start(){
     unsubs.push(col.where("zaCislo", "==", SELF_NO).where("stav", "==", "prijato").onSnapshot(s => { MY_ZA = s.docs.map(d => ({id:d.id, ...d.data()})); render(); }, () => {}));
     unsubs.push(db.collection("poznamky").doc(SELF_NO).onSnapshot(s => { const dd = s.exists ? s.data() : {}; MY_VOLP = volLoad(dd); MY_SNOTES = dd.sluzby || {}; render(); }, () => {}));
   }
-  render();  if (OPEN_REQ) openFromPush(OPEN_REQ);
+  render();  if (OPEN_REQ && OPEN_REQ !== "chat") openFromPush(OPEN_REQ);
 }
+/* chat (modul sluzby-chat.js) */
+function chatStart(){
+  if (!window.SluzbyChat || !SELF_NO) return;
+  SluzbyChat.init({db, firebase, me:SELF_NO, meName:() => SELF || SELF_EMAIL, officers:() => OFFICERS, isAdmin:isAdmin(), now:getNow, desk:true,
+    onAllowed: ok => { $("navChat").hidden = !ok; },
+    onBadge: n => { const b = $("chatBadge"); b.hidden = !n; b.textContent = n > 99 ? "99+" : n; },
+    onAdminChange: () => { if (VIEW === "admin" && ADM.tab === "uziv") render(); }});
+  if (OPEN_REQ === "chat") openFromPush("chat", OPEN_T);
+}
+$("navChat").addEventListener("click", () => { if (window.SluzbyChat) SluzbyChat.open(); });
 function stop(){
+  if (window.SluzbyChat) SluzbyChat.stop();
+  $("navChat").hidden = true;
   if (PRES){ PRES.stop(); PRES = null; }
   if (unsubOnline){ unsubOnline(); unsubOnline = null; }
   unsubs.splice(0).forEach(u => { try { u(); } catch (e){} });
@@ -716,15 +734,19 @@ document.addEventListener("click", e => {
 });
 
 /* ---------- otevření výměn z notifikace ---------- */
-let OPEN_REQ = new URLSearchParams(location.search).get("open");
+let OPEN_REQ = new URLSearchParams(location.search).get("open"), OPEN_T = new URLSearchParams(location.search).get("t");
 if (OPEN_REQ){ try { history.replaceState(null, "", location.pathname); } catch (e) {} }
-function openFromPush(what){
+function openFromPush(what, t){
+  if (what === "chat"){
+    if (!window.SluzbyChat || !SELF_NO){ OPEN_REQ = what; OPEN_T = t; return; }
+    OPEN_REQ = null; OPEN_T = null; if (t) SluzbyChat.openThread(t); else SluzbyChat.open(); return;
+  }
   if (what !== "vymeny") return;
   const b = document.querySelector('.nav .item[data-view="vymeny"]');
   if (!b){ OPEN_REQ = what; return; }
   OPEN_REQ = null; if ($("det") && !$("det").hidden) closeDet(); b.click();
 }
-if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.type === "open") openFromPush(e.data.open); });
+if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.type === "open") openFromPush(e.data.open, e.data.t); });
 /* ---------- navigace ---------- */
 document.querySelectorAll(".nav .item[data-view]").forEach(b => b.addEventListener("click", () => {
   VIEW = b.dataset.view; SW = null; PROP = null;
@@ -1381,7 +1403,7 @@ function admHTML(){
   const tabs = `<div class="seg" role="group" aria-label="Administrace"><button type="button" data-atab="zmeny" aria-pressed="${ADM.tab !== "uziv"}">Změny služeb</button><button type="button" data-atab="uziv" aria-pressed="${ADM.tab === "uziv"}">Uživatelé${onCnt ? ` · ${onCnt} online` : ""}</button></div>`;
   if (ADM.tab === "uziv"){
     return `<div class="bar"><h1>Administrace</h1>${tabs}</div>
-      <section class="panel" style="max-width:980px">${presenceHTML(OFFICERS, ONLINE, nowMs, {desktop:DESK_VER})}</section>`;
+      <section class="panel" style="max-width:980px">${presenceHTML(OFFICERS, ONLINE, nowMs, {desktop:DESK_VER})}${window.SluzbyChat ? SluzbyChat.adminHTML() : ""}</section>`;
   }
   const id = docId(ADM.y, ADM.m), o = month(id);
   const bar = `<div class="bar"><button type="button" class="sq" data-anav="-1" aria-label="Předchozí měsíc">‹</button><button type="button" class="sq" data-anav="1" aria-label="Další měsíc">›</button>
