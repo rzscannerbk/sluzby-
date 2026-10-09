@@ -198,6 +198,17 @@ const STYLE = `
 .ch-m.mine .ch-bub{background:var(--ink,#1D2A4D);color:var(--paper,#fff);border-radius:16px 16px 5px 16px}
 .ch-m.mine .ch-bub a{color:inherit}
 .ch-bub img{display:block;max-width:100%;max-height:320px;border-radius:10px;margin:2px 0 4px;cursor:zoom-in}
+.ch-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:min(280px,64vw);margin:2px 0 5px;border-radius:10px;overflow:hidden}
+.ch-grid button{position:relative;display:block;padding:0;border:0;aspect-ratio:1/1;background:#000;cursor:zoom-in}
+.ch-grid.n3 button:first-child{grid-column:span 2;aspect-ratio:2/1}
+.ch-bub .ch-grid img{width:100%;height:100%;max-height:none;object-fit:cover;display:block;margin:0;border-radius:0}
+.ch-grid .more{position:absolute;inset:0;background:rgba(0,0,0,.5);color:#fff;font-size:26px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.ch-view .ch-vx,.ch-view .ch-vb{position:absolute;width:48px;height:48px;border-radius:50%;border:2px solid rgba(255,255,255,.8);background:rgba(0,0,0,.35);color:#fff;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer}
+.ch-view .ch-vx{top:calc(env(safe-area-inset-top,0px) + 12px);right:14px}
+.ch-view .ch-vb{top:50%;transform:translateY(-50%)}
+.ch-view .ch-vb.l{left:12px}.ch-view .ch-vb.r{right:12px}
+.ch-view .ch-vb:disabled{opacity:.25;cursor:default}
+.ch-view .ch-vn{position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);left:0;right:0;text-align:center;color:#fff;font-weight:600;font-size:15px}
 .ch-bub .ch-del{font-style:italic;opacity:.65}
 .ch-meta{display:flex;justify-content:flex-end;gap:6px;font-size:11px;opacity:.65;margin-top:2px}
 .ch-q{display:block;width:100%;text-align:left;border:0;border-left:3px solid #E2C33A;background:rgba(0,0,0,.07);border-radius:6px;padding:4px 8px;margin:2px 0 5px;font-size:13px;line-height:1.3;color:inherit}
@@ -240,7 +251,7 @@ const STYLE = `
 .ch-sheet .ch-act .ch-ico{flex:none}
 .ch-sheet .ch-act{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:0;border-top:1px solid var(--line,#DDE1E7);background:transparent;padding:13px 6px;font-size:16px;font-weight:600;color:inherit}
 .ch-sheet .ch-act.red{color:#C03A3A}
-.ch-view{position:fixed;inset:0;z-index:75;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:20px}
+.ch-view{position:fixed;inset:0;z-index:75;background:#000;display:flex;align-items:center;justify-content:center;padding:20px}
 .ch-view img{max-width:100%;max-height:100%;border-radius:6px}
 /* administrace */
 .ch-adm{margin-top:18px;padding:14px;border:1.5px solid var(--line,#DDE1E7);border-radius:12px;background:var(--sheet,#fff)}
@@ -558,16 +569,36 @@ function renderMsgs(autoscroll, keepScroll){
   if (S.err) html += `<p class="ch-err">${esc(S.err)}</p>`;
   if (!S.msgs.length) html += `<div class="ch-none">${t ? "Zatím žádné zprávy." : "Napiš první zprávu."}</div>`;
   const lastMine = [...S.msgs].reverse().find(m => String(m.od) === String(O.me) && !m.smazano);
+  // po sobě jdoucí fotky odeslané najednou (stejná „skupina“) se zobrazí jako jedna zpráva s mřížkou
+  const items = [];
   S.msgs.forEach(m => {
+    const p = items[items.length - 1];
+    if (m.skupina && p && p.g === m.skupina && String(p.od) === String(m.od)) p.list.push(m);
+    else items.push({g:m.skupina || null, od:m.od, list:[m]});
+  });
+  S.gal = {}; S.groupOf = {};
+  items.forEach(it => {
+    const m = it.list[0], lastM = it.list[it.list.length - 1];
     const at = ms(m.at), dl = dayLabel(at);
     if (dl !== lastDay){ html += `<div class="ch-day">${dl}</div>`; lastDay = dl; lastFrom = null; }
     const mine = String(m.od) === String(O.me);
     const hit = q && norm(m.text).includes(q); if (hit) hits++;
     const rx = Object.entries(m.reakce || {}).filter(([, a]) => a && a.length).map(([k, a]) => `<button type="button" class="${a.map(String).includes(String(O.me)) ? "my" : ""}" data-chrx="${k}" data-mid="${m.id}" title="${esc(a.map(c => surname(nameOf(c))).join(", "))}">${REAKCE_EMO[k] || "?"} ${a.length}</button>`).join("");
-    const body = m.smazano ? `<span class="ch-del">Zpráva byla smazána</span>` : `${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${m.image ? `<img src="${m.image}" alt="Fotka" data-chimg loading="lazy">` : ""}${m.text ? linkify(m.text) : ""}`;
+    const imgs = it.list.filter(x => !x.smazano && x.image);
+    const allDel = it.list.every(x => x.smazano);
+    S.groupOf[m.id] = it.list.map(x => x.id);
+    if (imgs.length) S.gal[m.id] = imgs.map(x => x.image);
+    let pics = "";
+    if (imgs.length === 1 && it.list.length === 1) pics = `<img src="${imgs[0].image}" alt="Fotka" data-chgal="${m.id}" data-i="0" loading="lazy">`;
+    else if (imgs.length){
+      const show = imgs.slice(0, 4), more = imgs.length - show.length;
+      pics = `<div class="ch-grid n${Math.min(imgs.length, 4)}">${show.map((x, i) => `<button type="button" data-chgal="${m.id}" data-i="${i}" aria-label="Fotka ${i + 1} z ${imgs.length}"><img src="${x.image}" alt="" loading="lazy">${i === 3 && more > 0 ? `<span class="more">+${more}</span>` : ""}</button>`).join("")}</div>`;
+    }
+    const body = allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.text && !m.smazano ? linkify(m.text) : ""}`;
     html += `<div class="ch-m${mine ? " mine" : ""}${hit ? " hit" : ""}" data-mid="${m.id}">${group && !mine && lastFrom !== m.od ? `<span class="ch-who">${esc(m.jmeno || nameOf(m.od))}</span>` : ""}
-      <div class="ch-bub">${body}<div class="ch-meta">${m.upraveno && !m.smazano ? "upraveno · " : ""}${hm(at)}</div></div>${rx ? `<div class="ch-rx">${rx}</div>` : ""}${m.smazano ? "" : `<button type="button" class="ch-more" data-chmore="${m.id}" aria-label="Možnosti zprávy">⋯</button>`}</div>`;
-    if (m === lastMine || (mine && S.infoMid === m.id)){ const sl = statusLine(t, m, m === lastMine); if (sl) html += `<div class="ch-seen">${esc(sl)}</div>`; }
+      <div class="ch-bub">${body}<div class="ch-meta">${imgs.length > 1 ? `${imgs.length} ${imgs.length < 5 ? "fotky" : "fotek"} · ` : ""}${m.upraveno && !m.smazano ? "upraveno · " : ""}${hm(ms(lastM.at))}</div></div>${rx ? `<div class="ch-rx">${rx}</div>` : ""}${allDel ? "" : `<button type="button" class="ch-more" data-chmore="${m.id}" aria-label="Možnosti zprávy">⋯</button>`}</div>`;
+    const stM = it.list.includes(lastMine) ? lastMine : (mine && it.list.some(x => x.id === S.infoMid) ? lastM : null);
+    if (stM){ const sl = statusLine(t, stM, stM === lastMine); if (sl) html += `<div class="ch-seen">${esc(sl)}</div>`; }
     lastFrom = m.od;
   });
   const prev = box.scrollTop;
@@ -655,11 +686,13 @@ async function sendPhotos(files){
   if (!files.length) return;
   const ta = $("chText"); let text = ta ? ta.value.trim().slice(0, 300) : "";
   const btn = document.querySelector("[data-chphoto]");
+  const gid = files.length > 1 ? Date.now().toString(36) + Math.random().toString(36).slice(2, 6) : null; // fotky poslané najednou = jedna zpráva s mřížkou
   for (let i = 0; i < files.length; i++){
     if (btn) btn.textContent = files.length > 1 ? `${i + 1}/${files.length}` : "…";
     try {
       const image = await compress(files[i]);
       const data = {image, text};
+      if (gid){ data.skupina = gid; data.skupinaN = files.length; }
       if (S.reply){ data.replyTo = {id:S.reply.id, jmeno:S.reply.jmeno, text:String(S.reply.text || "").slice(0, 120)}; S.reply = null; }
       await writeMsg(data); text = "";
     } catch (e){ showErr(e.code === "permission-denied" ? "Odeslání zamítnuto pravidly Firestore." : "Fotku se nepodařilo odeslat."); }
@@ -720,13 +753,49 @@ function openSheet(mid){
     else if (act === "copy"){ try { await navigator.clipboard.writeText(m.text); } catch(_){ prompt("Zkopíruj text:", m.text); } }
     else if (act === "pin"){ tref().set({pinned: pinned ? FV().delete() : {id:mid, text:(m.text || "📷 Fotka").slice(0, 140), jmeno:m.jmeno || nameOf(m.od)}}, {merge:true}).catch(() => {}); }
     else if (act === "edit"){ S.reply = null; S.edit = mid; renderBar(); const ta = $("chText"); if (ta){ ta.value = m.text; grow(ta); ta.focus(); } }
-    else if (act === "del"){ if (!confirm("Smazat tuto zprávu?")) return; tref().collection("zpravy").doc(mid).update({smazano:true, text:"", image:FV().delete(), upraveno:FV().serverTimestamp()}).catch(() => {}); }
+    else if (act === "del"){
+      const ids = (S.groupOf && S.groupOf[mid]) || [mid];
+      if (!confirm(ids.length > 1 ? `Smazat všech ${ids.length} ${ids.length < 5 ? "fotky" : "fotek"}?` : "Smazat tuto zprávu?")) return;
+      ids.forEach(id => tref().collection("zpravy").doc(id).update({smazano:true, text:"", image:FV().delete(), upraveno:FV().serverTimestamp()}).catch(() => {}));
+    }
   });
   document.body.appendChild(s);
 }
 function goTo(mid){
   const el = document.querySelector(`.ch-m[data-mid="${CSS.escape(mid)}"]`); if (!el) return;
   el.scrollIntoView({block:"center", behavior:"smooth"}); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1600);
+}
+
+/* ---------- prohlížeč fotek (listování šipkami nebo přejetím prstem) ---------- */
+function openGallery(list, i){
+  if (!list.length) return;
+  const old = document.querySelector(".ch-view"); if (old) old.remove();
+  const v = document.createElement("div"); v.className = "ch-view"; v.setAttribute("role", "dialog"); v.setAttribute("aria-label", "Fotky");
+  let k = i;
+  const draw = () => {
+    v.innerHTML = `<img src="${list[k]}" alt="Fotka ${k + 1} z ${list.length}">
+      <button type="button" class="ch-vx" data-v="x" aria-label="Zavřít">${ic(ICO.close, 24)}</button>
+      ${list.length > 1 ? `<button type="button" class="ch-vb l" data-v="-1" aria-label="Předchozí fotka" ${k === 0 ? "disabled" : ""}>${ic('<path d="M15 5l-7 7 7 7"/>', 26)}</button>
+      <button type="button" class="ch-vb r" data-v="1" aria-label="Další fotka" ${k === list.length - 1 ? "disabled" : ""}>${ic('<path d="M9 5l7 7-7 7"/>', 26)}</button>
+      <span class="ch-vn">${k + 1} / ${list.length}</span>` : ""}`;
+  };
+  const go = d => { const n = k + d; if (n < 0 || n >= list.length) return; k = n; draw(); };
+  v.addEventListener("click", e => {
+    const b = e.target.closest("[data-v]");
+    if (b){ if (b.dataset.v === "x") close(); else go(+b.dataset.v); return; }
+    if (e.target === v) close();
+  });
+  let sx = null, sy = null;
+  v.addEventListener("touchstart", e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, {passive:true});
+  v.addEventListener("touchend", e => {
+    if (sx == null) return; const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; sx = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1);
+    else if (dy > 90 && Math.abs(dy) > Math.abs(dx)) close(); // přejetí dolů zavře
+  });
+  const key = e => { if (e.key === "ArrowLeft") go(-1); else if (e.key === "ArrowRight") go(1); };
+  function close(){ v.remove(); document.removeEventListener("keydown", key); }
+  document.addEventListener("keydown", key);
+  draw(); document.body.appendChild(v);
 }
 
 /* ---------- události ---------- */
@@ -751,8 +820,8 @@ function bind(root){
     const go = c("[data-chgo]"); if (go){ goTo(go.dataset.chgo); return; }
     const rx = c("[data-chrx]"); if (rx){ toggleRx(rx.dataset.mid, rx.dataset.chrx); return; }
     const mo = c("[data-chmore]"); if (mo){ openSheet(mo.dataset.chmore); return; }
-    const own = c(".ch-m.mine .ch-bub"); if (own && !c("[data-chimg],a,.ch-q")){ const mid = own.closest(".ch-m").dataset.mid; S.infoMid = S.infoMid === mid ? null : mid; renderMsgs(false); return; }
-    const im = c("[data-chimg]"); if (im){ const v = document.createElement("div"); v.className = "ch-view"; v.innerHTML = `<img src="${im.src}" alt="Fotka">`; v.addEventListener("click", () => v.remove()); document.body.appendChild(v); return; }
+    const own = c(".ch-m.mine .ch-bub"); if (own && !c("[data-chgal],a,.ch-q,.ch-rx")){ const mid = own.closest(".ch-m").dataset.mid; S.infoMid = S.infoMid === mid ? null : mid; renderMsgs(false); return; }
+    const gl = c("[data-chgal]"); if (gl){ openGallery(S.gal[gl.dataset.chgal] || [], +gl.dataset.i || 0); return; }
   });
   // tlačítko odeslat nesmí vzít poli pro psaní fokus – jinak první klepnutí na iPhonu jen schová klávesnici
   // a okno se posune, takže se zpráva odešle až napodruhé; takhle zůstane klávesnice otevřená a odešle se hned
@@ -764,7 +833,7 @@ function bind(root){
   }, {passive:false}));
   // dlouhé podržení zprávy = nabídka (mobil), pravé tlačítko = nabídka (počítač)
   root.addEventListener("pointerdown", e => {
-    const m = e.target.closest(".ch-m[data-mid]"); if (!m || e.target.closest("button,a")) return;
+    const m = e.target.closest(".ch-m[data-mid]"); if (!m || e.target.closest("button:not([data-chgal]),a")) return;
     lpFired = false; lpXY = [e.clientX, e.clientY];
     lpT = setTimeout(() => { lpFired = true; lpT = null; if (navigator.vibrate) navigator.vibrate(12); openSheet(m.dataset.mid); }, 480);
   });
