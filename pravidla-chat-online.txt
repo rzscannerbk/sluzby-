@@ -1,0 +1,6 @@
+    // chat – „naposledy online“: každý zapisuje jen svůj čas, číst ho smí každý přihlášený
+    match /chatOnline/{cislo} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && request.auth.token.email.split('@')[0].split('[.]')[1] == cislo;
+    }

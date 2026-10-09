@@ -176,6 +176,8 @@ const STYLE = `
 .ch-root.two .ch-side.l{display:none}
 .ch-root.two .ch-tb{text-align:left}
 .ch-tb b{display:block;font-family:var(--f-cond,sans-serif);font-size:21px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-tb small#chPeer.on{color:#2E9E5B;opacity:1;font-weight:600}
+.ch-th.N .ch-tb small#chPeer.on{color:#9BE7B5}
 .ch-tb small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:12.5px;line-height:1.25;opacity:.8;overflow:hidden}
 .ch-root .ch-ib{flex:none;width:42px;height:42px;border-radius:50%;border:1.5px solid currentColor;background:transparent;color:inherit;display:flex;align-items:center;justify-content:center;padding:0}
 .ch-root .ch-ib.on{background:var(--ink,#1D2A4D);border-color:var(--ink,#1D2A4D);color:var(--paper,#fff)}
@@ -218,7 +220,8 @@ const STYLE = `
 .ch-bar span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ch-bar button{border:0;background:transparent;font-size:16px;padding:0 4px}
 .ch-row2{display:flex;align-items:flex-end;gap:8px}
-.ch-row2 textarea{flex:1;min-width:0;resize:none;border:1.5px solid var(--line,#B9C0B4);border-radius:18px;padding:9px 14px;background:var(--paper,#fff);color:inherit;font:inherit;font-size:16px;line-height:1.3;max-height:140px}
+.ch-row2 textarea::-webkit-scrollbar{width:0;height:0}
+.ch-row2 textarea{overflow-y:hidden;scrollbar-width:none;flex:1;min-width:0;resize:none;border:1.5px solid var(--line,#B9C0B4);border-radius:18px;padding:9px 14px;background:var(--paper,#fff);color:inherit;font:inherit;font-size:16px;line-height:1.3;max-height:140px}
 .ch-send,.ch-photo{flex:none;width:42px;height:42px;border-radius:50%;border:0;display:flex;align-items:center;justify-content:center;padding:0}
 .ch-root .ch-send{background:var(--ink,#1D2A4D);color:var(--paper,#fff)}
 .ch-photo{background:transparent;border:1.5px solid var(--ink,#1D2A4D)}
@@ -270,10 +273,12 @@ CH.init = function(opts){
     if (O.onAdminChange) O.onAdminChange();
   }, () => { S.set = null; applyAllowed(); }));
   window.addEventListener("resize", layout);
-  // Telefon (iOS i Android): okno chatu se drží přesně viditelné plochy nad klávesnicí (stejně jako chat v KoKrŠNeKu).
+  // iPhone: okno chatu se drží přesně viditelné plochy nad klávesnicí (stejně jako chat v KoKrŠNeKu).
+  // Android to řeší sám – index.html má v meta viewport interactive-widget=resizes-content, takže se stránka nad klávesnici zmenší.
   // Výška bez klávesnice se zapamatuje při otevření – podle ní se pozná vysunutá klávesnice a zruší se spodní
   // rezerva pro domečkovou lištu, která jinak dělala mezeru mezi polem pro psaní a klávesnicí.
-  if (window.visualViewport && !O.desk){
+  const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (window.visualViewport && !O.desk && iOS){
     const vv = window.visualViewport;
     const fit = () => {
       const r = $("chRoot"); if (!r || r.hidden){ S.vvBase = null; return; }
@@ -286,7 +291,8 @@ CH.init = function(opts){
     S.fit = fit;
     vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit);
   }
-  setInterval(() => { if (S && S.open) { renderTyping(); if (S.view === "list") renderList(); } updBadge(); }, 30e3);
+  setInterval(() => { const pe = $("chPeer"); if (pe) pe.textContent = peerLine();
+    if (S && S.open) { renderTyping(); if (S.view === "list") renderList(); } updBadge(); }, 30e3);
 };
 CH.refresh = function(){ if (!O) return; if (S.set === null) ensureDefault(); applyAllowed(); if (O.onAdminChange) O.onAdminChange(); };
 function ensureDefault(){
@@ -304,8 +310,34 @@ function applyAllowed(){
   if (ok && !LIVE) startLive();
   if (!ok && LIVE) stopLive();
 }
+/* naposledy online: každý si zapisuje chatOnline/{své číslo} (jen čas) – při otevřené stránce každou minutu */
+function beat(){
+  if (!LIVE) return;
+  O.db.collection("chatOnline").doc(String(O.me)).set({at:FV().serverTimestamp()}).catch(() => {});
+}
+function peerLine(){
+  const at = S.peerAt; if (!at) return "Soukromá zpráva";
+  const d = now() - at;
+  if (d < 150e3) return "online";
+  const t = new Date(at), today = new Date(now());
+  const y = new Date(today); y.setDate(y.getDate() - 1);
+  const day = t.toDateString() === today.toDateString() ? "dnes" : t.toDateString() === y.toDateString() ? "včera" : `${DOW_S[t.getDay()]} ${t.getDate()}. ${t.getMonth() + 1}.`;
+  return `naposledy online ${day} ${hm(at)}`;
+}
+function watchPeer(){
+  const tid = S.tid, peer = tid && tid.startsWith("dm_") ? tid.split("_").slice(1).find(c => c !== String(O.me)) : null;
+  if (S.peerFor === peer) return;
+  if (S.peerUnsub){ S.peerUnsub(); S.peerUnsub = null; }
+  S.peerFor = peer; S.peerAt = 0;
+  if (!peer) return;
+  S.peerUnsub = O.db.collection("chatOnline").doc(peer).onSnapshot(s => {
+    S.peerAt = s.exists ? ms(s.data({serverTimestamps:"estimate"}).at) : 0;
+    const el = $("chPeer"); if (el){ el.textContent = peerLine(); el.classList.toggle("on", peerLine() === "online"); }
+  }, () => {});
+}
 function startLive(){
   LIVE = true;
+  beat(); clearInterval(S.beatT); S.beatT = setInterval(() => { if (document.visibilityState === "visible") beat(); }, 60e3);
   const col = O.db.collection("chaty");
   S.liveUnsubs = [];
   S.liveUnsubs.push(col.where("clenove", "array-contains", String(O.me)).onSnapshot(s => {
@@ -321,7 +353,8 @@ function startLive(){
 function stopLive(){
   LIVE = false;
   (S.liveUnsubs || []).forEach(u => { try { u(); } catch(e){} });
-  S.liveUnsubs = []; S.threads = {}; S.vsichni = null;
+  S.liveUnsubs = []; S.threads = {}; S.vsichni = null; clearInterval(S.beatT);
+  if (S.peerUnsub){ S.peerUnsub(); S.peerUnsub = null; S.peerFor = null; }
   if (S.msgUnsub){ S.msgUnsub(); S.msgUnsub = null; S.msgFor = null; }
   CH.close(); updBadge();
 }
@@ -461,7 +494,7 @@ function renderThread(){
         <textarea id="chText" rows="1" maxlength="2000" placeholder="Zpráva"></textarea>
         <button type="button" class="ch-send" data-chsend aria-label="Odeslat"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 20.5 21 12 3 3.5l2.4 7.1L14 12l-8.6 1.4z"/></svg></button>
       </div>`}</div>`;
-  ensureMsgSub();
+  ensureMsgSub(); watchPeer();
   renderHead(); renderMsgs(true); renderBar();
   const ta = $("chText");
   if (ta){
@@ -473,17 +506,17 @@ function renderThread(){
   const f = $("chFile"); if (f) f.addEventListener("change", () => { const files = [...(f.files || [])]; f.value = ""; sendPhotos(files); });
   markSeen();
 }
-function grow(ta){ ta.style.height = "auto"; ta.style.height = Math.min(140, ta.scrollHeight + 2) + "px"; }
+function grow(ta){ ta.style.height = "auto"; const h = ta.scrollHeight + 2; ta.style.height = Math.min(140, h) + "px"; ta.style.overflowY = h > 140 ? "auto" : "hidden"; }
 function renderHead(){
   const h = $("chHead"); if (!h) return;
   const tid = S.tid, t = thread(tid), mut = isMuted(t);
   let sub = "";
   if (t && t.typ === "hlidka") sub = `${hTimes(t)} · ${(t.clenove || []).map(c => surname(nameOf(c))).join(", ")}`;
   else if (tid === "vsichni") sub = S.set && S.set.vsem ? "Všichni strážníci" : "Testovací provoz – jen testeři";
-  else sub = "Soukromá zpráva";
+  else sub = null;
   h.className = "ch-th" + (t && t.typ === "hlidka" ? " " + (t.kind === "N" ? "N" : "D") : "");
   h.innerHTML = `<div class="ch-side l"><button type="button" class="ch-back" data-chback aria-label="Zpět na seznam chatů"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></div>
-    <div class="ch-tb"><b>${esc(t && t.typ === "hlidka" && !S.two ? hTitle(t, true) : titleOf(tid, t))}</b><small>${esc(sub)}</small></div>
+    <div class="ch-tb"><b>${esc(t && t.typ === "hlidka" && !S.two ? hTitle(t, true) : titleOf(tid, t))}</b>${sub === null ? `<small id="chPeer" class="${peerLine() === "online" ? "on" : ""}">${esc(peerLine())}</small>` : `<small>${esc(sub)}</small>`}</div>
     <div class="ch-side r"><button type="button" class="ch-ib${S.searchOn ? " on" : ""}" data-chsearch aria-label="Hledat ve vlákně" title="Hledat"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
     ${t ? `<button type="button" class="ch-ib${mut ? " on" : ""}" data-chmute aria-pressed="${mut}" aria-label="${mut ? "Zrušit ztlumení" : "Ztlumit upozornění"}" title="${mut ? "Ztlumeno – upozornění vypnutá" : "Ztlumit upozornění"}">${mut ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/><path d="M4 4l16 16"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>`}</button>` : ""}
     ${O.desk ? `<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button>` : ""}</div>`;
@@ -727,7 +760,7 @@ function bind(root){
     if (S.view === "thread" && !S.two){ backToList(); return; }
     CH.close();
   });
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") markSeen(); });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") markSeen(); beat(); });
   // administrace (HTML vkládá stránka, kliky se chytají tady)
   document.addEventListener("change", e => {
     const t = e.target.closest("[data-chadm-t]"); if (!t || !O || !O.isAdmin) return;

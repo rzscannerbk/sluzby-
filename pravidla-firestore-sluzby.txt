@@ -84,3 +84,66 @@ které jsou definované na začátku pravidel RZ Scanneru (isAdmin = juracka.104
       allow create: if isSignedIn()
         && request.resource.data.cislo == request.auth.token.email.split('@')[0].split('[.]')[1];
     }
+
+    // ===== CHAT (Služby) – vložit vedle ostatních bloků Plánu služeb =====
+    // nastavení chatu: kdo smí chat používat (vsem / testeri) – mění jen správce
+    match /nastaveni/{doc} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /chaty/{tid} {
+      function meC() { return request.auth.token.email.split('@')[0].split('[.]')[1]; }
+      function chatOK() {
+        return isSignedIn() && (isAdmin()
+          || get(/databases/$(database)/documents/nastaveni/chat).data.vsem == true
+          || meC() in get(/databases/$(database)/documents/nastaveni/chat).data.testeri);
+      }
+      // vlákno vidí jen jeho členové (u „vsichni“ každý, kdo má chat povolený)
+      allow read: if chatOK() && (tid == 'vsichni' || meC() in resource.data.clenove);
+      // nové vlákno: soukromé 1:1 (ID dm_<menší>_<větší>) nebo společné „vsichni“; vlákna hlídek zakládá jen server
+      allow create: if chatOK() && (
+           (tid == 'vsichni' && request.resource.data.typ == 'vsichni')
+        || (request.resource.data.typ == 'dm'
+            && request.resource.data.clenove.size() == 2
+            && meC() in request.resource.data.clenove
+            && request.resource.data.clenove[0] < request.resource.data.clenove[1]
+            && tid == 'dm_' + request.resource.data.clenove[0] + '_' + request.resource.data.clenove[1]));
+      // členové mění jen „provozní“ pole – typ, členy a časy hlídky nikdo z telefonu nezmění
+      allow update: if chatOK() && (resource.data.typ == 'vsichni' || meC() in resource.data.clenove)
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['pocet', 'videno', 'lastSeen', 'typing', 'muted', 'pinned', 'posledni']);
+      allow delete: if false;
+
+      match /zpravy/{mid} {
+        function meZ() { return request.auth.token.email.split('@')[0].split('[.]')[1]; }
+        function okZ() {
+          return isSignedIn() && (isAdmin()
+            || get(/databases/$(database)/documents/nastaveni/chat).data.vsem == true
+            || meZ() in get(/databases/$(database)/documents/nastaveni/chat).data.testeri);
+        }
+        function inThread(t) { return t.typ == 'vsichni' || meZ() in t.clenove; }
+        allow read: if okZ() && inThread(get(/databases/$(database)/documents/chaty/$(tid)).data);
+        // nová zpráva: jen člen, za sebe, a do vlákna hlídky jen dokud není v archivu
+        // (getAfter – první zpráva soukromého vlákna vzniká v jedné dávce se založením vlákna)
+        allow create: if okZ()
+          && inThread(getAfter(/databases/$(database)/documents/chaty/$(tid)).data)
+          && request.resource.data.od == meZ()
+          && request.resource.data.text is string && request.resource.data.text.size() <= 2000
+          && (getAfter(/databases/$(database)/documents/chaty/$(tid)).data.typ != 'hlidka'
+              || request.time < getAfter(/databases/$(database)/documents/chaty/$(tid)).data.archivOd);
+        // autor upraví nebo smaže svoji zprávu, ostatní členové mění jen reakce
+        allow update: if okZ() && inThread(get(/databases/$(database)/documents/chaty/$(tid)).data) && (
+             (resource.data.od == meZ()
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'upraveno', 'smazano', 'image', 'reakce']))
+          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reakce']));
+        allow delete: if false;
+      }
+    }
+
+    // chat – „naposledy online“: každý zapisuje jen svůj čas, číst ho smí každý přihlášený
+    match /chatOnline/{cislo} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && request.auth.token.email.split('@')[0].split('[.]')[1] == cislo;
+    }
