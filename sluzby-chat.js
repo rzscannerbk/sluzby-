@@ -159,6 +159,10 @@ const STYLE = `
 .ch-row.on{outline:2.5px solid var(--ink,#1D2A4D)}
 .ch-av{flex:none;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--f-cond,sans-serif);font-weight:700;font-size:16px;background:var(--ink,#1D2A4D);color:var(--paper,#fff)}
 .ch-av.all{background:#2E7D4F;color:#fff}
+.ch-sheet .ch-mehead{display:flex;align-items:center;gap:12px;margin:2px 4px 10px;font-size:17px}
+.ch-sheet .ch-mehead .ch-av{width:52px;height:52px;font-size:19px}
+.ch-me-av{display:inline-flex;cursor:pointer;flex:none}
+.ch-me-av .ch-av{width:34px;height:34px;font-size:13px}
 .ch-av.img{background:#fff center/cover no-repeat;color:transparent;box-shadow:0 0 0 1px rgba(127,127,127,.25)}
 .ch-adm .ch-fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px;margin-top:8px}
 .ch-adm .ch-fg>div{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font-size:12px;line-height:1.2;position:relative}
@@ -338,6 +342,13 @@ CH.init = function(opts){
     if (S.open){ renderList(); if (S.view === "thread" || S.two) renderHead(); }
     if (O.onAdminChange) O.onAdminChange();
   }, () => { S.fotky = {}; }));
+  // vlastní fotky – každý si ji mění sám v menu (chatFotky/{číslo}); mají přednost před fotkou od správce
+  S.unsubs.push(db.collection("chatFotky").onSnapshot(q => {
+    const o = {}; q.forEach(d => { const f = d.data() && d.data().foto; if (f) o[d.id] = f; }); S.vlastni = o;
+    if (S.open){ renderList(); if (S.view === "thread" || S.two) renderHead(); }
+    renderMe();
+    if (O.onAdminChange) O.onAdminChange();
+  }, () => { S.vlastni = {}; }));
   window.addEventListener("resize", layout);
   // iPhone: okno chatu se drží přesně viditelné plochy nad klávesnicí (stejně jako chat v KoKrŠNeKu).
   // Android to řeší sám – index.html má v meta viewport interactive-widget=resizes-content, takže se stránka nad klávesnici zmenší.
@@ -434,6 +445,46 @@ function afterThreads(){
   if (S.tid) { renderHead(); renderMsgs(false); markSeen(); }
 }
 function updBadge(){ if (O && O.onBadge) O.onBadge(LIVE ? badgeCount() : 0); }
+/* ---------- vlastní fotka (kroužek vedle jména v menu) ---------- */
+let MOUNTS = [];
+function renderMe(){
+  MOUNTS = MOUNTS.filter(el => el.isConnected);
+  MOUNTS.forEach(el => { el.innerHTML = O && O.me ? avHTML(String(O.me), initials(meName())) : ""; });
+}
+CH.mountMe = function(el){
+  if (!el) return;
+  if (!MOUNTS.includes(el)) MOUNTS.push(el);
+  if (!el.dataset.chmeBound){
+    el.dataset.chmeBound = "1"; el.setAttribute("role", "button"); el.setAttribute("tabindex", "0"); el.title = "Změnit moji fotku";
+    el.addEventListener("click", e => { e.stopPropagation(); openMePhoto(); });
+  }
+  renderMe();
+};
+function openMePhoto(){
+  if (!O || !O.me) return;
+  const me = String(O.me), own = S.vlastni && S.vlastni[me];
+  closeSheet();
+  const s = document.createElement("div"); s.className = "ch-sheet";
+  s.innerHTML = `<div role="dialog" aria-label="Moje fotka"><div class="ch-mehead">${avHTML(me, initials(meName()))}<b>${esc(meName())}</b></div>
+    <button type="button" class="ch-act" data-chme="pick">${ic('<rect x="3" y="6" width="18" height="14" rx="3"/><circle cx="12" cy="13" r="3.5"/><path d="M9 6l1.5-2h3L15 6"/>')}${own || fotoOf(me) ? "Změnit fotku" : "Přidat fotku"}</button>
+    ${own ? `<button type="button" class="ch-act red" data-chme="del">${ic(ICO.del)}Odebrat moji fotku</button>` : ""}
+    <button type="button" class="ch-act" data-chme="x">${ic(ICO.close)}Zrušit</button></div>`;
+  s.addEventListener("click", e => {
+    if (e.target === s){ closeSheet(); return; }
+    const b = e.target.closest("[data-chme]"); if (!b) return;
+    const a = b.dataset.chme; closeSheet();
+    const ref = O.db.collection("chatFotky").doc(me);
+    const fail = err => toast(err && err.code === "permission-denied" ? "Uložení zamítnuto pravidly Firestore." : "Fotku se nepodařilo uložit.");
+    if (a === "pick"){
+      const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
+      inp.onchange = () => { const f = inp.files && inp.files[0]; if (!f) return;
+        avatarFrom(f).then(url => ref.set({foto:url, at:FV().serverTimestamp()})).then(() => toast("Fotka uložena")).catch(fail); };
+      inp.click();
+    } else if (a === "del"){ ref.delete().then(() => toast("Fotka odebrána")).catch(fail); }
+  });
+  document.body.appendChild(s);
+}
+
 CH.stop = function(){
   if (!O) return;
   stopLive();
@@ -484,8 +535,9 @@ function backToList(){
 
 /* ---------- seznam vláken ---------- */
 function initials(n){ return String(n).split(" ").map(x => x[0]).slice(0, 2).join(""); }
+function fotoOf(key){ key = String(key); return (S && S.vlastni && S.vlastni[key]) || (S && S.fotky && S.fotky[key]) || null; }
 function avHTML(key, letters, cls){
-  const f = S.fotky && S.fotky[key];
+  const f = fotoOf(key);
   return f ? `<span class="ch-av img" style="background-image:url('${f}')" aria-hidden="true"></span>` : `<span class="ch-av${cls ? " " + cls : ""}">${esc(letters)}</span>`;
 }
 function rowHTML(id, t){

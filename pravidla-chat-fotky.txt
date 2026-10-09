@@ -1,0 +1,7 @@
+    // chat – vlastní profilová fotka: každý mění jen svoji (správce kohokoliv), číst smí každý přihlášený
+    match /chatFotky/{cislo} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && (request.auth.token.email.split('@')[0].split('[.]')[1] == cislo || isAdmin())
+        && (request.resource == null || (request.resource.data.foto is string && request.resource.data.foto.size() < 80000));
+    }

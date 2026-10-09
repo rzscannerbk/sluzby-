@@ -83,7 +83,8 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 .menu label.chk{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);margin-top:10px}
 .menu label.chk input{width:18px;height:18px;accent-color:var(--ink)}
 .menu .mrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}
-.menu .mname{flex:1;min-width:0;text-align:center;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.menu .mname{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:600}
+.menu .mname #menuName{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 .split{order:1;flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 92px}
 .left{position:relative;margin-top:4px;overflow-y:auto;overscroll-behavior:contain;padding:14px 10px 0 12px;-webkit-overflow-scrolling:touch}
@@ -480,8 +481,8 @@ button.cal-day{cursor:pointer}
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
-      <span class="mname" id="menuName"></span>
-      <span class="ver" id="verDiag">v4.63</span>
+      <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
+      <span class="ver" id="verDiag">v4.64</span>
     </div>
   </div>
 </header>
@@ -580,7 +581,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="sluzby-core.js?v=4.46"></script>
-<script src="sluzby-chat.js?v=4.63"></script>
+<script src="sluzby-chat.js?v=4.64"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -964,6 +965,7 @@ function chatStart(){
     onAllowed: ok => { document.getElementById("btnChat").hidden = !ok; },
     onBadge: n => { const b = document.getElementById("chatBadge"); b.hidden = !n; b.textContent = n > 99 ? "99+" : n; },
     onAdminChange: () => { if (!adm.hidden && ADM.tab === "uziv") renderAdm(); }});
+  SluzbyChat.mountMe(document.getElementById("menuAv"));
 }
 document.getElementById("btnChat").addEventListener("click", () => { if (window.SluzbyChat) SluzbyChat.open(); });
 function stop(){

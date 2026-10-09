@@ -381,12 +381,12 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         Administrace</button>
     </div>
     <div class="foot">
-      <b id="whoName"></b>
+      <div style="display:flex;align-items:center;gap:10px;min-width:0"><span class="ch-me-av" id="deskAv"></span><b id="whoName"></b></div>
       <div class="row">
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v3.8</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v3.9</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -398,7 +398,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="sluzby-core.js?v=4.46"></script>
-<script src="sluzby-chat.js?v=4.63"></script>
+<script src="sluzby-chat.js?v=4.64"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -416,7 +416,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v3.8";
+const DESK_VER = "desktop v3.9";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
@@ -524,6 +524,7 @@ function chatStart(){
     onAllowed: ok => { $("navChat").hidden = !ok; },
     onBadge: n => { const b = $("chatBadge"); b.hidden = !n; b.textContent = n > 99 ? "99+" : n; },
     onAdminChange: () => { if (VIEW === "admin" && ADM.tab === "uziv") render(); }});
+  SluzbyChat.mountMe($("deskAv"));
   if (OPEN_REQ === "chat") openFromPush("chat", OPEN_T);
 }
 $("navChat").addEventListener("click", () => { if (window.SluzbyChat) SluzbyChat.open(); });
