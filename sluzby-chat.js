@@ -71,7 +71,7 @@ function visibleThreads(){
 }
 function badgeCount(){ return visibleThreads().reduce((s, [, t]) => s + (isMuted(t) ? 0 : unreadOf(t)), 0); }
 function titleOf(id, t){
-  if (id === "vsichni") return "Všichni";
+  if (id === "vsichni") return "Zpráva všem";
   if (!t && id.startsWith("dm_")) return nameOf(id.split("_").slice(1).find(c => c !== String(O.me)));
   if (t && t.typ === "dm") return nameOf((t.clenove || []).map(String).find(c => c !== String(O.me)) || O.me);
   if (t && t.typ === "hlidka") return hTitle(t);
@@ -164,7 +164,7 @@ const STYLE = `
 .ch-arch{width:100%;border:1.5px dashed var(--ink2,#5A6480);background:transparent;border-radius:12px;padding:10px;margin-top:14px;font-weight:600}
 .ch-empty{color:var(--ink2,#5A6480);font-size:14px;margin:4px 2px 10px}
 .ch-pick{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.ch-pick button{border:1.5px solid var(--line,#B9C0B4);background:var(--sheet,#fff);border-radius:10px;padding:9px 10px;text-align:left;font-weight:600}
+.ch-pick button{border:1.5px solid var(--line,#B9C0B4);background:var(--sheet,#fff);border-radius:10px;padding:9px 10px;text-align:center;font-weight:600}
 /* vlákno */
 .ch-thread{background:var(--paper,var(--bg,#E6EAE4));position:relative}
 .ch-th{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top,0px) + 10px) 10px 10px;background:var(--sheet,#FAFBF7);border-bottom:1.5px solid var(--line,#DDE1E7)}

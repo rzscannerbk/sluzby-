@@ -1,7 +1,8 @@
 /* Plán služeb MP Blansko – notifikace
    - výměny služeb (nová žádost, přijetí, odmítnutí, nabídky, zrušení)
    - připomínka před službou (každou hodinu se zkontroluje, komu co začíná)
-   - nový nebo upravený plán */
+   - nový nebo upravený plán
+   - chat: vlákna hlídek podle plánu a notifikace o nových zprávách */
 const { onDocumentCreated, onDocumentUpdated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest } = require("firebase-functions/v2/https");
@@ -30,14 +31,14 @@ async function tokensFor(filter) {
   const snap = await db.collection("pushTokens").get();
   return snap.docs.filter(d => filter(d.data())).map(d => d.id);
 }
-async function send(tokens, title, body, link = BASE_URL) {
+async function send(tokens, title, body, link = BASE_URL, tag = null) {
   tokens = [...new Set(tokens)].filter(Boolean);
   if (!tokens.length) return;
   for (let i = 0; i < tokens.length; i += 500) {
     const chunk = tokens.slice(i, i + 500);
     const res = await admin.messaging().sendEachForMulticast({
       tokens: chunk,
-      webpush: { notification: { title, body, icon: ICON, badge: BADGE }, fcmOptions: { link } }
+      webpush: { notification: { title, body, icon: ICON, badge: BADGE, ...(tag ? { tag, renotify: true } : {}) }, fcmOptions: { link } }
     });
     // neplatné tokeny (odinstalováno, odhlášeno) uklidit
     const dead = [];
@@ -143,6 +144,7 @@ exports.planZmena = onDocumentWritten("planSluzeb/{id}", async ev => {
   const a = ev.data.before.exists ? ev.data.before.data() : null;
   const b = ev.data.after.exists ? ev.data.after.data() : null;
   if (!b) return;
+  await syncHlidky().catch(e => logger.error("syncHlidky", e)); // vlákna hlídek v chatu podle nového plánu
   if (a && JSON.stringify(a.plan) === JSON.stringify(b.plan) && JSON.stringify(a.udalosti || {}) === JSON.stringify(b.udalosti || {})) return;
   const [y, m] = id.split("-").map(Number);
   const nazev = `${MONTHS[m - 1]} ${y}`;
@@ -312,4 +314,98 @@ exports.kalendar = onRequest({ invoker: "public" }, async (req, res) => {
   res.set("Content-Disposition", 'inline; filename="sluzby.ics"');
   res.set("Cache-Control", "no-cache, max-age=0");
   res.send(L.join("\r\n") + "\r\n");
+});
+
+
+/* ---------- 5) chat – vlákna hlídek a notifikace o zprávách ---------- */
+// Vlákno hlídky h_RRRR-MM-DD_D|N: členy určuje efektivní plán (plán + přijaté výměny).
+// Objeví se den před službou, v chatu zůstává do konce další stejné služby, pak jde do archivu.
+// Po skončení služby se členové už nemění – archiv vidí jen ti, kdo službu skutečně odsloužili.
+const CHAT_URL = BASE_URL + "?open=chat&t=";
+const HOUR = 36e5;
+function pragueParts(t) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false })
+    .formatToParts(new Date(t)).map(x => [x.type, x.value]));
+  return { y: +p.year, m: +p.month, d: +p.day, h: +p.hour % 24, mi: +p.minute };
+}
+function pragueTime(y, m, d, h) { // pražský čas → UTC milisekundy (ošetří letní čas)
+  const want = Date.UTC(y, m - 1, d, h);
+  let t = want;
+  for (let i = 0; i < 3; i++) { const p = pragueParts(t); t += want - Date.UTC(p.y, p.m - 1, p.d, p.h, p.mi); }
+  return t;
+}
+const dayId = ({ y, m, d }) => `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+async function chatSet() { const s = await db.collection("nastaveni").doc("chat").get(); return s.exists ? s.data() : null; }
+const chatAllowed = (set, c) => !!set && (set.vsem === true || (set.testeri || []).map(String).includes(String(c)));
+
+async function syncHlidky() {
+  const set = await chatSet(); if (!set) return;
+  const cisla = ((await db.collection("planSluzeb").doc("straznici").get()).data() || {}).cisla || {};
+  const cache = {};
+  const plan = async day => { const id = monthId(day); if (!(id in cache)) cache[id] = await effectivePlan(id); return cache[id]; };
+  const today = pragueNow(), nowMs = Date.now(), TS = admin.firestore.Timestamp;
+  for (const off of [-1, 0, 1]) {
+    const day = addDays(today, off), next = addDays(day, 1);
+    const T = (await plan(day)) || {}, Tn = (await plan(next)) || {};
+    for (const kind of ["D", "N"]) {
+      const start = pragueTime(day.y, day.m, day.d, kind === "D" ? 7 : 19);
+      const konec = kind === "D" ? pragueTime(day.y, day.m, day.d, 19) : pragueTime(next.y, next.m, next.d, 8);
+      if (nowMs >= konec) continue; // po skončení služby se členové už nemění
+      const memb = new Map(); // jméno → stálá služba
+      for (const [name, arr] of Object.entries(T)) {
+        (arr[day.d - 1] || ".").split("+").forEach(p => { if (kindOf(p) === kind) memb.set(name, !!memb.get(name) || p.endsWith("*")); });
+      }
+      if (kind === "N") { // konec noci (Nk8) zapsaný až v dalším dni patří k této noci
+        for (const [name, arr] of Object.entries(Tn)) {
+          (arr[next.d - 1] || ".").split("+").forEach(p => { if (p.replace(/\*$/, "") === "Nk8" && !memb.has(name)) memb.set(name, p.endsWith("*")); });
+        }
+      }
+      const clenove = [...memb.keys()].map(n => cisla[n]).filter(Boolean).map(String).sort();
+      const stala = [...memb.entries()].filter(([, s]) => s).map(([n]) => cisla[n]).filter(Boolean).map(String);
+      const id = `h_${dayId(day)}_${kind}`, ref = db.collection("chaty").doc(id);
+      const cur = await ref.get();
+      if (!cur.exists && !clenove.some(c => chatAllowed(set, c))) continue; // při testu jen hlídky s testerem
+      const old = cur.exists ? cur.data() : {};
+      if (cur.exists && JSON.stringify(old.clenove || []) === JSON.stringify(clenove) && JSON.stringify(old.stala || []) === JSON.stringify(stala)) continue;
+      const dt = new Date(Date.UTC(day.y, day.m - 1, day.d));
+      await ref.set({
+        typ: "hlidka", datum: dayId(day), kind,
+        nazev: `${kind === "N" ? "Noční" : "Denní"} ${DOW[dt.getUTCDay()]} ${day.d}. ${day.m}.`,
+        clenove, stala,
+        start: TS.fromMillis(start), konec: TS.fromMillis(konec),
+        zobrazitOd: TS.fromMillis(start - 24 * HOUR), archivOd: TS.fromMillis(konec + 24 * HOUR)
+      }, { merge: true });
+      logger.info(`chat: vlákno ${id} – členové ${clenove.join(", ")}`);
+    }
+  }
+}
+// každou hodinu (zakládá vlákna na zítřek), po přijetí nebo zrušení výměny a po změně nastavení chatu
+exports.hlidkyPlan = onSchedule({ schedule: "5 * * * *", timeZone: TZ }, () => syncHlidky());
+exports.hlidkyVymena = onDocumentWritten("vymeny/{id}", async ev => {
+  const a = ev.data.before.exists ? ev.data.before.data() : null;
+  const b = ev.data.after.exists ? ev.data.after.data() : null;
+  if (((a && a.stav) === "prijato") === ((b && b.stav) === "prijato")) return;
+  await syncHlidky();
+});
+exports.chatNastaveni = onDocumentWritten("nastaveni/chat", () => syncHlidky());
+
+// nová zpráva → notifikace ostatním členům vlákna (kromě autora a těch, kdo vlákno ztlumili)
+exports.chatZprava = onDocumentCreated("chaty/{tid}/zpravy/{mid}", async ev => {
+  const m = ev.data && ev.data.data(); if (!m) return;
+  const tid = ev.params.tid;
+  const [tSnap, set] = await Promise.all([db.collection("chaty").doc(tid).get(), chatSet()]);
+  const t = tSnap.exists ? tSnap.data() : {};
+  let to;
+  if (t.typ === "vsichni") {
+    const cisla = ((await db.collection("planSluzeb").doc("straznici").get()).data() || {}).cisla || {};
+    to = Object.values(cisla).map(String);
+  } else to = (t.clenove || []).map(String);
+  const muted = t.muted || {};
+  to = [...new Set(to)].filter(c => c !== String(m.od) && chatAllowed(set, c) && !muted[c]);
+  if (!to.length) return;
+  const tokens = await tokensFor(x => to.includes(String(x.cislo)) && x.chat !== false);
+  const kdo = m.jmeno || "Kolega";
+  const title = t.typ === "dm" ? kdo : t.typ === "vsichni" ? `Zpráva všem · ${surname(kdo)}` : `${t.nazev || "Hlídka"} · ${surname(kdo)}`;
+  const body = m.image ? (m.text ? "📷 " + m.text : "📷 Fotka") : String(m.text || "").slice(0, 180);
+  return send(tokens, title, body, CHAT_URL + encodeURIComponent(tid), "chat-" + tid);
 });
