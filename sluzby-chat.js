@@ -397,7 +397,7 @@ CH.openThread = function(tid){
   if (!LIVE || (!thread(tid) && !tid.startsWith("dm_"))){ S.pending = tid; if (LIVE) CH.open(); return; }
   if (!S.open){ S.open = true; $("chRoot").hidden = false; layout(); if (S.fit) S.fit(); }
   if (S.tid !== tid){ S.reply = null; S.edit = null; S.search = ""; S.searchOn = false; S.firstScroll = true; S.err = ""; }
-  S.tid = tid; S.view = "thread"; S.pick = false;
+  S.tid = tid; S.view = "thread"; S.pick = false; S.atBottom = true;
   const t0 = thread(tid); if (t0 && t0.typ === "hlidka" && hState(t0) === "archiv") S.archive = true;
   $("chRoot").classList.add("in-thread");
   renderList(); renderThread();
@@ -494,11 +494,16 @@ function renderThread(){
         <textarea id="chText" rows="1" maxlength="2000" placeholder="Zpráva"></textarea>
         <button type="button" class="ch-send" data-chsend aria-label="Odeslat"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 20.5 21 12 3 3.5l2.4 7.1L14 12l-8.6 1.4z"/></svg></button>
       </div>`}</div>`;
+  const mb = $("chMsgs");
+  mb.addEventListener("scroll", () => { S.atBottom = mb.scrollHeight - mb.scrollTop - mb.clientHeight < 80; }, {passive:true});
+  if (window.ResizeObserver){ if (S.ro) S.ro.disconnect(); S.ro = new ResizeObserver(stickBottom); S.ro.observe(mb); }
   ensureMsgSub(); watchPeer();
   renderHead(); renderMsgs(true); renderBar();
   const ta = $("chText");
   if (ta){
     ta.addEventListener("input", () => { grow(ta); typingPing(); });
+    // po vysunutí klávesnice zůstane vidět poslední zpráva
+    ta.addEventListener("focus", () => { [120, 350, 700].forEach(t => setTimeout(stickBottom, t)); });
     ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && (O.desk || window.matchMedia("(hover:hover)").matches)){ e.preventDefault(); send(); } });
     const draft = (() => { try { return localStorage.getItem("chDraft_" + tid) || ""; } catch(e){ return ""; } })();
     if (draft && !S.edit) { ta.value = draft; grow(ta); }
@@ -506,6 +511,8 @@ function renderThread(){
   const f = $("chFile"); if (f) f.addEventListener("change", () => { const files = [...(f.files || [])]; f.value = ""; sendPhotos(files); });
   markSeen();
 }
+// držet konec konverzace: po otevření, po vysunutí klávesnice a po načtení fotek
+function stickBottom(){ const b = $("chMsgs"); if (b && S && S.atBottom !== false) b.scrollTop = b.scrollHeight; }
 function grow(ta){ ta.style.height = "auto"; const h = ta.scrollHeight + 2; ta.style.height = Math.min(140, h) + "px"; ta.style.overflowY = h > 140 ? "auto" : "hidden"; }
 function renderHead(){
   const h = $("chHead"); if (!h) return;
@@ -545,7 +552,7 @@ function statusLine(t, m, isLast){
 function renderMsgs(autoscroll, keepScroll){
   const box = $("chMsgs"); if (!box) return;
   const t = thread(S.tid), group = !t || t.typ !== "dm";
-  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+  const nearBottom = S.atBottom !== false;
   const q = norm(S.searchOn ? S.search.trim() : "");
   let html = "", lastDay = "", lastFrom = null, hits = 0;
   if (S.err) html += `<p class="ch-err">${esc(S.err)}</p>`;
@@ -567,7 +574,10 @@ function renderMsgs(autoscroll, keepScroll){
   box.innerHTML = html;
   const qn = $("chQn"); if (qn) qn.textContent = q ? `${hits} ${hits === 1 ? "výsledek" : hits >= 2 && hits <= 4 ? "výsledky" : "výsledků"}` : "";
   if (q && hits && keepScroll){ const f = box.querySelector(".ch-m.hit"); if (f) f.scrollIntoView({block:"center"}); return; }
-  if (S.firstScroll || (autoscroll && nearBottom)){ box.scrollTop = box.scrollHeight; if (S.msgs.length) S.firstScroll = false; box.querySelectorAll("img").forEach(i => i.addEventListener("load", () => { if (box.scrollHeight - box.scrollTop - box.clientHeight < 400) box.scrollTop = box.scrollHeight; }, {once:true})); }
+  if (S.firstScroll || nearBottom){
+    box.scrollTop = box.scrollHeight; S.atBottom = true; if (S.msgs.length) S.firstScroll = false;
+    box.querySelectorAll("img").forEach(im => { if (!im.complete) im.addEventListener("load", stickBottom, {once:true}); });
+  }
   else box.scrollTop = prev;
   renderTyping();
 }
