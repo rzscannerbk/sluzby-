@@ -110,6 +110,8 @@ const STYLE = `
 .ch-root[hidden],.ch-root [hidden]{display:none!important}
 .ch-root.desk{left:var(--ch-left,0px);box-shadow:-8px 0 30px rgba(0,0,0,.18)}
 .ch-root *{box-sizing:border-box}
+.ch-root,.ch-root *,.ch-sheet,.ch-sheet *,.ch-view,.ch-view *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.ch-root textarea,.ch-root input{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 .ch-root button{font:inherit;color:inherit;cursor:pointer}
 .ch-pane{display:flex;flex-direction:column;min-width:0;min-height:0;flex:1}
 .ch-list{overflow-y:auto;padding:calc(env(safe-area-inset-top,0px) + 14px) 14px calc(env(safe-area-inset-bottom,0px) + 90px)}
@@ -161,9 +163,9 @@ const STYLE = `
 .ch-tb{flex:1;min-width:0}
 .ch-tb b{display:block;font-family:var(--f-cond,sans-serif);font-size:21px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ch-tb small{display:block;font-size:12.5px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ch-ib{flex:none;width:38px;height:38px;border-radius:10px;border:1.5px solid currentColor;background:transparent;display:flex;align-items:center;justify-content:center;padding:0;font-size:17px}
-.ch-ib.on{background:currentColor}
-.ch-ib.on span{filter:invert(1)}
+.ch-root .ch-ib{flex:none;width:42px;height:42px;border-radius:50%;border:1.5px solid currentColor;background:transparent;color:inherit;display:flex;align-items:center;justify-content:center;padding:0}
+.ch-root .ch-ib.on{background:var(--ink,#1D2A4D);border-color:var(--ink,#1D2A4D);color:var(--paper,#fff)}
+.ch-th.N .ch-ib.on{background:#fff;border-color:#fff;color:var(--night,#4B3F9E)}
 .ch-back{border:0;background:transparent;font-size:30px;line-height:1;width:34px;height:38px;padding:0}
 .ch-pin{display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--sheet,#FAFBF7);border-bottom:1px solid var(--line,#DDE1E7);font-size:13.5px}
 .ch-pin button{border:0;background:transparent;padding:0;text-align:left;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -416,7 +418,7 @@ function ensureMsgSub(){
   S.msgFor = tid; S.msgs = []; S.firstScroll = true;
   S.msgUnsub = O.db.collection("chaty").doc(tid).collection("zpravy").orderBy("at").limitToLast(400).onSnapshot(s => {
     if (S.msgFor !== tid) return;
-    S.msgs = s.docs.map(d => ({id:d.id, ...d.data({serverTimestamps:"estimate"})}));
+    S.msgs = s.docs.map(d => ({id:d.id, _pend:!!(d.metadata && d.metadata.hasPendingWrites), ...d.data({serverTimestamps:"estimate"})}));
     renderMsgs(true); markSeen();
   }, e => { console.warn("chat: zprávy", e); S.err = "Zprávy nejde načíst (" + (e.code || "chyba") + ")."; renderMsgs(false); });
 }
@@ -458,8 +460,8 @@ function renderHead(){
   h.className = "ch-th" + (t && t.typ === "hlidka" ? " " + (t.kind === "N" ? "N" : "D") : "");
   h.innerHTML = `<button type="button" class="ch-back" data-chback aria-label="Zpět na seznam">‹</button>
     <div class="ch-tb"><b>${esc(titleOf(tid, t))}</b><small>${esc(sub)}</small></div>
-    <button type="button" class="ch-ib${S.searchOn ? " on" : ""}" data-chsearch aria-label="Hledat ve vlákně" title="Hledat"><span>🔍</span></button>
-    ${t ? `<button type="button" class="ch-ib${mut ? " on" : ""}" data-chmute aria-pressed="${mut}" aria-label="${mut ? "Zrušit ztlumení" : "Ztlumit upozornění"}" title="${mut ? "Ztlumeno" : "Ztlumit"}"><span>${mut ? "🔕" : "🔔"}</span></button>` : ""}
+    <button type="button" class="ch-ib${S.searchOn ? " on" : ""}" data-chsearch aria-label="Hledat ve vlákně" title="Hledat"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
+    ${t ? `<button type="button" class="ch-ib${mut ? " on" : ""}" data-chmute aria-pressed="${mut}" aria-label="${mut ? "Zrušit ztlumení" : "Ztlumit upozornění"}" title="${mut ? "Ztlumeno – upozornění vypnutá" : "Ztlumit upozornění"}">${mut ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/><path d="M4 4l16 16"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>`}</button>` : ""}
     ${O.desk ? `<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button>` : ""}`;
   const pb = $("chPinBox");
   if (pb) pb.innerHTML = t && t.pinned ? `<div class="ch-pin">📌 <button type="button" data-chgo="${esc(t.pinned.id)}"><b>${esc(surname(t.pinned.jmeno || ""))}:</b> ${esc(t.pinned.text || "fotka")}</button><button type="button" class="ch-unpin" data-chunpin aria-label="Odepnout">✕</button></div>` : "";
@@ -469,13 +471,19 @@ function renderHead(){
     const q = $("chQ"); q.addEventListener("input", () => { S.search = q.value; renderMsgs(false, true); }); setTimeout(() => q.focus(), 30);
   } else if (sb && !S.searchOn) sb.innerHTML = "";
 }
-function seenLine(t, lastMine){
-  if (!t || !lastMine) return "";
-  const at = ms(lastMine.at), ls = t.lastSeen || {};
-  const others = t.typ === "vsichni" ? Object.keys(ls).filter(c => c !== String(O.me)) : (t.clenove || []).map(String).filter(c => c !== String(O.me));
+// stav vlastní zprávy: odesílá se / doručeno (čas) / přečteno (kdo a kdy)
+// lastSeen se zapisuje jen při přečtení nových zpráv od ostatních, takže u poslední zprávy je čas přečtení přesný
+function whenRead(t){ const d = new Date(t), n = new Date(now()); return d.toDateString() === n.toDateString() ? hm(t) : `${DOW_S[d.getDay()]} ${hm(t)}`; }
+function statusLine(t, m, isLast){
+  if (!m || m.smazano) return "";
+  if (m._pend) return "Odesílá se…";
+  const at = ms(m.at), ls = (t && t.lastSeen) || {};
+  const others = !t ? [] : t.typ === "vsichni" ? Object.keys(ls).filter(c => c !== String(O.me)) : (t.clenove || []).map(String).filter(c => c !== String(O.me));
   const seen = others.filter(c => ms(ls[c]) >= at);
-  if (t.typ === "dm") return seen.length ? "Viděno" : "Doručeno";
-  return seen.length ? "Viděli: " + seen.map(c => surname(nameOf(c))).join(", ") : "";
+  const sent = `Doručeno ${whenRead(at)}`;
+  if (!seen.length) return sent;
+  if (t.typ === "dm") return isLast ? `Přečteno ${whenRead(ms(ls[seen[0]]))}` : "Přečteno";
+  return "Přečetli: " + seen.map(c => surname(nameOf(c)) + (isLast ? " " + whenRead(ms(ls[c])) : "")).join(", ");
 }
 function renderMsgs(autoscroll, keepScroll){
   const box = $("chMsgs"); if (!box) return;
@@ -495,7 +503,7 @@ function renderMsgs(autoscroll, keepScroll){
     const body = m.smazano ? `<span class="ch-del">Zpráva byla smazána</span>` : `${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${m.image ? `<img src="${m.image}" alt="Fotka" data-chimg loading="lazy">` : ""}${m.text ? linkify(m.text) : ""}`;
     html += `<div class="ch-m${mine ? " mine" : ""}${hit ? " hit" : ""}" data-mid="${m.id}">${group && !mine && lastFrom !== m.od ? `<span class="ch-who">${esc(m.jmeno || nameOf(m.od))}</span>` : ""}
       <div class="ch-bub">${body}<div class="ch-meta">${m.upraveno && !m.smazano ? "upraveno · " : ""}${hm(at)}</div></div>${rx ? `<div class="ch-rx">${rx}</div>` : ""}${m.smazano ? "" : `<button type="button" class="ch-more" data-chmore="${m.id}" aria-label="Možnosti zprávy">⋯</button>`}</div>`;
-    if (m === lastMine){ const sl = seenLine(t, m); if (sl) html += `<div class="ch-seen">${esc(sl)}</div>`; }
+    if (m === lastMine || (mine && S.infoMid === m.id)){ const sl = statusLine(t, m, m === lastMine); if (sl) html += `<div class="ch-seen">${esc(sl)}</div>`; }
     lastFrom = m.od;
   });
   const prev = box.scrollTop;
@@ -533,7 +541,8 @@ function markSeen(){
   if (!S.open || S.view !== "thread" && !S.two || !S.tid || document.visibilityState !== "visible") return;
   const t = thread(S.tid); if (!t) return;
   const need = (t.videno || {})[O.me] !== (t.pocet || 0);
-  const lastAt = S.msgs.length ? ms(S.msgs[S.msgs.length - 1].at) : 0;
+  const fromOthers = S.msgs.filter(m => String(m.od) !== String(O.me));
+  const lastAt = fromOthers.length ? ms(fromOthers[fromOthers.length - 1].at) : 0;
   const seenAt = ms((t.lastSeen || {})[O.me]);
   if (!need && seenAt >= lastAt) return;
   if (seenBusy) return; seenBusy = true;
@@ -550,7 +559,7 @@ async function writeMsg(data){
   const tid = S.tid, fv = FV(), ref = tref(tid), m = ref.collection("zpravy").doc();
   const b = O.db.batch();
   b.set(m, {od:String(O.me), jmeno:meName(), at:fv.serverTimestamp(), ...data});
-  b.set(ref, {...threadBase(tid), pocet:fv.increment(1), videno:{[O.me]:fv.increment(1)}, lastSeen:{[O.me]:fv.serverTimestamp()},
+  b.set(ref, {...threadBase(tid), pocet:fv.increment(1), videno:{[O.me]:fv.increment(1)},
     typing:{[O.me]:fv.delete()}, posledni:{text:preview(data.text || "", data.image), od:String(O.me), jmeno:meName(), at:fv.serverTimestamp()}}, {merge:true});
   await b.commit();
 }
@@ -673,17 +682,19 @@ function bind(root){
     const go = c("[data-chgo]"); if (go){ goTo(go.dataset.chgo); return; }
     const rx = c("[data-chrx]"); if (rx){ toggleRx(rx.dataset.mid, rx.dataset.chrx); return; }
     const mo = c("[data-chmore]"); if (mo){ openSheet(mo.dataset.chmore); return; }
+    const own = c(".ch-m.mine .ch-bub"); if (own && !c("[data-chimg],a,.ch-q")){ const mid = own.closest(".ch-m").dataset.mid; S.infoMid = S.infoMid === mid ? null : mid; renderMsgs(false); return; }
     const im = c("[data-chimg]"); if (im){ const v = document.createElement("div"); v.className = "ch-view"; v.innerHTML = `<img src="${im.src}" alt="Fotka">`; v.addEventListener("click", () => v.remove()); document.body.appendChild(v); return; }
   });
   // dlouhé podržení zprávy = nabídka (mobil), pravé tlačítko = nabídka (počítač)
   root.addEventListener("pointerdown", e => {
-    const m = e.target.closest(".ch-m[data-mid]"); if (!m || e.target.closest("button,a,img")) return;
+    const m = e.target.closest(".ch-m[data-mid]"); if (!m || e.target.closest("button,a")) return;
     lpFired = false; lpXY = [e.clientX, e.clientY];
     lpT = setTimeout(() => { lpFired = true; lpT = null; if (navigator.vibrate) navigator.vibrate(12); openSheet(m.dataset.mid); }, 480);
   });
   root.addEventListener("pointermove", e => { if (lpT && lpXY && Math.hypot(e.clientX - lpXY[0], e.clientY - lpXY[1]) > 10){ clearTimeout(lpT); lpT = null; } });
   ["pointerup","pointercancel","pointerleave"].forEach(t => root.addEventListener(t, () => { if (lpT){ clearTimeout(lpT); lpT = null; } }));
-  root.addEventListener("contextmenu", e => { const m = e.target.closest(".ch-m[data-mid]"); if (m){ e.preventDefault(); openSheet(m.dataset.mid); } });
+  root.addEventListener("contextmenu", e => { if (e.target.closest("textarea,input")) return; e.preventDefault(); const m = e.target.closest(".ch-m[data-mid]"); if (m && !lpFired) openSheet(m.dataset.mid); });
+  root.addEventListener("selectstart", e => { if (!e.target.closest || !e.target.closest("textarea,input")) e.preventDefault(); });
   document.addEventListener("keydown", e => {
     if (e.key !== "Escape" || !S || !S.open) return;
     if (document.querySelector(".ch-view")){ document.querySelector(".ch-view").remove(); return; }
