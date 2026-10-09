@@ -206,6 +206,7 @@ const STYLE = `
 .ch-send,.ch-photo{flex:none;width:42px;height:42px;border-radius:50%;border:0;display:flex;align-items:center;justify-content:center;padding:0}
 .ch-root .ch-send{background:var(--ink,#1D2A4D);color:var(--paper,#fff)}
 .ch-photo{background:transparent;border:1.5px solid var(--ink,#1D2A4D)}
+.ch-root.kb .ch-in{padding-bottom:6px}
 .ch-ro{text-align:center;font-size:13.5px;color:var(--ink2,#5A6480);padding:4px 0}
 .ch-none{flex:1;display:flex;align-items:center;justify-content:center;color:var(--ink2,#5A6480);padding:20px;text-align:center}
 .ch-err{color:#B83A3A;font-size:13px;margin:0 0 6px}
@@ -252,14 +253,20 @@ CH.init = function(opts){
     if (O.onAdminChange) O.onAdminChange();
   }, () => { S.set = null; applyAllowed(); }));
   window.addEventListener("resize", layout);
-  // iPhone: při otevřené klávesnici zmenšit okno chatu na viditelnou část, aby pole pro psaní nezajelo pod klávesnici
+  // Telefon (iOS i Android): okno chatu se drží přesně viditelné plochy nad klávesnicí (stejně jako chat v KoKrŠNeKu).
+  // Výška bez klávesnice se zapamatuje při otevření – podle ní se pozná vysunutá klávesnice a zruší se spodní
+  // rezerva pro domečkovou lištu, která jinak dělala mezeru mezi polem pro psaní a klávesnicí.
   if (window.visualViewport && !O.desk){
-    const vv = window.visualViewport, fit = () => {
-      const r = $("chRoot"); if (!r || r.hidden) return;
-      const kb = window.innerHeight - vv.height > 80;
-      r.style.top = kb ? vv.offsetTop + "px" : ""; r.style.height = kb ? vv.height + "px" : ""; r.style.bottom = kb ? "auto" : "";
-      if (kb){ const box = $("chMsgs"); if (box) box.scrollTop = box.scrollHeight; }
+    const vv = window.visualViewport;
+    const fit = () => {
+      const r = $("chRoot"); if (!r || r.hidden){ S.vvBase = null; return; }
+      if (S.vvBase == null || vv.height > S.vvBase) S.vvBase = vv.height;
+      r.style.top = vv.offsetTop + "px"; r.style.height = vv.height + "px"; r.style.bottom = "auto";
+      const kb = S.vvBase - vv.height > 80;
+      r.classList.toggle("kb", kb);
+      const box = $("chMsgs"); if (box && kb) box.scrollTop = box.scrollHeight;
     };
+    S.fit = fit;
     vv.addEventListener("resize", fit); vv.addEventListener("scroll", fit);
   }
   setInterval(() => { if (S && S.open) { renderTyping(); if (S.view === "list") renderList(); } updBadge(); }, 30e3);
@@ -323,7 +330,7 @@ CH.allowed = () => !!(S && LIVE);
 /* ---------- otevření a zavření ---------- */
 CH.open = function(){
   if (!S || !LIVE) return;
-  S.open = true; $("chRoot").hidden = false; layout();
+  S.open = true; $("chRoot").hidden = false; layout(); if (S.fit) S.fit();
   if (!S.tid || !S.two) { S.view = "list"; }
   renderList(); if (S.tid) { renderThread(); }
   else $("chThread").innerHTML = `<div class="ch-none">Vyber vlákno vlevo.</div>`;
@@ -331,14 +338,14 @@ CH.open = function(){
 };
 CH.close = function(){
   if (!S) return;
-  S.open = false; const r = $("chRoot"); if (r) r.hidden = true;
+  S.open = false; S.vvBase = null; const r = $("chRoot"); if (r){ r.hidden = true; r.classList.remove("kb"); }
   closeSheet();
   if (O && O.onClose) O.onClose();
 };
 CH.openThread = function(tid){
   if (!S) return;
   if (!LIVE || (!thread(tid) && !tid.startsWith("dm_"))){ S.pending = tid; if (LIVE) CH.open(); return; }
-  if (!S.open){ S.open = true; $("chRoot").hidden = false; layout(); }
+  if (!S.open){ S.open = true; $("chRoot").hidden = false; layout(); if (S.fit) S.fit(); }
   if (S.tid !== tid){ S.reply = null; S.edit = null; S.search = ""; S.searchOn = false; S.firstScroll = true; S.err = ""; }
   S.tid = tid; S.view = "thread"; S.pick = false;
   const t0 = thread(tid); if (t0 && t0.typ === "hlidka" && hState(t0) === "archiv") S.archive = true;
