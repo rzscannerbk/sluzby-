@@ -16,6 +16,16 @@ const DOW_F = ["neděle","pondělí","úterý","středa","čtvrtek","pátek","so
 const DOW_S = ["ne","po","út","st","čt","pá","so"];
 const MONTHS = ["leden","únor","březen","duben","květen","červen","červenec","srpen","září","říjen","listopad","prosinec"];
 const DAY = 864e5;
+const ic = (d, n) => `<svg class="ch-ico" width="${n || 22}" height="${n || 22}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICO = {
+  reply: '<path d="M9 7 4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 6 6v1"/>',
+  copy:  '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+  pin:   '<path d="M9 3h6l-1 6 4 4H6l4-4z"/><path d="M12 13v8"/>',
+  unpin: '<path d="M9 3h6l-1 6 4 4H6l4-4z"/><path d="M12 13v8"/><path d="M3 3l18 18"/>',
+  edit:  '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+  del:   '<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>',
+  close: '<path d="M6 6l12 12M18 6 6 18"/>'
+};
 
 let O = null;                 // volby z init()
 let S = null;                 // stav
@@ -204,6 +214,7 @@ const STYLE = `
 @media (hover:none){.ch-more{display:none}}
 .ch-in{padding:8px 10px calc(env(safe-area-inset-bottom,0px) + 8px);background:var(--sheet,#FAFBF7);border-top:1.5px solid var(--line,#DDE1E7)}
 .ch-bar{display:flex;align-items:center;gap:8px;font-size:13px;background:rgba(0,0,0,.05);border-left:3px solid #E2C33A;border-radius:6px;padding:5px 8px;margin:0 0 7px}
+.ch-bar .ch-ico,.ch-pin .ch-ico{vertical-align:-3px;flex:none}
 .ch-bar span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ch-bar button{border:0;background:transparent;font-size:16px;padding:0 4px}
 .ch-row2{display:flex;align-items:flex-end;gap:8px}
@@ -223,7 +234,8 @@ const STYLE = `
 .ch-sheet .ch-emo{display:flex;justify-content:space-between;margin:0 0 10px}
 .ch-sheet .ch-emo button{font-size:26px;border:0;background:transparent;width:46px;height:46px;border-radius:50%}
 .ch-sheet .ch-emo button.my{background:rgba(242,228,67,.55)}
-.ch-sheet .ch-act{display:block;width:100%;text-align:left;border:0;border-top:1px solid var(--line,#DDE1E7);background:transparent;padding:13px 6px;font-size:16px;font-weight:600;color:inherit}
+.ch-sheet .ch-act .ch-ico{flex:none}
+.ch-sheet .ch-act{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:0;border-top:1px solid var(--line,#DDE1E7);background:transparent;padding:13px 6px;font-size:16px;font-weight:600;color:inherit}
 .ch-sheet .ch-act.red{color:#C03A3A}
 .ch-view{position:fixed;inset:0;z-index:75;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:20px}
 .ch-view img{max-width:100%;max-height:100%;border-radius:6px}
@@ -476,7 +488,7 @@ function renderHead(){
     ${t ? `<button type="button" class="ch-ib${mut ? " on" : ""}" data-chmute aria-pressed="${mut}" aria-label="${mut ? "Zrušit ztlumení" : "Ztlumit upozornění"}" title="${mut ? "Ztlumeno – upozornění vypnutá" : "Ztlumit upozornění"}">${mut ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/><path d="M4 4l16 16"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>`}</button>` : ""}
     ${O.desk ? `<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button>` : ""}</div>`;
   const pb = $("chPinBox");
-  if (pb) pb.innerHTML = t && t.pinned ? `<div class="ch-pin">📌 <button type="button" data-chgo="${esc(t.pinned.id)}"><b>${esc(surname(t.pinned.jmeno || ""))}:</b> ${esc(t.pinned.text || "fotka")}</button><button type="button" class="ch-unpin" data-chunpin aria-label="Odepnout">✕</button></div>` : "";
+  if (pb) pb.innerHTML = t && t.pinned ? `<div class="ch-pin">${ic(ICO.pin, 18)}<button type="button" data-chgo="${esc(t.pinned.id)}"><b>${esc(surname(t.pinned.jmeno || ""))}:</b> ${esc(t.pinned.text || "fotka")}</button><button type="button" class="ch-unpin" data-chunpin aria-label="Odepnout">✕</button></div>` : "";
   const sb = $("chSearchBox");
   if (sb && S.searchOn && !$("chQ")){
     sb.innerHTML = `<div class="ch-search"><input id="chQ" type="search" placeholder="Hledat ve zprávách" value="${esc(S.search)}"><small id="chQn"></small></div>`;
@@ -535,8 +547,8 @@ function renderTyping(){
 }
 function renderBar(){
   const b = $("chBar"); if (!b) return;
-  if (S.edit) b.innerHTML = `<div class="ch-bar"><span>✏️ Upravuješ zprávu</span><button type="button" data-chcancel aria-label="Zrušit úpravu">✕</button></div>`;
-  else if (S.reply) b.innerHTML = `<div class="ch-bar"><span>↩︎ <b>${esc(S.reply.jmeno)}:</b> ${esc(S.reply.text || "📷 Fotka")}</span><button type="button" data-chcancel aria-label="Zrušit odpověď">✕</button></div>`;
+  if (S.edit) b.innerHTML = `<div class="ch-bar"><span>${ic(ICO.edit, 16)} Upravuješ zprávu</span><button type="button" data-chcancel aria-label="Zrušit úpravu">✕</button></div>`;
+  else if (S.reply) b.innerHTML = `<div class="ch-bar"><span>${ic(ICO.reply, 16)} <b>${esc(S.reply.jmeno)}:</b> ${esc(S.reply.text || "📷 Fotka")}</span><button type="button" data-chcancel aria-label="Zrušit odpověď">✕</button></div>`;
   else b.innerHTML = "";
 }
 function showErr(msg){ const e = $("chErr"); if (e){ e.textContent = msg; e.hidden = !msg; } }
@@ -648,12 +660,12 @@ function openSheet(mid){
   const s = document.createElement("div"); s.className = "ch-sheet";
   s.innerHTML = `<div role="dialog" aria-label="Možnosti zprávy">
     ${ro ? "" : `<div class="ch-emo">${REAKCE.map(([k, e]) => `<button type="button" data-chsrx="${k}" class="${((m.reakce || {})[k] || []).map(String).includes(String(O.me)) ? "my" : ""}" aria-label="Reakce ${e}">${e}</button>`).join("")}</div>`}
-    ${ro ? "" : `<button type="button" class="ch-act" data-chs="reply">↩︎ Odpovědět</button>`}
-    ${m.text ? `<button type="button" class="ch-act" data-chs="copy">⧉ Kopírovat text</button>` : ""}
-    ${t && !ro ? `<button type="button" class="ch-act" data-chs="pin">📌 ${pinned ? "Odepnout" : "Připnout nahoru"}</button>` : ""}
-    ${mine && m.text && !ro ? `<button type="button" class="ch-act" data-chs="edit">✏️ Upravit</button>` : ""}
-    ${mine && !ro ? `<button type="button" class="ch-act red" data-chs="del">🗑 Smazat</button>` : ""}
-    <button type="button" class="ch-act" data-chs="x">Zavřít</button></div>`;
+    ${ro ? "" : `<button type="button" class="ch-act" data-chs="reply">${ic(ICO.reply)}Odpovědět</button>`}
+    ${m.text ? `<button type="button" class="ch-act" data-chs="copy">${ic(ICO.copy)}Kopírovat text</button>` : ""}
+    ${t && !ro ? `<button type="button" class="ch-act" data-chs="pin">${ic(pinned ? ICO.unpin : ICO.pin)}${pinned ? "Odepnout" : "Připnout nahoru"}</button>` : ""}
+    ${mine && m.text && !ro ? `<button type="button" class="ch-act" data-chs="edit">${ic(ICO.edit)}Upravit</button>` : ""}
+    ${mine && !ro ? `<button type="button" class="ch-act red" data-chs="del">${ic(ICO.del)}Smazat</button>` : ""}
+    <button type="button" class="ch-act" data-chs="x">${ic(ICO.close)}Zavřít</button></div>`;
   s.addEventListener("click", async e => {
     if (e.target === s){ closeSheet(); return; }
     const rx = e.target.closest("[data-chsrx]"); if (rx){ toggleRx(mid, rx.dataset.chsrx); closeSheet(); return; }
