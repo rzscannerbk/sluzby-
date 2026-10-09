@@ -24,7 +24,9 @@ const ICO = {
   unpin: '<path d="M9 3h6l-1 6 4 4H6l4-4z"/><path d="M12 13v8"/><path d="M3 3l18 18"/>',
   edit:  '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
   del:   '<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>',
-  close: '<path d="M6 6l12 12M18 6 6 18"/>'
+  close: '<path d="M6 6l12 12M18 6 6 18"/>',
+  fwd:   '<path d="M15 7l5 5-5 5"/><path d="M20 12H10a6 6 0 0 0-6 6v1"/>',
+  save:  '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>'
 };
 
 let O = null;                 // volby z init()
@@ -214,6 +216,15 @@ const STYLE = `
 .ch-q{display:block;width:100%;text-align:left;border:0;border-left:3px solid #E2C33A;background:rgba(0,0,0,.07);border-radius:6px;padding:4px 8px;margin:2px 0 5px;font-size:13px;line-height:1.3;color:inherit}
 .ch-m.mine .ch-q{background:rgba(255,255,255,.14)}
 .ch-q b{display:block;font-size:12px}
+.ch-fwd{display:flex;align-items:center;gap:4px;font-size:12px;font-style:italic;opacity:.75;margin:0 0 4px}
+.ch-fwd .ch-ico{flex:none}
+.ch-sheet .ch-fl{max-height:min(60vh,520px);overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
+.ch-sheet h3{margin:2px 4px 10px;font-size:17px}
+.ch-sheet .ch-fs{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.6;margin:10px 4px 4px}
+.ch-sheet .ch-act small{display:block;font-weight:400;font-size:12px;opacity:.7}
+.ch-toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 120px);z-index:80;background:#1D2A4D;color:#fff;border-radius:22px;padding:10px 16px;font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.3);display:flex;gap:12px;align-items:center;max-width:92vw;border:0}
+.ch-toast u{color:#E2C33A;text-decoration:none}
+.ch-view .ch-vs{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 52px);z-index:2;display:flex;align-items:center;gap:8px;border:2px solid rgba(255,255,255,.8);background:rgba(0,0,0,.45);color:#fff;border-radius:24px;padding:10px 20px;font-size:16px;font-weight:600;cursor:pointer}
 .ch-rx{display:flex;flex-wrap:wrap;gap:4px;margin:3px 4px 0}
 .ch-rx button{border:1.5px solid var(--line,#B9C0B4);background:var(--sheet,#fff);border-radius:999px;padding:1px 7px;font-size:13px}
 .ch-rx button.my{border-color:var(--ink,#1D2A4D);background:rgba(242,228,67,.45)}
@@ -251,8 +262,9 @@ const STYLE = `
 .ch-sheet .ch-act .ch-ico{flex:none}
 .ch-sheet .ch-act{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:0;border-top:1px solid var(--line,#DDE1E7);background:transparent;padding:13px 6px;font-size:16px;font-weight:600;color:inherit}
 .ch-sheet .ch-act.red{color:#C03A3A}
-.ch-view{position:fixed;inset:0;z-index:75;background:#000;display:flex;align-items:center;justify-content:center;padding:20px}
-.ch-view img{max-width:100%;max-height:100%;border-radius:6px}
+.ch-view{position:fixed;inset:0;z-index:75;background:#000;display:flex;align-items:center;justify-content:center;padding:20px;touch-action:none;overflow:hidden;overscroll-behavior:contain}
+.ch-view img{max-width:100%;max-height:100%;border-radius:6px;transform-origin:center center;will-change:transform;-webkit-user-drag:none}
+.ch-view .ch-vx,.ch-view .ch-vb,.ch-view .ch-vn{z-index:2}
 /* administrace */
 .ch-adm{margin-top:18px;padding:14px;border:1.5px solid var(--line,#DDE1E7);border-radius:12px;background:var(--sheet,#fff)}
 .ch-adm h3{font-family:var(--f-cond,sans-serif);font-size:20px;margin:0 0 6px}
@@ -594,7 +606,7 @@ function renderMsgs(autoscroll, keepScroll){
       const show = imgs.slice(0, 4), more = imgs.length - show.length;
       pics = `<div class="ch-grid n${Math.min(imgs.length, 4)}">${show.map((x, i) => `<button type="button" data-chgal="${m.id}" data-i="${i}" aria-label="Fotka ${i + 1} z ${imgs.length}"><img src="${x.image}" alt="" loading="lazy">${i === 3 && more > 0 ? `<span class="more">+${more}</span>` : ""}</button>`).join("")}</div>`;
     }
-    const body = allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.text && !m.smazano ? linkify(m.text) : ""}`;
+    const body = allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.preposlano ? `<span class="ch-fwd">${ic(ICO.fwd, 14)}Přeposláno od ${esc(m.preposlano.jmeno || "")}</span>` : ""}${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.text && !m.smazano ? linkify(m.text) : ""}`;
     html += `<div class="ch-m${mine ? " mine" : ""}${hit ? " hit" : ""}" data-mid="${m.id}">${group && !mine && lastFrom !== m.od ? `<span class="ch-who">${esc(m.jmeno || nameOf(m.od))}</span>` : ""}
       <div class="ch-bub">${body}<div class="ch-meta">${imgs.length > 1 ? `${imgs.length} ${imgs.length < 5 ? "fotky" : "fotek"} · ` : ""}${m.upraveno && !m.smazano ? "upraveno · " : ""}${hm(ms(lastM.at))}</div></div>${rx ? `<div class="ch-rx">${rx}</div>` : ""}${allDel ? "" : `<button type="button" class="ch-more" data-chmore="${m.id}" aria-label="Možnosti zprávy">⋯</button>`}</div>`;
     const stM = it.list.includes(lastMine) ? lastMine : (mine && it.list.some(x => x.id === S.infoMid) ? lastM : null);
@@ -653,8 +665,8 @@ function typingPing(){
   try { localStorage.setItem("chDraft_" + S.tid, $("chText").value); } catch(e){}
 }
 function preview(text, image){ return image ? (text ? "📷 " + text : "📷 Fotka") : String(text).slice(0, 140); }
-async function writeMsg(data){
-  const tid = S.tid, fv = FV(), ref = tref(tid), m = ref.collection("zpravy").doc();
+async function writeMsg(data, tid){
+  tid = tid || S.tid; const fv = FV(), ref = tref(tid), m = ref.collection("zpravy").doc();
   const b = O.db.batch();
   b.set(m, {od:String(O.me), jmeno:meName(), at:fv.serverTimestamp(), ...data});
   b.set(ref, {...threadBase(tid), pocet:fv.increment(1), videno:{[O.me]:fv.increment(1)},
@@ -739,6 +751,7 @@ function openSheet(mid){
   s.innerHTML = `<div role="dialog" aria-label="Možnosti zprávy">
     ${ro ? "" : `<div class="ch-emo">${REAKCE.map(([k, e]) => `<button type="button" data-chsrx="${k}" class="${((m.reakce || {})[k] || []).map(String).includes(String(O.me)) ? "my" : ""}" aria-label="Reakce ${e}">${e}</button>`).join("")}</div>`}
     ${ro ? "" : `<button type="button" class="ch-act" data-chs="reply">${ic(ICO.reply)}Odpovědět</button>`}
+    <button type="button" class="ch-act" data-chs="fwd">${ic(ICO.fwd)}Přeposlat</button>
     ${m.text ? `<button type="button" class="ch-act" data-chs="copy">${ic(ICO.copy)}Kopírovat text</button>` : ""}
     ${t && !ro ? `<button type="button" class="ch-act" data-chs="pin">${ic(pinned ? ICO.unpin : ICO.pin)}${pinned ? "Odepnout" : "Připnout nahoru"}</button>` : ""}
     ${mine && m.text && !ro ? `<button type="button" class="ch-act" data-chs="edit">${ic(ICO.edit)}Upravit</button>` : ""}
@@ -750,6 +763,7 @@ function openSheet(mid){
     const a = e.target.closest("[data-chs]"); if (!a) return;
     const act = a.dataset.chs; closeSheet();
     if (act === "reply"){ S.edit = null; S.reply = {id:mid, jmeno:m.jmeno || nameOf(m.od), text:m.text || ""}; renderBar(); const ta = $("chText"); if (ta) ta.focus(); }
+    else if (act === "fwd") openFwd(mid);
     else if (act === "copy"){ try { await navigator.clipboard.writeText(m.text); } catch(_){ prompt("Zkopíruj text:", m.text); } }
     else if (act === "pin"){ tref().set({pinned: pinned ? FV().delete() : {id:mid, text:(m.text || "📷 Fotka").slice(0, 140), jmeno:m.jmeno || nameOf(m.od)}}, {merge:true}).catch(() => {}); }
     else if (act === "edit"){ S.reply = null; S.edit = mid; renderBar(); const ta = $("chText"); if (ta){ ta.value = m.text; grow(ta); ta.focus(); } }
@@ -760,6 +774,77 @@ function openSheet(mid){
     }
   });
   document.body.appendChild(s);
+}
+/* ---------- přeposlání zprávy (u fotek celé skupiny) do jiného vlákna ---------- */
+function fwdTargets(){
+  const out = [], seen = new Set();
+  const hl = Object.entries(S.threads).filter(([id, t]) => t.typ === "hlidka" && id !== S.tid && ["brzy", "probiha", "skoncila"].includes(hState(t)))
+    .sort((a, b) => ms(a[1].start) - ms(b[1].start));
+  hl.forEach(([id, t]) => out.push({sec:"Hlídky", id, title:hTitle(t), sub:hTimes(t)}));
+  if (S.tid !== "vsichni") out.push({sec:"Společné", id:"vsichni", title:"Zpráva všem"});
+  const dms = Object.entries(S.threads).filter(([, t]) => t.typ === "dm").sort((a, b) => ms(b[1].posledni && b[1].posledni.at) - ms(a[1].posledni && a[1].posledni.at));
+  dms.forEach(([id, t]) => { seen.add(id); if (id !== S.tid) out.push({sec:"Soukromé zprávy", id, title:titleOf(id, t)}); });
+  Object.entries(officers()).filter(([, c]) => String(c) !== String(O.me) && allowedNo(c)).sort((a, b) => a[0].localeCompare(b[0], "cs"))
+    .forEach(([n, c]) => { const id = dmId(O.me, c); if (!seen.has(id) && id !== S.tid) out.push({sec:"Soukromé zprávy", id, title:n}); });
+  return out;
+}
+function openFwd(mid){
+  const list = fwdTargets(); closeSheet();
+  const s = document.createElement("div"); s.className = "ch-sheet";
+  let html = "", sec = "";
+  list.forEach(x => { if (x.sec !== sec){ html += `<div class="ch-fs">${x.sec}</div>`; sec = x.sec; }
+    html += `<button type="button" class="ch-act" data-chf="${esc(x.id)}">${ic(ICO.fwd)}<span>${esc(x.title)}${x.sub ? `<small>${esc(x.sub)}</small>` : ""}</span></button>`; });
+  s.innerHTML = `<div role="dialog" aria-label="Přeposlat zprávu"><h3>Přeposlat do…</h3><div class="ch-fl">${html || `<p class="ch-empty">Není kam přeposlat.</p>`}</div>
+    <button type="button" class="ch-act" data-chf="">${ic(ICO.close)}Zrušit</button></div>`;
+  s.addEventListener("click", e => {
+    if (e.target === s){ closeSheet(); return; }
+    const b = e.target.closest("[data-chf]"); if (!b) return;
+    closeSheet(); if (b.dataset.chf) forward(mid, b.dataset.chf, b.querySelector("span").firstChild.textContent);
+  });
+  document.body.appendChild(s);
+}
+async function forward(mid, tid, title){
+  const ids = (S.groupOf && S.groupOf[mid]) || [mid];
+  const list = ids.map(msgById).filter(x => x && !x.smazano && (x.text || x.image));
+  if (!list.length) return;
+  const gid = list.length > 1 ? Date.now().toString(36) + Math.random().toString(36).slice(2, 6) : null;
+  try {
+    for (const x of list){
+      const data = {text:x.text || "", preposlano:{jmeno:(x.preposlano && x.preposlano.jmeno) || x.jmeno || nameOf(x.od)}};
+      if (x.image) data.image = x.image;
+      if (gid){ data.skupina = gid; data.skupinaN = list.length; }
+      await writeMsg(data, tid);
+    }
+    toast(`Přeposláno – ${title}`, "Otevřít", () => CH.openThread(tid));
+  } catch (e){ toast(e.code === "permission-denied" ? "Přeposlání zamítnuto pravidly." : "Přeposlání se nepovedlo."); }
+}
+function toast(text, act, fn){
+  const old = document.querySelector(".ch-toast"); if (old) old.remove();
+  const t = document.createElement("button"); t.type = "button"; t.className = "ch-toast";
+  t.innerHTML = `<span>${esc(text)}</span>${act ? `<u>${esc(act)}</u>` : ""}`;
+  t.addEventListener("click", () => { t.remove(); if (fn) fn(); });
+  document.body.appendChild(t); setTimeout(() => t.remove(), 4000);
+}
+
+/* ---------- uložení fotky do telefonu ---------- */
+function saveImage(dataUrl, k){
+  const d = new Date(now()), p = n => String(n).padStart(2, "0");
+  const name = `sluzby-foto-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}-${k + 1}.jpg`;
+  let file = null;
+  try {
+    const [head, b64] = dataUrl.split(","), mime = (head.match(/data:([^;]+)/) || [])[1] || "image/jpeg";
+    const bin = atob(b64), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    file = new File([arr], name, {type:mime});
+  } catch(e){}
+  // iPhone: systémová nabídka sdílení → „Uložit obrázek“ (fotka jde do Fotek); jinde se fotka stáhne
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (ios && file && navigator.canShare && navigator.canShare({files:[file]})){
+    navigator.share({files:[file]}).catch(() => {}); return;
+  }
+  const a = document.createElement("a"); a.href = file ? URL.createObjectURL(file) : dataUrl; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  if (file) setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast("Fotka uložena do Stažených souborů");
 }
 function goTo(mid){
   const el = document.querySelector(`.ch-m[data-mid="${CSS.escape(mid)}"]`); if (!el) return;
@@ -777,23 +862,77 @@ function openGallery(list, i){
       <button type="button" class="ch-vx" data-v="x" aria-label="Zavřít">${ic(ICO.close, 24)}</button>
       ${list.length > 1 ? `<button type="button" class="ch-vb l" data-v="-1" aria-label="Předchozí fotka" ${k === 0 ? "disabled" : ""}>${ic('<path d="M15 5l-7 7 7 7"/>', 26)}</button>
       <button type="button" class="ch-vb r" data-v="1" aria-label="Další fotka" ${k === list.length - 1 ? "disabled" : ""}>${ic('<path d="M9 5l7 7-7 7"/>', 26)}</button>
-      <span class="ch-vn">${k + 1} / ${list.length}</span>` : ""}`;
+      <span class="ch-vn">${k + 1} / ${list.length}</span>` : ""}
+      <button type="button" class="ch-vs" data-v="save">${ic(ICO.save, 20)}Uložit</button>`;
   };
-  const go = d => { const n = k + d; if (n < 0 || n >= list.length) return; k = n; draw(); };
+  const go = d => { const n = k + d; if (n < 0 || n >= list.length) return; k = n; z = 1; tx = 0; ty = 0; draw(); };
   v.addEventListener("click", e => {
     const b = e.target.closest("[data-v]");
-    if (b){ if (b.dataset.v === "x") close(); else go(+b.dataset.v); return; }
-    if (e.target === v) close();
+    if (b){ if (b.dataset.v === "x") close(); else if (b.dataset.v === "save") saveImage(list[k], k); else go(+b.dataset.v); return; }
+    if (e.target === v && Date.now() - lastTouch > 700) close();
   });
-  let sx = null, sy = null;
-  v.addEventListener("touchstart", e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, {passive:true});
+  /* zvětšování jen fotky (dva prsty, dvojklik/dvojí ťuknutí, kolečko myši) – stránka se nezvětšuje */
+  let z = 1, tx = 0, ty = 0, pinch = null, pan = null, sw = null, lastTap = 0, moved = false, lastTouch = 0;
+  const img = () => v.querySelector("img");
+  const clamp = () => {
+    const el = img(); if (!el) return; if (z <= 1.01){ z = 1; tx = 0; ty = 0; return; }
+    const mx = Math.max(0, (el.offsetWidth * z - v.clientWidth) / 2), my = Math.max(0, (el.offsetHeight * z - v.clientHeight) / 2);
+    tx = Math.min(mx, Math.max(-mx, tx)); ty = Math.min(my, Math.max(-my, ty));
+  };
+  const apply = anim => { const el = img(); if (!el) return; el.style.transition = anim ? "transform .2s ease" : "none"; el.style.transform = `translate(${tx}px,${ty}px) scale(${z})`; };
+  const zoomAt = (nz, cx, cy) => { // přiblížení kolem bodu (cx, cy) na obrazovce
+    const el = img(); if (!el) return; nz = Math.min(5, Math.max(1, nz));
+    const r = v.getBoundingClientRect(), ox = cx - r.left - r.width / 2, oy = cy - r.top - r.height / 2;
+    tx = ox - (ox - tx) * nz / z; ty = oy - (oy - ty) * nz / z; z = nz; clamp();
+  };
+  const reset = () => { z = 1; tx = 0; ty = 0; };
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const mid = t => [(t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2];
+  v.addEventListener("touchstart", e => {
+    lastTouch = Date.now();
+    if (e.target.closest("[data-v]")) return;
+    e.preventDefault(); moved = false;
+    if (e.touches.length === 2){ pinch = {d:dist(e.touches), z, m:mid(e.touches), tx, ty}; pan = null; sw = null; return; }
+    const t = e.touches[0];
+    if (z > 1) pan = {x:t.clientX, y:t.clientY, tx, ty}; else sw = {x:t.clientX, y:t.clientY};
+  }, {passive:false});
+  v.addEventListener("touchmove", e => {
+    if (e.target.closest("[data-v]")) return;
+    e.preventDefault();
+    if (pinch && e.touches.length === 2){
+      moved = true; const m = mid(e.touches);
+      z = pinch.z; tx = pinch.tx + (m[0] - pinch.m[0]); ty = pinch.ty + (m[1] - pinch.m[1]);
+      zoomAt(pinch.z * dist(e.touches) / pinch.d, m[0], m[1]); apply(false); return;
+    }
+    const t = e.touches[0];
+    if (pan){ moved = true; tx = pan.tx + t.clientX - pan.x; ty = pan.ty + t.clientY - pan.y; clamp(); apply(false); }
+    else if (sw && Math.hypot(t.clientX - sw.x, t.clientY - sw.y) > 10) moved = true;
+  }, {passive:false});
   v.addEventListener("touchend", e => {
-    if (sx == null) return; const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; sx = null;
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1);
-    else if (dy > 90 && Math.abs(dy) > Math.abs(dx)) close(); // přejetí dolů zavře
+    if (e.target.closest("[data-v]")) return;
+    if (pinch){ if (e.touches.length < 2){ pinch = null; clamp(); apply(true); if (e.touches.length === 1 && z > 1){ const t = e.touches[0]; pan = {x:t.clientX, y:t.clientY, tx, ty}; } } return; }
+    if (e.touches.length) return;
+    const t = e.changedTouches[0];
+    if (sw && moved){ const dx = t.clientX - sw.x, dy = t.clientY - sw.y;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1);
+      else if (dy > 90 && Math.abs(dy) > Math.abs(dx)) close(); // přejetí dolů zavře
+    }
+    if (!moved){ // ťuknutí: dvojí ťuknutí přiblíží / oddálí, ťuknutí vedle fotky zavře
+      const now = Date.now();
+      if (now - lastTap < 300){ lastTap = 0; if (z > 1) reset(); else zoomAt(2.5, t.clientX, t.clientY); apply(true); }
+      else { lastTap = now; const onImg = e.target === img(); setTimeout(() => { if (lastTap === now && !onImg && z === 1) close(); }, 300); }
+    }
+    pan = null; sw = null;
   });
+  v.addEventListener("dblclick", e => { if (e.target.closest("[data-v]")) return; if (z > 1) reset(); else zoomAt(2.5, e.clientX, e.clientY); apply(true); });
+  v.addEventListener("wheel", e => { e.preventDefault(); zoomAt(z * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); apply(false); }, {passive:false});
+  let md = null; // posun přiblížené fotky myší
+  v.addEventListener("mousedown", e => { if (z > 1 && e.target === img()){ e.preventDefault(); md = {x:e.clientX, y:e.clientY, tx, ty}; } });
+  const mm = e => { if (!md) return; tx = md.tx + e.clientX - md.x; ty = md.ty + e.clientY - md.y; clamp(); apply(false); }, mu = () => { md = null; };
+  window.addEventListener("mousemove", mm); window.addEventListener("mouseup", mu);
+  ["gesturestart", "gesturechange"].forEach(ev => v.addEventListener(ev, e => e.preventDefault())); // iOS: nezvětšovat stránku
   const key = e => { if (e.key === "ArrowLeft") go(-1); else if (e.key === "ArrowRight") go(1); };
-  function close(){ v.remove(); document.removeEventListener("keydown", key); }
+  function close(){ v.remove(); document.removeEventListener("keydown", key); window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", mu); }
   document.addEventListener("keydown", key);
   draw(); document.body.appendChild(v);
 }
