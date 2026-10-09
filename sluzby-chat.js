@@ -87,6 +87,21 @@ function hTimes(t){
   const a = new Date(ms(t.start)), b = new Date(ms(t.konec));
   return `${a.getHours()}:00 – ${b.getDate() !== a.getDate() ? DOW_S[b.getDay()] + " " : ""}${b.getHours()}:00`;
 }
+// průběh služby (jako na hlavní časové ose): pruh + Uběhlo / Zbývá; obnovuje se každou půlminutu
+function durTxt(x){ const m = Math.max(0, Math.round(x / 6e4)), h = Math.floor(m / 60); return h ? `${h} h ${m % 60} min` : `${m % 60} min`; }
+function progHTML(t){
+  if (!t || t.typ !== "hlidka" || hState(t) !== "probiha") return "";
+  return `<span class="ch-prog" data-s="${ms(t.start)}" data-e="${ms(t.konec)}">${progInner(ms(t.start), ms(t.konec))}</span>`;
+}
+function progInner(s, e){
+  const tot = e - s, done = Math.min(tot, Math.max(0, now() - s));
+  return `<span class="ch-pb"><i style="width:${(done / tot * 100).toFixed(1)}%"></i></span><span class="ch-pl"><span>Uběhlo <b>${durTxt(done)}</b></span><span>Zbývá <b>${durTxt(tot - done)}</b></span></span>`;
+}
+function tickProg(){
+  let ended = false;
+  document.querySelectorAll(".ch-prog[data-s]").forEach(el => { const s = +el.dataset.s, e = +el.dataset.e; if (now() >= e) ended = true; el.innerHTML = progInner(s, e); });
+  if (ended && S && S.open){ renderList(); if (S.view === "thread" || S.two) renderHead(); }
+}
 function hMembers(t, full){
   const st = (t.stala || []).map(String);
   const list = (t.clenove || []).map(String).sort((a, b) => (st.includes(b) - st.includes(a)) || nameOf(a).localeCompare(nameOf(b), "cs"));
@@ -163,6 +178,15 @@ const STYLE = `
 .ch-hc.on{outline:3px solid var(--ink,#1D2A4D);outline-offset:1px}
 .ch-hc .ch-rt b{font-family:var(--f-cond,sans-serif);font-size:19px}
 .ch-hc .ch-rl{color:inherit;opacity:.85}
+.ch-prog{display:block;margin:7px 0 6px}
+.ch-pb{display:block;height:7px;border-radius:4px;background:rgba(29,42,77,.14);overflow:hidden}
+.ch-pb i{display:block;height:100%;border-radius:4px;background:var(--ink,#1D2A4D)}
+.ch-hc.N .ch-pb,.ch-th.N .ch-pb{background:rgba(255,255,255,.18)}
+.ch-hc.N .ch-pb i,.ch-th.N .ch-pb i{background:#8FB0FF}
+.ch-pl{display:flex;justify-content:space-between;font-size:12.5px;margin-top:3px;opacity:.85}
+.ch-th{flex-wrap:wrap}
+.ch-thp{flex:0 0 100%;padding:0 6px}
+.ch-thp .ch-prog{margin:2px 0 0}
 .ch-hst{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.12);flex:none}
 .ch-hst.probiha{background:#1E63C6;color:#fff}
 .ch-mem{display:flex;flex-wrap:wrap;gap:3px 8px;font-size:13px;margin:4px 0 2px}
@@ -379,6 +403,7 @@ function watchPeer(){
 }
 function startLive(){
   LIVE = true;
+  clearInterval(S.progT); S.progT = setInterval(tickProg, 30e3);
   beat(); clearInterval(S.beatT); S.beatT = setInterval(() => { if (document.visibilityState === "visible") beat(); }, 60e3);
   const col = O.db.collection("chaty");
   S.liveUnsubs = [];
@@ -478,6 +503,7 @@ function hCardHTML(id, t){
   return `<button type="button" class="ch-hc ${t.kind === "N" ? "N" : "D"}${S.tid === id && S.two ? " on" : ""}" data-cht="${esc(id)}">
     <span class="ch-rt"><b>${esc(hTitle(t))}</b><span class="ch-hst ${st}">${soon}</span></span>
     <span class="ch-rl"><span>${hTimes(t)}</span>${mut ? `<i class="ch-mute">🔕</i>` : ""}${un ? `<i class="ch-un${mut ? " mut" : ""}">${un}</i>` : ""}</span>
+    ${progHTML(t)}
     <span class="ch-mem">${hMembers(t)}</span>
     ${last ? `<span class="ch-rl"><span>${esc(String(last.od) === String(O.me) ? "Ty" : surname(last.jmeno || nameOf(last.od)))}: ${esc(last.text || "")}</span><small>${whenShort(ms(last.at))}</small></span>` : ""}
   </button>`;
@@ -576,7 +602,7 @@ function renderHead(){
     <div class="ch-tb${hav ? " av" : ""}">${hav}<span><b>${esc(t && t.typ === "hlidka" && !S.two ? hTitle(t, true) : titleOf(tid, t))}</b>${sub === null ? `<small id="chPeer" class="${peerLine() === "online" ? "on" : ""}">${esc(peerLine())}</small>` : `<small>${esc(sub)}</small>`}</span></div>
     <div class="ch-side r"><button type="button" class="ch-ib${S.searchOn ? " on" : ""}" data-chsearch aria-label="Hledat ve vlákně" title="Hledat"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
     ${t ? `<button type="button" class="ch-ib${mut ? " on" : ""}" data-chmute aria-pressed="${mut}" aria-label="${mut ? "Zrušit ztlumení" : "Ztlumit upozornění"}" title="${mut ? "Ztlumeno – upozornění vypnutá" : "Ztlumit upozornění"}">${mut ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/><path d="M4 4l16 16"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>`}</button>` : ""}
-    ${O.desk ? `<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button>` : ""}</div>`;
+    ${O.desk ? `<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button>` : ""}</div>${progHTML(t) ? `<div class="ch-thp">${progHTML(t)}</div>` : ""}`;
   const pb = $("chPinBox");
   if (pb) pb.innerHTML = t && t.pinned ? `<div class="ch-pin">${ic(ICO.pin, 18)}<button type="button" data-chgo="${esc(t.pinned.id)}"><b>${esc(surname(t.pinned.jmeno || ""))}:</b> ${esc(t.pinned.text || "fotka")}</button><button type="button" class="ch-unpin" data-chunpin aria-label="Odepnout">✕</button></div>` : "";
   const sb = $("chSearchBox");
