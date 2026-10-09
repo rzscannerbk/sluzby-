@@ -178,6 +178,14 @@ const STYLE = `
 .ch-th.D{background:var(--dayBg,var(--day,#FBEFB8))}
 .ch-th.N{background:var(--night,#4B3F9E);color:#fff}
 .ch-tb{flex:1;min-width:0;text-align:center}
+.ch-tb.av{display:flex;align-items:center;justify-content:center;gap:8px;text-align:left}
+.ch-tb.av>span:last-child{min-width:0}
+.ch-tb .ch-av{width:34px;height:34px;font-size:13px}
+.ch-root.two .ch-tb.av{justify-content:flex-start}
+.ch-pick button{display:flex;align-items:center;gap:10px}
+.ch-pick button>span:last-child{flex:1;text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch-pick .ch-av{width:34px;height:34px;font-size:13px}
+.ch-sheet .ch-act .ch-av{width:28px;height:28px;font-size:11px}
 .ch-side{flex:0 0 auto;min-width:92px;display:flex;gap:8px;align-items:center}
 .ch-side.r{justify-content:flex-end}
 .ch-root.two .ch-side.l{display:none}
@@ -480,7 +488,7 @@ function renderList(){
   const test = S.set && !S.set.vsem ? `<p class="ch-test"><b>Testovací provoz</b> – chat zatím vidí jen ${testeri().map(c => esc(nameOf(c))).join(", ")}.</p>` : "";
   if (S.pick){
     const list = Object.entries(officers()).filter(([n, c]) => String(c) !== String(O.me) && (S.set.vsem || testeri().includes(String(c)))).sort((a, b) => a[0].localeCompare(b[0], "cs"));
-    el.innerHTML = head + (list.length ? `<div class="ch-pick">${list.map(([n, c]) => `<button type="button" data-chdm="${esc(c)}">${esc(n)}</button>`).join("")}</div>` : `<p class="ch-empty">Zatím nikdo další nemá chat povolený.</p>`);
+    el.innerHTML = head + (list.length ? `<div class="ch-pick">${list.map(([n, c]) => `<button type="button" data-chdm="${esc(c)}">${avHTML(String(c), initials(n))}<span>${esc(n)}</span></button>`).join("")}</div>` : `<p class="ch-empty">Zatím nikdo další nemá chat povolený.</p>`);
     return;
   }
   const H = Object.entries(S.threads).filter(([, t]) => t.typ === "hlidka");
@@ -561,9 +569,11 @@ function renderHead(){
   if (t && t.typ === "hlidka") sub = `${hTimes(t)} · ${(t.clenove || []).map(c => surname(nameOf(c))).join(", ")}`;
   else if (tid === "vsichni") sub = S.set && S.set.vsem ? "Všichni strážníci" : "Testovací provoz – jen testeři";
   else sub = null;
+  const peer = tid && tid.startsWith("dm_") ? tid.split("_").slice(1).find(c => c !== String(O.me)) || String(O.me) : null;
+  const hav = tid === "vsichni" ? avHTML("vsichni", "VŠ", "all") : peer ? avHTML(peer, initials(nameOf(peer))) : "";
   h.className = "ch-th" + (t && t.typ === "hlidka" ? " " + (t.kind === "N" ? "N" : "D") : "");
   h.innerHTML = `<div class="ch-side l"><button type="button" class="ch-back" data-chback aria-label="Zpět na seznam chatů"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></div>
-    <div class="ch-tb"><b>${esc(t && t.typ === "hlidka" && !S.two ? hTitle(t, true) : titleOf(tid, t))}</b>${sub === null ? `<small id="chPeer" class="${peerLine() === "online" ? "on" : ""}">${esc(peerLine())}</small>` : `<small>${esc(sub)}</small>`}</div>
+    <div class="ch-tb${hav ? " av" : ""}">${hav}<span><b>${esc(t && t.typ === "hlidka" && !S.two ? hTitle(t, true) : titleOf(tid, t))}</b>${sub === null ? `<small id="chPeer" class="${peerLine() === "online" ? "on" : ""}">${esc(peerLine())}</small>` : `<small>${esc(sub)}</small>`}</span></div>
     <div class="ch-side r"><button type="button" class="ch-ib${S.searchOn ? " on" : ""}" data-chsearch aria-label="Hledat ve vlákně" title="Hledat"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
     ${t ? `<button type="button" class="ch-ib${mut ? " on" : ""}" data-chmute aria-pressed="${mut}" aria-label="${mut ? "Zrušit ztlumení" : "Ztlumit upozornění"}" title="${mut ? "Ztlumeno – upozornění vypnutá" : "Ztlumit upozornění"}">${mut ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/><path d="M4 4l16 16"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>`}</button>` : ""}
     ${O.desk ? `<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button>` : ""}</div>`;
@@ -798,11 +808,11 @@ function fwdTargets(){
   const hl = Object.entries(S.threads).filter(([id, t]) => t.typ === "hlidka" && id !== S.tid && ["brzy", "probiha", "skoncila"].includes(hState(t)))
     .sort((a, b) => ms(a[1].start) - ms(b[1].start));
   hl.forEach(([id, t]) => out.push({sec:"Hlídky", id, title:hTitle(t), sub:hTimes(t)}));
-  if (S.tid !== "vsichni") out.push({sec:"Společné", id:"vsichni", title:"Zpráva všem"});
+  if (S.tid !== "vsichni") out.push({sec:"Společné", id:"vsichni", title:"Zpráva všem", av:avHTML("vsichni", "VŠ", "all")});
   const dms = Object.entries(S.threads).filter(([, t]) => t.typ === "dm").sort((a, b) => ms(b[1].posledni && b[1].posledni.at) - ms(a[1].posledni && a[1].posledni.at));
-  dms.forEach(([id, t]) => { seen.add(id); if (id !== S.tid) out.push({sec:"Soukromé zprávy", id, title:titleOf(id, t)}); });
+  dms.forEach(([id, t]) => { seen.add(id); if (id !== S.tid){ const pc = id.split("_").slice(1).find(c => c !== String(O.me)) || String(O.me); out.push({sec:"Soukromé zprávy", id, title:titleOf(id, t), av:avHTML(pc, initials(titleOf(id, t)))}); } });
   Object.entries(officers()).filter(([, c]) => String(c) !== String(O.me) && allowedNo(c)).sort((a, b) => a[0].localeCompare(b[0], "cs"))
-    .forEach(([n, c]) => { const id = dmId(O.me, c); if (!seen.has(id) && id !== S.tid) out.push({sec:"Soukromé zprávy", id, title:n}); });
+    .forEach(([n, c]) => { const id = dmId(O.me, c); if (!seen.has(id) && id !== S.tid) out.push({sec:"Soukromé zprávy", id, title:n, av:avHTML(String(c), initials(n))}); });
   return out;
 }
 function openFwd(mid){
@@ -810,13 +820,13 @@ function openFwd(mid){
   const s = document.createElement("div"); s.className = "ch-sheet";
   let html = "", sec = "";
   list.forEach(x => { if (x.sec !== sec){ html += `<div class="ch-fs">${x.sec}</div>`; sec = x.sec; }
-    html += `<button type="button" class="ch-act" data-chf="${esc(x.id)}">${ic(ICO.fwd)}<span>${esc(x.title)}${x.sub ? `<small>${esc(x.sub)}</small>` : ""}</span></button>`; });
+    html += `<button type="button" class="ch-act" data-chf="${esc(x.id)}">${x.av || ic(ICO.fwd)}<span>${esc(x.title)}${x.sub ? `<small>${esc(x.sub)}</small>` : ""}</span></button>`; });
   s.innerHTML = `<div role="dialog" aria-label="Přeposlat zprávu"><h3>Přeposlat do…</h3><div class="ch-fl">${html || `<p class="ch-empty">Není kam přeposlat.</p>`}</div>
     <button type="button" class="ch-act" data-chf="">${ic(ICO.close)}Zrušit</button></div>`;
   s.addEventListener("click", e => {
     if (e.target === s){ closeSheet(); return; }
     const b = e.target.closest("[data-chf]"); if (!b) return;
-    closeSheet(); if (b.dataset.chf) forward(mid, b.dataset.chf, b.querySelector("span").firstChild.textContent);
+    closeSheet(); if (b.dataset.chf) forward(mid, b.dataset.chf, b.querySelector(":scope > span:last-child").firstChild.textContent);
   });
   document.body.appendChild(s);
 }
