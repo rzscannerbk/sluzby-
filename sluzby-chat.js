@@ -67,9 +67,9 @@ function titleOf(id, t){
   if (t && t.typ === "hlidka") return hTitle(t);
   return "Chat";
 }
-function hTitle(t){
+function hTitle(t, short){
   const [y, m, d] = String(t.datum).split("-").map(Number), dt = new Date(y, m - 1, d);
-  return `${t.kind === "N" ? "Noční" : "Denní"} · ${DOW_F[dt.getDay()]} ${d}. ${m}.`;
+  return `${t.kind === "N" ? "Noční" : "Denní"} · ${(short ? DOW_S : DOW_F)[dt.getDay()]} ${d}. ${m}.`;
 }
 function hTimes(t){
   const a = new Date(ms(t.start)), b = new Date(ms(t.konec));
@@ -160,13 +160,17 @@ const STYLE = `
 .ch-th{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top,0px) + 10px) 10px 10px;background:var(--sheet,#FAFBF7);border-bottom:1.5px solid var(--line,#DDE1E7)}
 .ch-th.D{background:var(--dayBg,var(--day,#FBEFB8))}
 .ch-th.N{background:var(--night,#4B3F9E);color:#fff}
-.ch-tb{flex:1;min-width:0}
+.ch-tb{flex:1;min-width:0;text-align:center}
+.ch-side{flex:0 0 auto;min-width:92px;display:flex;gap:8px;align-items:center}
+.ch-side.r{justify-content:flex-end}
+.ch-root.two .ch-side.l{display:none}
+.ch-root.two .ch-tb{text-align:left}
 .ch-tb b{display:block;font-family:var(--f-cond,sans-serif);font-size:21px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ch-tb small{display:block;font-size:12.5px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-tb small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:12.5px;line-height:1.25;opacity:.8;overflow:hidden}
 .ch-root .ch-ib{flex:none;width:42px;height:42px;border-radius:50%;border:1.5px solid currentColor;background:transparent;color:inherit;display:flex;align-items:center;justify-content:center;padding:0}
 .ch-root .ch-ib.on{background:var(--ink,#1D2A4D);border-color:var(--ink,#1D2A4D);color:var(--paper,#fff)}
 .ch-th.N .ch-ib.on{background:#fff;border-color:#fff;color:var(--night,#4B3F9E)}
-.ch-back{border:0;background:transparent;font-size:30px;line-height:1;width:34px;height:38px;padding:0}
+.ch-root .ch-back{flex:none;width:46px;height:46px;border-radius:50%;border:2px solid currentColor;background:transparent;color:inherit;display:flex;align-items:center;justify-content:center;padding:0}
 .ch-pin{display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--sheet,#FAFBF7);border-bottom:1px solid var(--line,#DDE1E7);font-size:13.5px}
 .ch-pin button{border:0;background:transparent;padding:0;text-align:left;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ch-pin .ch-unpin{flex:none;font-size:16px;opacity:.6}
@@ -197,6 +201,7 @@ const STYLE = `
 .ch-more{position:absolute;top:50%;transform:translateY(-50%);right:-34px;width:28px;height:28px;border-radius:50%;border:0;background:transparent;opacity:0;font-size:18px;padding:0}
 .ch-m.mine .ch-more{right:auto;left:-34px}
 .ch-m:hover .ch-more{opacity:.6}
+@media (hover:none){.ch-more{display:none}}
 .ch-in{padding:8px 10px calc(env(safe-area-inset-bottom,0px) + 8px);background:var(--sheet,#FAFBF7);border-top:1.5px solid var(--line,#DDE1E7)}
 .ch-bar{display:flex;align-items:center;gap:8px;font-size:13px;background:rgba(0,0,0,.05);border-left:3px solid #E2C33A;border-radius:6px;padding:5px 8px;margin:0 0 7px}
 .ch-bar span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -465,11 +470,11 @@ function renderHead(){
   else if (tid === "vsichni") sub = S.set && S.set.vsem ? "Všichni strážníci" : "Testovací provoz – jen testeři";
   else sub = "Soukromá zpráva";
   h.className = "ch-th" + (t && t.typ === "hlidka" ? " " + (t.kind === "N" ? "N" : "D") : "");
-  h.innerHTML = `<button type="button" class="ch-back" data-chback aria-label="Zpět na seznam">‹</button>
-    <div class="ch-tb"><b>${esc(titleOf(tid, t))}</b><small>${esc(sub)}</small></div>
-    <button type="button" class="ch-ib${S.searchOn ? " on" : ""}" data-chsearch aria-label="Hledat ve vlákně" title="Hledat"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
+  h.innerHTML = `<div class="ch-side l"><button type="button" class="ch-back" data-chback aria-label="Zpět na seznam chatů"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></div>
+    <div class="ch-tb"><b>${esc(t && t.typ === "hlidka" && !S.two ? hTitle(t, true) : titleOf(tid, t))}</b><small>${esc(sub)}</small></div>
+    <div class="ch-side r"><button type="button" class="ch-ib${S.searchOn ? " on" : ""}" data-chsearch aria-label="Hledat ve vlákně" title="Hledat"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
     ${t ? `<button type="button" class="ch-ib${mut ? " on" : ""}" data-chmute aria-pressed="${mut}" aria-label="${mut ? "Zrušit ztlumení" : "Ztlumit upozornění"}" title="${mut ? "Ztlumeno – upozornění vypnutá" : "Ztlumit upozornění"}">${mut ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/><path d="M4 4l16 16"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>`}</button>` : ""}
-    ${O.desk ? `<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button>` : ""}`;
+    ${O.desk ? `<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button>` : ""}</div>`;
   const pb = $("chPinBox");
   if (pb) pb.innerHTML = t && t.pinned ? `<div class="ch-pin">📌 <button type="button" data-chgo="${esc(t.pinned.id)}"><b>${esc(surname(t.pinned.jmeno || ""))}:</b> ${esc(t.pinned.text || "fotka")}</button><button type="button" class="ch-unpin" data-chunpin aria-label="Odepnout">✕</button></div>` : "";
   const sb = $("chSearchBox");
