@@ -631,23 +631,25 @@ async function writeMsg(data){
   await b.commit();
 }
 async function send(){
-  const ta = $("chText"); if (!ta) return;
+  const ta = $("chText"); if (!ta || S.sending) return;
   const text = ta.value.trim(); if (!text) return;
-  showErr("");
+  S.sending = true; showErr("");
+  // pole se vyprázdní hned (zpráva se ve vlákně objeví okamžitě jako „Odesílá se…“), při chybě se text vrátí
+  const edit = S.edit, reply = S.reply;
+  ta.value = ""; grow(ta); S.edit = null; S.reply = null; renderBar();
+  try { localStorage.removeItem("chDraft_" + S.tid); } catch(e){}
+  S.atBottom = true; stickBottom();
   try {
-    if (S.edit){
-      await tref().collection("zpravy").doc(S.edit).update({text, upraveno:FV().serverTimestamp()});
-      S.edit = null;
-    } else {
+    if (edit) await tref().collection("zpravy").doc(edit).update({text, upraveno:FV().serverTimestamp()});
+    else {
       const data = {text};
-      if (S.reply) data.replyTo = {id:S.reply.id, jmeno:S.reply.jmeno, text:String(S.reply.text || "").slice(0, 120)};
-      await writeMsg(data);
-      S.reply = null;
+      if (reply) data.replyTo = {id:reply.id, jmeno:reply.jmeno, text:String(reply.text || "").slice(0, 120)};
+      const p = writeMsg(data); S.sending = false; ensureMsgSub(); await p;
     }
-    ta.value = ""; grow(ta); try { localStorage.removeItem("chDraft_" + S.tid); } catch(e){}
-    renderBar(); ensureMsgSub();
-    const box = $("chMsgs"); if (box) box.scrollTop = box.scrollHeight;
-  } catch (e){ showErr(e.code === "permission-denied" ? "Odeslání zamítnuto pravidly Firestore." : "Zprávu se nepodařilo odeslat."); }
+  } catch (e){
+    if (!ta.value){ ta.value = text; grow(ta); S.edit = edit; S.reply = reply; renderBar(); }
+    showErr(e.code === "permission-denied" ? "Odeslání zamítnuto pravidly Firestore." : "Zprávu se nepodařilo odeslat.");
+  } finally { S.sending = false; }
 }
 async function sendPhotos(files){
   if (!files.length) return;
@@ -740,7 +742,7 @@ function bind(root){
     if (c("[data-chnew]")){ S.pick = true; renderList(); return; }
     const dm = c("[data-chdm]"); if (dm){ S.pick = false; CH.openThread(dmId(O.me, dm.dataset.chdm)); return; }
     const th = c("[data-cht]"); if (th){ CH.openThread(th.dataset.cht); return; }
-    if (c("[data-chsend]")){ send(); return; }
+    const sb = c("[data-chsend]"); if (sb){ if (sb.dataset.tt){ delete sb.dataset.tt; return; } send(); return; }
     if (c("[data-chphoto]")){ const f = $("chFile"); if (f) f.click(); return; }
     if (c("[data-chcancel]")){ if (S.edit){ const ta = $("chText"); if (ta){ ta.value = ""; grow(ta); } } S.edit = null; S.reply = null; renderBar(); return; }
     if (c("[data-chmute]")){ const t = thread(S.tid); tref().set({muted:{[O.me]:!isMuted(t)}}, {merge:true}).catch(() => {}); return; }
@@ -752,6 +754,14 @@ function bind(root){
     const own = c(".ch-m.mine .ch-bub"); if (own && !c("[data-chimg],a,.ch-q")){ const mid = own.closest(".ch-m").dataset.mid; S.infoMid = S.infoMid === mid ? null : mid; renderMsgs(false); return; }
     const im = c("[data-chimg]"); if (im){ const v = document.createElement("div"); v.className = "ch-view"; v.innerHTML = `<img src="${im.src}" alt="Fotka">`; v.addEventListener("click", () => v.remove()); document.body.appendChild(v); return; }
   });
+  // tlačítko odeslat nesmí vzít poli pro psaní fokus – jinak první klepnutí na iPhonu jen schová klávesnici
+  // a okno se posune, takže se zpráva odešle až napodruhé; takhle zůstane klávesnice otevřená a odešle se hned
+  ["pointerdown","mousedown","touchstart"].forEach(t => root.addEventListener(t, e => {
+    if (e.target.closest("[data-chsend]") && document.activeElement && document.activeElement.id === "chText"){
+      e.preventDefault();
+      if (t === "touchstart"){ const sb = e.target.closest("[data-chsend]"); sb.dataset.tt = "1"; setTimeout(() => { delete sb.dataset.tt; }, 700); send(); }
+    }
+  }, {passive:false}));
   // dlouhé podržení zprávy = nabídka (mobil), pravé tlačítko = nabídka (počítač)
   root.addEventListener("pointerdown", e => {
     const m = e.target.closest(".ch-m[data-mid]"); if (!m || e.target.closest("button,a")) return;
