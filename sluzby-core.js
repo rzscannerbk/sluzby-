@@ -58,11 +58,22 @@ function moveShift(T, from, to, den, kind, len){
   T[to][den-1] = t === "." ? part : t + "+" + part;
   return true;
 }
+// přesun vlastní služby na jiný den (schvaluje správce): z od.den se služba odebere, na za.den přibude standardní D12 / N12
+function movePresun(T, r, len){
+  const arr = T[r.od.jmeno]; if (!arr) return false;
+  const parts = (arr[r.od.den-1] || ".") === "." ? [] : arr[r.od.den-1].split("+");
+  const i = parts.findIndex(p => kindOf(p) === r.od.kind); if (i < 0) return false;
+  parts.splice(i, 1); arr[r.od.den-1] = parts.length ? parts.join("+") : ".";
+  const t = arr[r.za.den-1] || ".";
+  arr[r.za.den-1] = t === "." ? r.za.kod : t + "+" + r.za.kod;
+  return true;
+}
 const hasShift = (T, name, den, kind) => !!T[name] && (T[name][den-1] || ".").split("+").some(p => kindOf(p) === kind);
 const tsMs = x => (x && x.toMillis) ? x.toMillis() : Date.now();
 function applySwaps(plan, swaps, len){
   const T = tokensOf(plan), notes = {};
   swaps.filter(r => r.stav === "prijato").sort((a,b) => tsMs(a.vyrizeno) - tsMs(b.vyrizeno)).forEach(r => {
+    if (r.typ === "presun"){ if (r.za && r.za.den && movePresun(T, r, len)) notes[`${r.za.den}|${r.za.kind}|${r.od.jmeno}`] = `přesun z ${r.od.den}.`; return; }
     if (!r.za || !r.za.jmeno) return;
     if (moveShift(T, r.od.jmeno, r.za.jmeno, r.od.den, r.od.kind, len)) notes[`${r.od.den}|${r.od.kind}|${r.za.jmeno}`] = `za ${zaTvar(r.od.jmeno)}`;
     if (r.typ === "vymena" && r.za.den && moveShift(T, r.za.jmeno, r.od.jmeno, r.za.den, r.za.kind, len)) notes[`${r.za.den}|${r.za.kind}|${r.od.jmeno}`] = `za ${zaTvar(r.za.jmeno)}`;
@@ -104,6 +115,18 @@ function simulate(T0, req, accepter, y, m){
   const T = {}; for (const [n, a] of Object.entries(T0)) T[n] = a.slice();
   const out = {e:[], w:[], i:[]};
   if (!hasShift(T, req.od.jmeno, req.od.den, req.od.kind)) out.e.push(`${req.od.jmeno} už službu ${req.od.den}. ${m+1}. nemá – mohla být mezitím vyměněna.`);
+  if (req.typ === "presun"){
+    if (!req.za || !req.za.den) return out;
+    const same = req.za.den === req.od.den && req.za.kind === req.od.kind;
+    if (same) out.e.push("Služba už na tom dni je.");
+    else if (hasShift(T, req.od.jmeno, req.za.den, req.za.kind)) out.e.push(`${req.od.jmeno} už má ${req.za.den}. ${m+1}. ${KIND_LBL[req.za.kind]} službu.`);
+    if (out.e.length) return out;
+    movePresun(T, req, len);
+    checkPerson(T, req.od.jmeno, new Set([req.za.den]), y, m, out);
+    if (/\*$/.test(req.od.kod)) out.i.push("Stálá služba se přesunem nepřenáší – na novém dni budeš v hlídce.");
+    out.i.push("Přesun musí schválit správce.");
+    return out;
+  }
   if (req.typ === "vymena" && !hasShift(T, req.za.jmeno, req.za.den, req.za.kind)) out.e.push(`${req.za.jmeno} už službu ${req.za.den}. ${m+1}. nemá – mohla být mezitím vyměněna.`);
   const recv = req.typ === "nabidka" ? accepter : req.za && req.za.jmeno;
   if (out.e.length || !recv) return out;

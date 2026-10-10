@@ -60,6 +60,7 @@ function fmtShift(mesic, x) {
 }
 
 /* ---------- 1) výměny služeb ---------- */
+const SPRAVCI = ["1048"]; // služební čísla správců – dostávají žádosti o přesun služby ke schválení
 exports.vymenaNova = onDocumentCreated("vymeny/{id}", async ev => {
   const r = ev.data && ev.data.data(); if (!r) return;
   const co = fmtShift(r.mesic, r.od);
@@ -72,6 +73,10 @@ exports.vymenaNova = onDocumentCreated("vymeny/{id}", async ev => {
     return send(t, "Změna administrátorem", body + (r.pozn ? ` „${r.pozn}“` : ""), VYM);
   }
   if (r.stav !== "ceka") return;
+  if (r.typ === "presun") { // přesun schvaluje správce
+    const t = (await Promise.all(SPRAVCI.map(c => toNumber(c)))).flat();
+    return send(t, "Žádost o přesun služby", `${r.od.jmeno} chce přesunout službu ${co} na ${fmtShift(r.mesic, r.za)} (${r.za.kod}).${r.pozn ? " „" + r.pozn + "“" : ""}`, VYM);
+  }
   if (r.typ === "nabidka") {
     const t = await tokensFor(x => String(x.cislo) !== String(r.odCislo));
     return send(t, "Nabídka služby", `${r.od.jmeno} nabízí službu ${co}.${r.pozn ? " „" + r.pozn + "“" : ""}`, VYM);
@@ -92,6 +97,13 @@ exports.vymenaZmena = onDocumentUpdated("vymeny/{id}", async ev => {
   const co = fmtShift(b.mesic, b.od);
   const kdo = b.za && b.za.jmeno;
   const parseProp = t => { const [den, kind, kod] = String(t).split("|"); return { den: +den, kind, kod }; };
+  if (b.typ === "presun") {
+    const kam = b.za && b.za.den ? fmtShift(b.mesic, b.za) : "";
+    if (a.stav === "ceka" && b.stav === "prijato") return send(await toNumber(b.odCislo), "Přesun schválen", `Přesun služby ${co} na ${kam} je schválený.`, VYM);
+    if (a.stav === "ceka" && b.stav === "odmitnuto") return send(await toNumber(b.odCislo), "Přesun zamítnut", `Správce zamítl přesun služby ${co} na ${kam}.`, VYM);
+    if (a.stav === "prijato" && b.stav === "zruseno") return send(await toNumber(b.odCislo), "Přesun zrušen správcem", `Přesun služby ${co} na ${kam} byl zrušen. Platí původní plán.`, VYM);
+    return;
+  }
   // žádost poslaná víc kolegům: po přijetí ostatní zrušit
   if (b.stav === "prijato" && a.stav !== "prijato" && Array.isArray(b.skupina)) {
     await Promise.all(b.skupina.filter(id => id !== ev.params.id).map(async id => {
@@ -189,6 +201,14 @@ async function effectivePlan(id) {
     const t = T[to][den - 1] || "."; T[to][den - 1] = t === "." ? part : t + "+" + part;
   };
   sw.docs.map(d => d.data()).sort((a, b) => ts(a.vyrizeno) - ts(b.vyrizeno)).forEach(r => {
+    if (r.typ === "presun") { // přesun vlastní služby na jiný den: z od.den pryč, na za.den standardní D12 / N12
+      const arr = T[r.od.jmeno]; if (!arr || !r.za || !r.za.den) return;
+      const parts = (arr[r.od.den - 1] || ".") === "." ? [] : arr[r.od.den - 1].split("+");
+      const i = parts.findIndex(x => kindOf(x) === r.od.kind); if (i < 0) return;
+      parts.splice(i, 1); arr[r.od.den - 1] = parts.length ? parts.join("+") : ".";
+      const t = arr[r.za.den - 1] || "."; arr[r.za.den - 1] = t === "." ? r.za.kod : t + "+" + r.za.kod;
+      return;
+    }
     if (!r.za || !r.za.jmeno) return;
     move(r.od.jmeno, r.za.jmeno, r.od.den, r.od.kind);
     if (r.typ === "vymena" && r.za.den) move(r.za.jmeno, r.od.jmeno, r.za.den, r.za.kind);
@@ -348,13 +368,18 @@ async function syncHlidky() {
     const day = addDays(today, off), next = addDays(day, 1);
     const T = (await plan(day)) || {}, Tn = (await plan(next)) || {};
     for (const kind of ["D", "N"]) {
-      const start = pragueTime(day.y, day.m, day.d, kind === "D" ? 7 : 19);
-      const konec = kind === "D" ? pragueTime(day.y, day.m, day.d, 19) : pragueTime(next.y, next.m, next.d, 8);
-      if (nowMs >= konec) continue; // po skončení služby se členové už nemění
       const memb = new Map(); // jméno → stálá služba
+      const codes = []; // [kód, stálá] – podle nich se určí čas služby stejně jako na hlavní časové ose
       for (const [name, arr] of Object.entries(T)) {
-        (arr[day.d - 1] || ".").split("+").forEach(p => { if (kindOf(p) === kind) memb.set(name, !!memb.get(name) || p.endsWith("*")); });
+        (arr[day.d - 1] || ".").split("+").forEach(p => { if (kindOf(p) === kind){ memb.set(name, !!memb.get(name) || p.endsWith("*")); codes.push([p.replace(/\*$/, ""), p.endsWith("*")]); } });
       }
+      // čas služby: kód stálé služby, jinak nejčastější kód hlídky (D12 7–19, D8 10–18, N12 19–7, N13 19–8, Nz7 19–24)
+      let base = (codes.find(([, st]) => st) || [])[0];
+      if (!base) { const cnt = {}; codes.forEach(([c]) => cnt[c] = (cnt[c] || 0) + 1); base = (Object.entries(cnt).sort((a, b) => b[1] - a[1])[0] || [])[0]; }
+      const [hs, he] = CODES[base] || (kind === "D" ? CODES.D12 : CODES.N12);
+      const start = pragueTime(day.y, day.m, day.d, hs);
+      const konec = he > hs ? (he === 24 ? pragueTime(next.y, next.m, next.d, 0) : pragueTime(day.y, day.m, day.d, he)) : pragueTime(next.y, next.m, next.d, he);
+      if (nowMs >= konec) continue; // po skončení služby se členové už nemění
       if (kind === "N") { // konec noci (Nk8) zapsaný až v dalším dni patří k této noci
         for (const [name, arr] of Object.entries(Tn)) {
           (arr[next.d - 1] || ".").split("+").forEach(p => { if (p.replace(/\*$/, "") === "Nk8" && !memb.has(name)) memb.set(name, p.endsWith("*")); });
@@ -366,7 +391,8 @@ async function syncHlidky() {
       const cur = await ref.get();
       if (!cur.exists && !clenove.some(c => chatAllowed(set, c))) continue; // při testu jen hlídky s testerem
       const old = cur.exists ? cur.data() : {};
-      if (cur.exists && JSON.stringify(old.clenove || []) === JSON.stringify(clenove) && JSON.stringify(old.stala || []) === JSON.stringify(stala)) continue;
+      if (cur.exists && JSON.stringify(old.clenove || []) === JSON.stringify(clenove) && JSON.stringify(old.stala || []) === JSON.stringify(stala)
+        && old.start && old.start.toMillis() === start && old.konec && old.konec.toMillis() === konec) continue;
       const dt = new Date(Date.UTC(day.y, day.m - 1, day.d));
       await ref.set({
         typ: "hlidka", datum: dayId(day), kind,
@@ -408,4 +434,30 @@ exports.chatZprava = onDocumentCreated("chaty/{tid}/zpravy/{mid}", async ev => {
   const title = t.typ === "dm" ? kdo : t.typ === "vsichni" ? `Zpráva všem · ${surname(kdo)}` : `${t.nazev || "Hlídka"} · ${surname(kdo)}`;
   const body = m.image ? (m.text ? "📷 " + m.text : "📷 Fotka") : String(m.text || "").slice(0, 180);
   return send(tokens, title, body, CHAT_URL + encodeURIComponent(tid), "chat-" + tid);
+});
+
+// nová reakce (emoji) na zprávu → notifikace autorovi zprávy (pokud vlákno nemá ztlumené)
+const REAKCE_EMO = { palec: "👍", srdce: "❤️", smich: "😂", wow: "😮", smutek: "😢", diky: "🙏" };
+exports.chatReakce = onDocumentUpdated("chaty/{tid}/zpravy/{mid}", async ev => {
+  const a = ev.data.before.data() || {}, b = ev.data.after.data() || {};
+  if (b.smazano) return;
+  const autor = String(b.od || "");
+  const added = []; // [klíč, číslo] nově přidaných reakcí
+  for (const [k, arr] of Object.entries(b.reakce || {})) {
+    const old = ((a.reakce || {})[k] || []).map(String);
+    (arr || []).map(String).forEach(c => { if (!old.includes(c) && c !== autor) added.push([k, c]); });
+  }
+  if (!added.length || !autor) return;
+  const tid = ev.params.tid;
+  const [tSnap, set, st] = await Promise.all([db.collection("chaty").doc(tid).get(), chatSet(), db.collection("planSluzeb").doc("straznici").get()]);
+  const t = tSnap.exists ? tSnap.data() : {};
+  if ((t.muted || {})[autor] || !chatAllowed(set, autor)) return;
+  const cisla = (st.data() || {}).cisla || {};
+  const jmeno = c => Object.keys(cisla).find(n => String(cisla[n]) === String(c)) || "Kolega";
+  const kdo = [...new Set(added.map(([, c]) => surname(jmeno(c))))].join(", ");
+  const emo = [...new Set(added.map(([k]) => REAKCE_EMO[k] || "👍"))].join(" ");
+  const tokens = await tokensFor(x => String(x.cislo) === autor && x.chat !== false);
+  const kde = t.typ === "dm" ? "" : t.typ === "vsichni" ? " · Zpráva všem" : ` · ${t.nazev || "Hlídka"}`;
+  const co = b.image ? (b.text ? "📷 " + b.text : "📷 tvoji fotku") : `„${String(b.text || "").slice(0, 120)}“`;
+  return send(tokens, `${kdo} ${emo}${kde}`, `Reagoval na ${co}`, CHAT_URL + encodeURIComponent(tid), "chat-" + tid);
 });

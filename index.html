@@ -206,7 +206,13 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .req .st-admin{background:#7A4FD6;border-color:#7A4FD6;color:#fff}
 .btn-admin{display:block;width:100%;margin-top:14px;font-family:var(--f-cond);font-weight:700;font-size:17px;padding:9px 12px;border-radius:8px;border:1.5px solid #7A4FD6;background:transparent;color:#7A4FD6;cursor:pointer}
 .btn-admin[hidden]{display:none}
-.seg.seg2{grid-template-columns:repeat(2,1fr)}
+.seg.seg2,.seg.seg4{grid-template-columns:repeat(2,1fr)}
+.mv-kind{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:8px 0 4px}
+.mv-kind button{font:inherit;font-size:15px;font-weight:600;padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);border-left-width:6px;background:var(--paper);color:var(--ink);cursor:pointer;text-align:left}
+.mv-kind button.pd{border-left-color:#F2D24A}.mv-kind button.pn{border-left-color:#4B3F9E}
+.mv-kind button small{display:block;font-weight:400;font-size:13px;color:var(--ink2)}
+.mv-kind button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+.mv-kind button[aria-pressed="true"] small{color:var(--paper);opacity:.85}
 .aside b.por{color:#3A9AD9}
 .ch-l{display:flex;align-items:center;gap:10px;min-width:0}
 .ics-btn{flex:none;width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;padding:0}
@@ -482,7 +488,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.64</span>
+      <span class="ver" id="verDiag">v4.65</span>
     </div>
   </div>
 </header>
@@ -580,8 +586,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.46"></script>
-<script src="sluzby-chat.js?v=4.64"></script>
+<script src="sluzby-core.js?v=4.65"></script>
+<script src="sluzby-chat.js?v=4.65"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1617,6 +1623,7 @@ function saveHidden(){
   try { localStorage.setItem(HIDE_KEY, JSON.stringify([...HIDDEN])); } catch(e) {}
 }
 const incoming = () => PENDING.filter(r => SELF_NO && (
+  (r.stav === "ceka" && r.typ === "presun" && isAdminUI()) ||
   (r.stav === "ceka" && r.zaCislo === SELF_NO) ||
   (r.stav === "navrh" && r.odCislo === SELF_NO) ||
   (r.stav === "ceka" && r.zaCislo == null && r.odCislo !== SELF_NO && !HIDDEN.has(r.id))));
@@ -1635,6 +1642,7 @@ function reqText(r){
       ? `<b>${esc(od.jmeno)}</b> ${fmtS(r.mesic, od)} ⇄ <b>${esc(za.jmeno)}</b> ${fmtS(r.mesic, za)}.`
       : `Služba ${fmtS(r.mesic, od)} převedena: <b>${esc(od.jmeno)}</b> → <b>${esc(za.jmeno)}</b>.`;
   }
+  if (r.typ === "presun") return `<b>${esc(od.jmeno)}</b> přesouvá svou službu ${fmtS(r.mesic, od)} na ${fmtS(r.mesic, za)} (${esc(za.kod || "")}).`;
   if (r.typ === "vymena" && r.moznosti && !za.den) return `<b>${esc(od.jmeno)}</b> dá svou ${fmtS(r.mesic, od)} za ${za.jmeno === SELF ? "jednu z tvých služeb" : `jednu ze služeb <b>${esc(za.jmeno)}</b>`}: ${r.moznosti.map(t => fmtS(r.mesic, parseProp(t))).join(", ")}.`;
   if (r.typ === "vymena") return `<b>${esc(od.jmeno)}</b> dá svou ${fmtS(r.mesic, od)} za ${za.jmeno === SELF ? "tvoji" : `službu <b>${esc(za.jmeno)}</b>`} ${fmtS(r.mesic, za)}.`;
   if (r.typ === "prevzeti") return `<b>${esc(od.jmeno)}</b> žádá ${za.jmeno === SELF ? "tebe" : `<b>${esc(za.jmeno)}</b>`} o převzetí služby ${fmtS(r.mesic, od)}.`;
@@ -1726,6 +1734,7 @@ function renderVym(){
   if (vym.hidden) return;
   const reqHTML = (r, a) => reqCard(r, a, "Můj kalendář");
   const forMe = PENDING.filter(r => r.stav === "ceka" && r.zaCislo === SELF_NO);
+  const moves = isAdminUI() ? PENDING.filter(r => r.stav === "ceka" && r.typ === "presun") : [];
   const propsForMe = PENDING.filter(r => r.stav === "navrh" && r.odCislo === SELF_NO);
   const offersAll = PENDING.filter(r => r.stav === "ceka" && r.zaCislo == null && r.odCislo !== SELF_NO);
   const offers = offersAll.filter(r => !HIDDEN.has(r.id));
@@ -1739,9 +1748,10 @@ function renderVym(){
     ${SELF ? balanceHTML() : ""}
     ${sec("Čeká na tebe", [...propsForMe, ...forMe], r => r.stav === "navrh" ? propChoiceHTML(r) :
       `${r.moznosti && !r.za.den ? optChoiceHTML(r) : `<button class="btn btn-ok" data-act="accept">Přijmout</button>`}<button class="btn btn-no" data-act="reject">Odmítnout</button>${r.za && r.za.jmeno === SELF ? `<button class="btn sec" data-act="propose">Navrhnout</button>` : ""}${PROP && PROP.id === r.id ? propPickHTML(r) : ""}`, "Nic nečeká.")}
+    ${moves.length ? sec("Přesuny ke schválení", moves, () => `<button class="btn btn-ok" data-act="accept">Schválit</button><button class="btn btn-no" data-act="reject">Zamítnout</button>`, "") : ""}
     ${sec("Nabídky kolegů", offers, () => `<button class="btn" data-act="take">Vzít službu</button><button class="btn sec" data-act="hide">Nemám zájem</button>`, hidden.length ? "Žádné další nabídky." : "Žádné otevřené nabídky.")}
     ${hidden.length ? `<details class="hid"><summary>Skryté nabídky (${hidden.length})</summary>${hidden.map(r => reqHTML(r, `<button class="btn" data-act="take">Vzít službu</button><button class="btn sec" data-act="unhide">Znovu zobrazit</button>`)).join("")}</details>` : ""}
-    ${sec("Moje žádosti", mine, r => r.stav === "navrh" ? `<span class="pz">Čeká, až si ${esc(surname(r.od.jmeno))} vybere z tvých návrhů.</span>` : `<button class="btn sec" data-act="cancel">Zrušit žádost</button>`, "Nemáš žádné otevřené žádosti.")}
+    ${sec("Moje žádosti", mine, r => r.stav === "navrh" ? `<span class="pz">Čeká, až si ${esc(surname(r.od.jmeno))} vybere z tvých návrhů.</span>` : `${r.typ === "presun" ? `<span class="pz">Čeká na schválení správcem.</span>` : ""}<button class="btn sec" data-act="cancel">Zrušit žádost</button>`, "Nemáš žádné otevřené žádosti.")}
     ${sec(`Vyřízené – ${MONTHS[MONTH]}`, done, r => r.stav === "prijato" && isAdminUI() ? `<button class="btn sec btn-danger" data-act="revoke">Zrušit výměnu</button>` : "", "Zatím žádné.")}`;
 }
 function openVym(){ vym.hidden = false; vym.scrollTop = 0; renderVym(); document.getElementById("vymClose").focus(); }
@@ -1804,12 +1814,13 @@ async function reqAction(e){
       const out = simulate(await loadMonthState(r.mesic), r, SELF, y, m);
       msg.innerHTML = checksHTML(out);
       if (out.e.length) throw null;
-      if (out.w.length && !confirm("Výměna má upozornění k odpočinku. Přesto přijmout?")) throw null;
+      if (out.w.length && !confirm(r.typ === "presun" ? "Přesun má upozornění k odpočinku. Přesto schválit?" : "Výměna má upozornění k odpočinku. Přesto přijmout?")) throw null;
       await db.runTransaction(async tx => {
         const s = await tx.get(ref);
         if (!s.exists || s.data().stav !== "ceka") throw new Error("Žádost už byla vyřízena.");
         await siblingCheck(tx, r);
         const upd = {stav:"prijato", vyrizeno:FV.serverTimestamp()};
+        if (r.typ === "presun") upd.schvalil = SELF;
         if (act === "take"){ upd.zaCislo = SELF_NO; upd.za = {jmeno:SELF, cislo:SELF_NO}; }
         tx.update(ref, upd);
       });
@@ -2018,8 +2029,59 @@ function dayPickHTML(id, mine){
   return `<label class="f">Můj kalendář – vyber den, za který chceš měnit</label>
     <div class="cal-grid">${html}</div>${list}`;
 }
+/* --- přesun vlastní služby na jiný den (schvaluje správce) --- */
+// druhy služeb, na které jde v den d přesunout: prázdný den → denní i noční, mám denní → jen noční, mám noční → jen denní
+function moveKinds(d, mine){
+  const now = getNow();
+  const parts = ((EFF_T[SELF] || [])[d-1] || ".") === "." ? [] : EFF_T[SELF][d-1].split("+");
+  if (parts.some(p => /^(DOV|ZdV)$/.test(p))) return [];
+  const have = new Set(parts.filter(p => !(d === mine.den && kindOf(p) === mine.kind)).map(p => kindOf(p)).filter(Boolean));
+  return ["D", "N"].filter(k => !have.has(k) && !(d === mine.den && k === mine.kind)
+    && windowOf(new Date(YEAR, MONTH, d), k === "D" ? "D12" : "N12")[0] > now);
+}
+function moveCalHTML(id, mine){
+  const toks = EFF_T[SELF] || [];
+  const n = new Date(YEAR, MONTH + 1, 0).getDate();
+  const offset = (new Date(YEAR, MONTH, 1).getDay() + 6) % 7;
+  const today = new Date(getNow()); today.setHours(0,0,0,0);
+  let html = ["Po","Út","St","Čt","Pá","So","Ne"].map(d => `<div class="cal-dow">${d}</div>`).join("");
+  for (let i = 0; i < offset; i++) html += `<div></div>`;
+  for (let d = 1; d <= n; d++){
+    const parts = (toks[d-1] || ".") === "." ? [] : toks[d-1].split("+");
+    const codes = parts.map(p => p.replace(/\*$/, ""));
+    const hasD = codes.includes("D12") || codes.includes("D8"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.includes("D2");
+    const abs = codes.find(c => c === "DOV" || c === "ZdV");
+    const date = new Date(YEAR, MONTH, d), wd = date.getDay();
+    const cls = ["cal-day"];
+    if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
+    if (parts.some(p => p.endsWith("*"))) cls.push("stala");
+    if (wd === 0 || wd === 6) cls.push("we");
+    if (date.getTime() === today.getTime()) cls.push("today");
+    if (d === mine.den) cls.push("giv");
+    const label = codes.join("+");
+    if (date >= today && moveKinds(d, mine).length){
+      if (SW.mvDay === d) cls.push("sel");
+      html += `<button type="button" class="${cls.join(" ")} mpick" data-md="${d}" aria-pressed="${SW.mvDay === d}">${d}<small>${label}</small></button>`;
+    } else {
+      cls.push("off");
+      html += `<div class="${cls.join(" ")}">${d}${label ? `<small>${label}</small>` : ""}</div>`;
+    }
+  }
+  let pick = "";
+  if (SW.mvDay){
+    const kinds = moveKinds(SW.mvDay, mine), dt = new Date(YEAR, MONTH, SW.mvDay);
+    pick = `<p class="sub">${DOW_FULL[dt.getDay()]} ${SW.mvDay}. ${MONTH+1}. – přesunout jako:</p>
+      <div class="mv-kind">${kinds.map(k => `<button type="button" class="${k === "N" ? "pn" : "pd"}" data-mk="${k}" aria-pressed="${!!SW.mv && SW.mv.kind === k}">${k === "N" ? "Noční" : "Denní"}<small>${k === "N" ? "19:00 – 7:00 · N12" : "7:00 – 19:00 · D12"}</small></button>`).join("")}</div>`;
+  }
+  const sum = SW.mv ? `<div class="swp-sum"><p>Přesouvám službu <b>${fmtS(id, mine)}</b></p><p>na <b>${fmtS(id, {den:SW.mv.den, kind:SW.mv.kind})}</b> (${SW.mv.kind === "N" ? "N12" : "D12"})</p></div>` : "";
+  return `<label class="f">Můj kalendář – vyber den, kam službu přesunout</label>
+    <div class="cal-grid">${html}</div>${pick}${sum}
+    <p class="pick-hint">Na prázdný den si vybereš denní nebo noční, kde už máš denní, jde jen noční (a naopak). Přesun schvaluje správce.</p>`;
+}
 function buildReq(){
   const id = docId(YEAR, MONTH);
+  if (SW.typ === "presun") return {typ:"presun", mesic:id, od:{jmeno:SELF, cislo:SELF_NO, ...SW.mine},
+    za:SW.mv ? {jmeno:SELF, cislo:SELF_NO, den:SW.mv.den, kind:SW.mv.kind, kod:SW.mv.kind === "N" ? "N12" : "D12"} : null};
   const r = {typ:SW.typ, mesic:id, od:{jmeno:SELF, cislo:SELF_NO, ...SW.mine}, za:null};
   if (SW.typ !== "nabidka" && SW.kolega) r.za = {jmeno:SW.kolega, cislo:String(OFFICERS[SW.kolega] || "")};
   const strip = t => ({den:t.den, kind:t.kind, kod:t.kod});
@@ -2062,7 +2124,7 @@ function sumHTML(id, mine){
 function renderSwp(){
   const id = docId(YEAR, MONTH), mine = SW.mine;
   const colleagues = Object.keys(OFFICERS).filter(n => n !== SELF && canTakeMine(n)).sort((a,b) => a.localeCompare(b, "cs"));
-  const ready = SW.typ === "nabidka" || (SW.typ === "vymena" ? SW.targets.length > 0 : !!SW.kolega);
+  const ready = SW.typ === "nabidka" || (SW.typ === "presun" ? !!SW.mv : SW.typ === "vymena" ? SW.targets.length > 0 : !!SW.kolega);
   const dup = PENDING.some(r => r.odCislo === SELF_NO && r.mesic === id && r.od.den === mine.den && r.od.kind === mine.kind);
   let checks = {e:[], w:[], i:[]};
   if (dup) checks.e.push("Na tuhle službu už máš otevřenou žádost.");
@@ -2073,11 +2135,12 @@ function renderSwp(){
   const md = new Date(YEAR, MONTH, mine.den);
   swpBody.innerHTML = `<h2 id="swpTitle" class="swp-h">Měním službu</h2>
     <p class="swp-big">${DOW_FULL[md.getDay()]} ${mine.den}. ${MONTH+1}. ${mine.kind === "N" ? "Noční" : "Denní"}${/\*$/.test(mine.kod) ? " – stálá" : ""}</p>
-    <div class="seg" role="group" aria-label="Typ žádosti">
-      ${[["vymena","Výměna"],["prevzeti","Převzetí"],["nabidka","Nabídnout všem"]].map(([k,l]) => `<button type="button" data-typ="${k}" aria-pressed="${SW.typ === k}">${l}</button>`).join("")}
+    <div class="seg seg4" role="group" aria-label="Typ žádosti">
+      ${[["vymena","Výměna"],["prevzeti","Převzetí"],["nabidka","Nabídnout všem"],["presun","Přesun"]].map(([k,l]) => `<button type="button" data-typ="${k}" aria-pressed="${SW.typ === k}">${l}</button>`).join("")}
     </div>
     ${SW.typ === "vymena" ? dayPickHTML(id, mine) : ""}
-    ${SW.typ !== "nabidka" && !(SW.typ === "vymena" && multiPeople()) ? `<label class="f" for="swKolega">Kolega</label>
+    ${SW.typ === "presun" ? moveCalHTML(id, mine) : ""}
+    ${SW.typ !== "nabidka" && SW.typ !== "presun" && !(SW.typ === "vymena" && multiPeople()) ? `<label class="f" for="swKolega">Kolega</label>
       <select id="swKolega"><option value="">Vyber kolegu</option>${colleagues.map(n => `<option ${n === SW.kolega ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>` : ""}
     ${SW.typ === "vymena" && SW.kolega && !multiPeople() ? `<label class="f">Jeho služby, které bys vzal (vybráno ${SW.targets.length}/3)</label>
       ${swapCalHTML(SW.kolega, mine) || `<p class="empty-s">${esc(SW.kolega)} nemá v tomto měsíci žádnou budoucí službu.</p>`}${sumHTML(id, mine)}` : ""}
@@ -2088,7 +2151,7 @@ function renderSwp(){
     <div class="btns"><button type="button" class="btn" id="swSend" ${ready && !checks.e.length ? "" : "disabled"}>Odeslat žádost</button></div>`;
 }
 function openSwp(mine){
-  SW = {mine, typ:"vymena", kolega:"", targets:[], pozn:"", pickDay:null};
+  SW = {mine, typ:"vymena", kolega:"", targets:[], pozn:"", pickDay:null, mvDay:null, mv:null};
   swp.hidden = false; swp.scrollTop = 0; renderSwp();
   document.getElementById("swpClose").focus();
 }
@@ -2097,21 +2160,25 @@ document.getElementById("swpClose").addEventListener("click", closeSwp);
 swpBody.addEventListener("input", e => { if (e.target.id === "swPozn") SW.pozn = e.target.value; });
 swpBody.addEventListener("change", e => { if (e.target.id === "swKolega"){ SW.kolega = e.target.value; SW.targets = []; renderSwp(); } });
 swpBody.addEventListener("click", async e => {
-  const t = e.target.closest("[data-typ]"); if (t){ SW.typ = t.dataset.typ; SW.targets = []; SW.pickDay = null; renderSwp(); return; }
+  const t = e.target.closest("[data-typ]"); if (t){ SW.typ = t.dataset.typ; SW.targets = []; SW.pickDay = null; SW.mvDay = null; SW.mv = null; renderSwp(); return; }
   const dp = e.target.closest(".dpick"); if (dp){ SW.pickDay = +dp.dataset.dd; renderSwp(); return; }
+  const mp = e.target.closest(".mpick");
+  if (mp){ const d = +mp.dataset.md, k = moveKinds(d, SW.mine);
+    SW.mvDay = d; SW.mv = k.length === 1 ? {den:d, kind:k[0]} : (SW.mv && SW.mv.den === d ? SW.mv : null); renderSwp(); return; }
+  const mk = e.target.closest("[data-mk]"); if (mk && SW.mvDay){ SW.mv = {den:SW.mvDay, kind:mk.dataset.mk}; renderSwp(); return; }
   const pr = e.target.closest(".person");
   if (pr){ togglePick(pr.dataset.pname, {den:+pr.dataset.den, kind:pr.dataset.kind, kod:pr.dataset.kod}); renderSwp(); return; }
   const o = e.target.closest(".pick"); if (o){ togglePick(SW.kolega, {den:+o.dataset.den, kind:o.dataset.kind, kod:o.dataset.kod}); renderSwp(); return; }
   if (e.target.id === "swSend"){
     const btn = e.target; btn.disabled = true;
     const list = buildReqs(), r = list[0];
-    if (r.typ === "vymena" || r.typ === "prevzeti"){ const out = simulateAll(list); if (out.w.length && !confirm("Žádost má upozornění k odpočinku. Přesto odeslat?")){ btn.disabled = false; return; } }
+    if (r.typ === "vymena" || r.typ === "prevzeti" || r.typ === "presun"){ const out = simulateAll(list); if (out.w.length && !confirm("Žádost má upozornění k odpočinku. Přesto odeslat?")){ btn.disabled = false; return; } }
     try {
       const col = db.collection(SWAP_COL), refs = list.map(() => col.doc()), batch = db.batch();
       const skupina = list.length > 1 ? refs.map(x => x.id) : null;
       list.forEach((q, i) => batch.set(refs[i], {
         typ:q.typ, mesic:q.mesic, stav:"ceka",
-        odCislo:SELF_NO, zaCislo:q.za ? q.za.cislo : null,
+        odCislo:SELF_NO, zaCislo:q.typ === "presun" ? "spravce" : q.za ? q.za.cislo : null,
         od:q.od, za:q.za, pozn:SW.pozn.trim(), ...(q.moznosti ? {moznosti:q.moznosti} : {}), ...(skupina ? {skupina} : {}),
         vytvoreno:firebase.firestore.FieldValue.serverTimestamp(), vyrizeno:null
       }));

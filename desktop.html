@@ -386,7 +386,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v3.9</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v4.0</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -397,8 +397,8 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.46"></script>
-<script src="sluzby-chat.js?v=4.64"></script>
+<script src="sluzby-core.js?v=4.65"></script>
+<script src="sluzby-chat.js?v=4.65"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -416,7 +416,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v3.9";
+const DESK_VER = "desktop v4.0";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
@@ -589,6 +589,7 @@ function myShifts(fromDate, days){
 
 /* ---------- žádosti ---------- */
 const incoming = () => PENDING.filter(r => SELF_NO && (
+  (r.stav === "ceka" && r.typ === "presun" && isAdmin()) ||
   (r.stav === "ceka" && r.zaCislo === SELF_NO) ||
   (r.stav === "navrh" && r.odCislo === SELF_NO)));
 const offers = () => PENDING.filter(r => SELF_NO && r.stav === "ceka" && r.zaCislo == null && r.odCislo !== SELF_NO);
@@ -596,6 +597,7 @@ const mineOut = () => PENDING.filter(r => SELF_NO && r.odCislo === SELF_NO && r.
 function updateBadge(){ const n = incoming().length; $("navBadge").textContent = n; $("navBadge").hidden = !n; }
 function reqText(r){
   const od = r.od, za = r.za || {};
+  if (r.typ === "presun") return `<b>${esc(od.jmeno)}</b> přesouvá svou službu ${fmtS(r.mesic, od)} na ${fmtS(r.mesic, za)} (${esc(za.kod || "")}).`;
   if (r.typ === "vymena" && r.moznosti && !za.den) return `<b>${esc(od.jmeno)}</b> dá svou ${fmtS(r.mesic, od)} za ${za.jmeno === SELF ? "jednu z tvých služeb" : `jednu ze služeb <b>${esc(za.jmeno)}</b>`}: ${r.moznosti.map(t => fmtS(r.mesic, parseProp(t))).join(", ")}.`;
   if (r.typ === "vymena") return `<b>${esc(od.jmeno)}</b> dá svou ${fmtS(r.mesic, od)} za ${za.jmeno === SELF ? "tvoji" : `službu <b>${esc(za.jmeno)}</b>`} ${fmtS(r.mesic, za)}.`;
   if (r.typ === "prevzeti") return `<b>${esc(od.jmeno)}</b> žádá ${za.jmeno === SELF ? "tebe" : `<b>${esc(za.jmeno)}</b>`} o převzetí služby ${fmtS(r.mesic, od)}.`;
@@ -604,6 +606,11 @@ function reqText(r){
 const ST_LBL = {ceka:"Čeká", navrh:"Návrh", prijato:"Přijato", odmitnuto:"Odmítnuto", zruseno:"Zrušeno"};
 function reqActions(r){
   const kc = x => x.kind === "N" ? " n" : "";
+  if (r.typ === "presun" && r.stav === "ceka"){
+    if (isAdmin()) return `<div class="btns"><button type="button" class="btn" data-act="accept">Schválit</button><button type="button" class="btn danger" data-act="reject">Zamítnout</button>${r.odCislo === SELF_NO ? `<button type="button" class="btn sec sm" data-act="cancel">Zrušit žádost</button>` : ""}</div>`;
+    if (r.odCislo === SELF_NO) return `<p class="meta">Čeká na schválení správcem.</p><div class="btns"><button type="button" class="btn sec sm" data-act="cancel">Zrušit žádost</button></div>`;
+    return "";
+  }
   if (r.stav === "ceka" && r.zaCislo === SELF_NO){
     if (PROP && PROP.id === r.id) return propHTML(r);
     const acc = r.moznosti && !(r.za || {}).den
@@ -679,6 +686,7 @@ document.addEventListener("click", async e => {
         if (!s.exists || s.data().stav !== "ceka") throw new Error("Žádost už byla vyřízena.");
         await siblingCheck(tx, r);
         const upd = {stav:"prijato", vyrizeno:FV.serverTimestamp()};
+        if (r.typ === "presun") upd.schvalil = SELF;
         if (act === "take"){ upd.zaCislo = SELF_NO; upd.za = {jmeno:SELF, cislo:SELF_NO}; }
         tx.update(ref, upd);
       });
