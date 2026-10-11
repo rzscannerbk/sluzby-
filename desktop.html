@@ -386,7 +386,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v4.1</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v4.2</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -397,7 +397,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.65"></script>
+<script src="sluzby-core.js?v=4.71"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -416,7 +416,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v4.1";
+const DESK_VER = "desktop v4.2";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
@@ -626,7 +626,7 @@ function reqActions(r){
   return "";
 }
 function reqCard(r, withActions){
-  return `<div class="req" data-id="${r.id}"><p>${reqText(r)} <span class="stbadge">${ST_LBL[r.stav] || ""}</span></p>${r.pozn ? `<p class="pz">„${esc(r.pozn)}“</p>` : ""}${r.skupina && r.skupina.length > 1 && r.stav === "ceka" ? `<p class="meta">Žádost dostalo ${r.skupina.length} kolegů – platí, kdo přijme první.</p>` : ""}${withActions ? reqActions(r) : ""}<div class="checks msg"></div><span class="go">Zobrazit v plánu ›</span></div>`;
+  return `<div class="req" data-id="${r.id}"><p>${reqText(r)} <span class="stbadge">${ST_LBL[r.stav] || ""}</span></p>${reqTimes(r) ? `<p class="meta">${reqTimes(r)}</p>` : ""}${r.pozn ? `<p class="pz">„${esc(r.pozn)}“</p>` : ""}${r.skupina && r.skupina.length > 1 && r.stav === "ceka" ? `<p class="meta">Žádost dostalo ${r.skupina.length} kolegů – platí, kdo přijme první.</p>` : ""}${withActions ? reqActions(r) : ""}<div class="checks msg"></div><span class="go">Zobrazit v plánu ›</span></div>`;
 }
 function propHTML(r){
   const [y, m] = ymOf(r.mesic), o = month(r.mesic), now = getNow(), picks = PROP.picks;
@@ -1426,7 +1426,7 @@ function admHTML(){
   const chk = ready ? simulate(o.T, admReq(), null, y, m) : {e:[], w:[], i:[]};
   const fs = t => fmtS(id, t);
   const log = o.swaps.slice().sort((a, b) => tsMs(b.vyrizeno || b.vytvoreno) - tsMs(a.vyrizeno || a.vytvoreno));
-  const logHTML = log.length ? log.map(r => `<div class="req" data-id="${r.id}"><p>${r.admin ? (r.typ === "vymena" ? `<b>${esc(r.od.jmeno)}</b> ${fs(r.od)} ⇄ <b>${esc(r.za.jmeno)}</b> ${fs(r.za)}.` : `Služba ${fs(r.od)} převedena: <b>${esc(r.od.jmeno)}</b> → <b>${esc(r.za.jmeno)}</b>.`) : reqText(r)} <span class="stbadge">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav] || ""}</span></p>${r.pozn ? `<p class="pz">„${esc(r.pozn)}“</p>` : ""}${r.stav === "prijato" ? `<div class="btns"><button type="button" class="btn danger sm" data-act="revoke">Zrušit výměnu</button></div>` : ""}<div class="checks msg"></div><span class="go">Zobrazit v plánu ›</span></div>`).join("") : `<p class="empty">Zatím žádné změny.</p>`;
+  const logHTML = log.length ? log.map(r => `<div class="req" data-id="${r.id}"><p>${r.admin ? (r.typ === "vymena" ? `<b>${esc(r.od.jmeno)}</b> ${fs(r.od)} ⇄ <b>${esc(r.za.jmeno)}</b> ${fs(r.za)}.` : `Služba ${fs(r.od)} převedena: <b>${esc(r.od.jmeno)}</b> → <b>${esc(r.za.jmeno)}</b>.`) : reqText(r)} <span class="stbadge">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav] || ""}</span></p>${reqTimes(r) ? `<p class="meta">${reqTimes(r)}</p>` : ""}${r.pozn ? `<p class="pz">„${esc(r.pozn)}“</p>` : ""}${r.stav === "prijato" ? `<div class="btns"><button type="button" class="btn danger sm" data-act="revoke">Zrušit výměnu</button></div>` : ""}<div class="checks msg"></div><span class="go">Zobrazit v plánu ›</span></div>`).join("") : `<p class="empty">Zatím žádné změny.</p>`;
   return `${bar}
     <p class="status">Změna platí hned, bez potvrzení strážníků.</p>
     <div class="seg" role="group" aria-label="Typ změny" style="align-self:flex-start"><button type="button" data-atyp="prevzeti" aria-pressed="${ADM.typ === "prevzeti"}">Převést službu</button><button type="button" data-atyp="vymena" aria-pressed="${ADM.typ === "vymena"}">Vyměnit služby</button></div>

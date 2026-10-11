@@ -143,6 +143,17 @@ function simulate(T0, req, accepter, y, m){
   return out;
 }
 
+// datum a čas vytvoření (a vyřízení) žádosti, např. „Vytvořeno 11. 10. 17:20 · vyřízeno 11. 10. 17:25“
+function reqTimes(r){
+  const ms = x => !x ? 0 : x.toMillis ? x.toMillis() : x.seconds ? x.seconds * 1000 : 0;
+  const f = t => { const d = new Date(t), n = new Date(); return `${d.getDate()}. ${d.getMonth()+1}.${d.getFullYear() !== n.getFullYear() ? " " + d.getFullYear() : ""} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`; };
+  const a = ms(r.vytvoreno), b = ms(r.vyrizeno);
+  if (!a && !b) return "";
+  if (r.admin) return `Provedeno ${f(a || b)}`;
+  let t = a ? `Vytvořeno ${f(a)}` : "";
+  if (b && r.stav !== "ceka" && r.stav !== "navrh" && Math.abs(b - a) > 60e3) t += `${t ? " · " : ""}${{prijato:"přijato", odmitnuto:"odmítnuto", zruseno:"zrušeno"}[r.stav] || "vyřízeno"} ${f(b)}`;
+  return t;
+}
 const ymOf = id => { const [y, m] = id.split("-").map(Number); return [y, m - 1]; };
 
 function fmtS(mesic, x){
