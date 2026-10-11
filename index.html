@@ -124,6 +124,15 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 .card .when{position:absolute;top:11px;right:14px;text-align:right;color:var(--ink2);font-family:var(--f-cond);font-weight:600;line-height:1.05}
 .card .when .wd{display:block;font-size:22px}
 .card .when .wdt{display:block;font-size:26px}
+.card .lbl-wx{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
+.card .lbl-wx .wx{display:flex;align-items:center;gap:5px;font-weight:600;font-size:15px;line-height:1;color:var(--ink);white-space:nowrap}
+.card.night .lbl-wx .wx{color:#fff}
+.card .lbl-wx .wx:empty{display:none}
+.card .lbl-wx .wxi{font-size:24px}
+.card .lbl-wx .wxp{font-size:13px;font-weight:500;color:var(--ink2)}
+.card.night .lbl-wx .wxp{color:var(--night2)}
+.full .card .lbl-wx .wx{font-size:17px}
+.full .card .lbl-wx .wxi{font-size:28px}
 .card.night .when,.card.night .lbl,.card.night .no,.card.night li::before,.card.night .aside{color:var(--night2)}
 .time{font-family:var(--f-cond);font-weight:700;font-size:32px;line-height:1;margin:6px 0 10px;font-variant-numeric:tabular-nums}
 .time sup{font-size:.5em;line-height:0;vertical-align:.85em;margin-left:1px}
@@ -488,7 +497,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.66</span>
+      <span class="ver" id="verDiag">v4.67</span>
     </div>
   </div>
 </header>
@@ -679,6 +688,56 @@ function person(p, base, ctx){
   return `${nameBtn(p.name)}${tag}${sw ? ` <span class="tag sw">⇄ ${esc(sw)}</span>` : ""}`;
 }
 
+/* ---------- počasí v Blansku (Open-Meteo, bez klíče) – ikona, teploty a srážky za dobu služby ---------- */
+const WX_URL = "https://api.open-meteo.com/v1/forecast?latitude=49.3636&longitude=16.6445&hourly=temperature_2m,weather_code,precipitation_probability&timezone=Europe%2FPrague&past_days=1&forecast_days=16";
+const WX_KEY = "sluzbyWx";
+let WX = null; // {at, h:[[ms, teplota, kód, pravděpodobnost srážek]]}
+try { const c = JSON.parse(localStorage.getItem(WX_KEY) || "null"); if (c && c.h) WX = c; } catch(e){}
+function wxLoad(force){
+  if (!force && WX && Date.now() - WX.at < 60 * 60e3) return;
+  fetch(WX_URL).then(r => r.ok ? r.json() : null).then(j => {
+    if (!j || !j.hourly) return;
+    const H = j.hourly, h = H.time.map((t, i) => { const [d, hm] = t.split("T"), [y, m, dd] = d.split("-").map(Number);
+      return [new Date(y, m - 1, dd, +hm.slice(0, 2)).getTime(), H.temperature_2m[i], H.weather_code[i], H.precipitation_probability[i]]; });
+    WX = {at:Date.now(), h};
+    try { localStorage.setItem(WX_KEY, JSON.stringify(WX)); } catch(e){}
+    wxFill();
+  }).catch(() => {});
+}
+const WX_SEV = c => c >= 95 ? 9 : (c >= 71 && c <= 77) || c === 85 || c === 86 ? 8 : c >= 80 ? 7 : c >= 61 ? 6 : c >= 51 ? 5 : c >= 45 ? 4 : c;
+function wxIcon(c, night){
+  if (c >= 95) return "⛈️";
+  if ((c >= 71 && c <= 77) || c === 85 || c === 86) return "🌨️";
+  if (c >= 80) return "🌦️";
+  if (c >= 51) return "🌧️";
+  if (c >= 45) return "🌫️";
+  if (c === 3) return "☁️";
+  if (c === 2) return night ? "☁️" : "⛅";
+  return night ? "🌙" : c === 1 ? "🌤️" : "☀️";
+}
+function wxHTML(win, kind){
+  if (!WX) return "";
+  const [s, e] = win.map(x => x.getTime());
+  if (e < getNow().getTime()) return "";
+  const hrs = WX.h.filter(x => x[0] >= s && x[0] < e);
+  if (hrs.length < Math.min(6, (e - s) / 36e5)) return "";
+  const t = hrs.map(x => x[1]).filter(x => x != null), p = Math.max(0, ...hrs.map(x => x[3] || 0));
+  // nejhorší počasí, které trvá aspoň 2 hodiny (jedna přeháňka nepřebije celý den)
+  const cnt = {}; hrs.forEach(x => cnt[x[2]] = (cnt[x[2]] || 0) + 1);
+  const codes = Object.keys(cnt).map(Number);
+  const code = (codes.filter(c => cnt[c] >= 2).sort((a, b) => WX_SEV(b) - WX_SEV(a))[0]) ?? codes.sort((a, b) => cnt[b] - cnt[a])[0];
+  const lo = Math.round(Math.min(...t)), hi = Math.round(Math.max(...t));
+  return `<span class="wxi">${wxIcon(code, kind === "N")}</span><span class="wxt">${lo === hi ? lo : `${lo}–${hi}`}°</span>${p >= 30 ? `<span class="wxp">💧${p} %</span>` : ""}`;
+}
+function wxFill(){
+  document.querySelectorAll(".card[data-start]").forEach(c => {
+    const w = c.querySelector(".lbl-wx .wx"); if (!w) return;
+    w.innerHTML = wxHTML([new Date(+c.dataset.start), new Date(+c.dataset.end)], c.dataset.k);
+  });
+}
+wxLoad();
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") wxLoad(); });
+
 /* ---------- vykreslení ---------- */
 const left = document.getElementById("left");
 const right = document.getElementById("right");
@@ -717,7 +776,7 @@ function cardHTML(kind, g, slot, now){
   return `<article class="card ${kind==="D"?"day":"night"} ${st}" tabindex="0" data-k="${kind}" data-start="${win[0].getTime()}" data-end="${win[1].getTime()}">
     <h2>${title}${chip}${live}</h2><span class="when">${when}</span>
     <div class="time">${t2(c.s)} – ${t2(c.e)}</div>${st === "now" ? progressHTML(win, now) : ""}
-    <span class="lbl">Stálá služba</span>${stala}
+    <span class="lbl lbl-wx"><span>Stálá služba</span><span class="wx">${wxHTML(win, kind)}</span></span>${stala}
     <span class="lbl">Hlídka</span>${hl}${aside}
   </article>`;
 }
