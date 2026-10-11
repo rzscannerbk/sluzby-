@@ -412,6 +412,7 @@ button.cal-day{cursor:pointer}
 .badge{position:absolute;top:-7px;right:-7px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#D04848;color:#fff;font:600 12px/19px var(--f-body);text-align:center}
 .badge[hidden]{display:none}
 .tag.sw{border-style:dashed}
+.swi{font-size:17px;line-height:1;opacity:.75;margin:0 1px 0 3px}
 .swap-open{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--fsab) + 16px);z-index:31;height:48px;display:flex;align-items:center;font-family:var(--f-cond);font-weight:700;font-size:19px;padding:0 28px;border:0;border-radius:999px;background:var(--hl);color:var(--hl-ink);box-shadow:0 6px 18px rgba(0,0,0,.3);cursor:pointer}
 .vym{z-index:38}.vym .full-close{z-index:39}
 .swp{z-index:40}.swp .full-close{z-index:41}
@@ -497,7 +498,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.67</span>
+      <span class="ver" id="verDiag">v4.68</span>
     </div>
   </div>
 </header>
@@ -685,7 +686,7 @@ function person(p, base, ctx){
   const c = CODES[p.code], b = CODES[base];
   const tag = c && b && (c.e[0] !== b.e[0] || c.e[1] !== b.e[1]) ? ` <span class="tag">do ${tPlain(c.e)}</span>` : "";
   const sw = ctx && NOTES[`${ctx.d}|${ctx.k}|${p.name}`];
-  return `${nameBtn(p.name)}${tag}${sw ? ` <span class="tag sw">⇄ ${esc(sw)}</span>` : ""}`;
+  return `${nameBtn(p.name)}${tag}${sw ? ` <span class="swi" aria-hidden="true">⇄</span> <span class="tag sw">${esc(sw)}</span>` : ""}`;
 }
 
 /* ---------- počasí v Blansku (Open-Meteo, bez klíče) – ikona, teploty a srážky za dobu služby ---------- */
