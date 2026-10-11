@@ -142,7 +142,20 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 .card.night .live{color:var(--now-n)}
 .live::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;animation:pulse 1.6s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
-@media (prefers-reduced-motion: reduce){.live::before{animation:none}.tile{transition:none}}
+/* probíhající služba – výraznější: silnější rámeček se „dýcháním“, plný štítek Probíhá, živý pruh průběhu */
+.card.now{box-shadow:0 0 0 4px var(--now),0 10px 28px rgba(44,100,221,.35);z-index:1}
+.card.night.now{box-shadow:0 0 0 4px var(--now-n),0 10px 28px rgba(110,140,255,.45)}
+.card.now::after{content:"";position:absolute;inset:-4px;border-radius:14px;box-shadow:0 0 0 0 var(--now);animation:nowRing 2.4s ease-out infinite;pointer-events:none}
+.card.night.now::after{box-shadow:0 0 0 0 var(--now-n)}
+@keyframes nowRing{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--now) 55%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
+.card.night.now::after{animation-name:nowRingN}
+@keyframes nowRingN{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--now-n) 55%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
+.card.now .live{background:var(--now);color:#fff;padding:3px 10px 3px 8px;border-radius:999px;font-size:12.5px;letter-spacing:.02em;text-transform:uppercase}
+.card.night.now .live{background:var(--now-n);color:#1E1A4A}
+.card.now .prog .bar{height:10px}
+.card.now .prog .bar i{background-image:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);background-size:200% 100%;animation:progShine 2.8s linear infinite}
+@keyframes progShine{0%{background-position:150% 0}100%{background-position:-50% 0}}
+@media (prefers-reduced-motion: reduce){.live::before,.card.now::after,.card.now .prog .bar i{animation:none}.tile{transition:none}}
 
 .prog{margin:-2px 0 12px}
 .prog .bar{height:8px;border-radius:999px;background:var(--line);overflow:hidden}
@@ -498,7 +511,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.68</span>
+      <span class="ver" id="verDiag">v4.70</span>
     </div>
   </div>
 </header>
@@ -2539,6 +2552,17 @@ document.getElementById("btnNow").addEventListener("click", () => {
   else goNow(true);
 });
 
+// po návratu do aplikace (z přepínače aplikací nebo klepnutím na ikonu) skočit na právě probíhající službu
+let hiddenAt = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden){ hiddenAt = Date.now(); return; }
+  if (!db || !hiddenAt || Date.now() - hiddenAt < 2000) return;
+  hiddenAt = 0;
+  const n = getNow(), busy = !!document.querySelector(".full:not([hidden])");
+  if (n.getFullYear() !== viewY || n.getMonth() !== viewM){ if (!busy) loadMonth(n.getFullYear(), n.getMonth(), "now"); }
+  else setTimeout(() => goNow(false), 150);
+});
+window.addEventListener("pageshow", e => { if (e.persisted && db) setTimeout(() => goNow(false), 150); });
 new ResizeObserver(() => { measure(); update(); }).observe(left);
 if (document.fonts) document.fonts.ready.then(() => { measure(); update(); });
 setInterval(render, 60000);
