@@ -512,7 +512,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.71</span>
+      <span class="ver" id="verDiag">v4.72</span>
     </div>
   </div>
 </header>
@@ -1204,7 +1204,19 @@ function openSnote(key, date, kind, idx){
   document.getElementById("snoteEd").hidden = false;
   setTimeout(() => t.focus(), 50);
 }
-function closeSnote(){ document.getElementById("snoteEd").hidden = true; snoteRef = null; snoteIdx = -1; }
+function closeSnote(){ const ed = document.getElementById("snoteEd"); ed.hidden = true; ed.style.top = ed.style.bottom = ""; snoteRef = null; snoteIdx = -1; }
+// okno poznámky drží nad klávesnicí (iPhone klávesnice stránku nezmenší, jen překryje spodní část)
+function fitSnote(){
+  const ed = document.getElementById("snoteEd"), vv = window.visualViewport;
+  if (!ed || ed.hidden || !vv) return;
+  const kb = window.innerHeight - vv.height;
+  if (kb < 80){ ed.style.top = ""; ed.style.bottom = ""; return; }
+  ed.style.bottom = "auto";
+  ed.style.top = Math.max(vv.offsetTop + 8, vv.offsetTop + vv.height - ed.offsetHeight - 8) + "px";
+}
+if (window.visualViewport){ visualViewport.addEventListener("resize", fitSnote); visualViewport.addEventListener("scroll", fitSnote); }
+document.getElementById("snoteText").addEventListener("focus", () => [60, 250, 500].forEach(t => setTimeout(fitSnote, t)));
+document.getElementById("snoteText").addEventListener("blur", () => setTimeout(fitSnote, 120));
 async function writeSnotes(key, list){
   const FV = firebase.firestore.FieldValue;
   await db.collection("poznamky").doc(SELF_NO).set(list.length ? {sluzby:{[key]: list}, upraveno:FV.serverTimestamp()} : {sluzby:{[key]: FV.delete()}}, {merge:true});
