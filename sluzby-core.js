@@ -149,8 +149,12 @@ function reqTimes(r){
   const f = t => { const d = new Date(t), n = new Date(); return `${d.getDate()}. ${d.getMonth()+1}.${d.getFullYear() !== n.getFullYear() ? " " + d.getFullYear() : ""} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`; };
   const a = ms(r.vytvoreno), b = ms(r.vyrizeno);
   if (!a && !b) return "";
-  if (r.admin) return `Provedeno ${f(a || b)}`;
-  let t = a ? `Vytvořeno ${f(a)}` : "";
+  // kdo změnu vytvořil: u žádosti autor, u změny správcem jméno podle e-mailu (prijmeni.cislo@…)
+  const offs = (typeof OFFICERS !== "undefined" && OFFICERS) || {};
+  const byMail = e => { const c = String(e || "").split("@")[0].split(".")[1]; return Object.keys(offs).find(n => String(offs[n]) === c) || ""; };
+  if (r.admin){ const kdo = byMail(r.zmenil); return `${kdo ? `Provedl ${kdo} · ` : "Provedeno "}${f(a || b)}`; }
+  const autor = r.od && r.od.jmeno;
+  let t = a ? `${autor ? `Vytvořil ${autor} · ` : "Vytvořeno "}${f(a)}` : "";
   if (b && r.stav !== "ceka" && r.stav !== "navrh" && Math.abs(b - a) > 60e3) t += `${t ? " · " : ""}${{prijato:"přijato", odmitnuto:"odmítnuto", zruseno:"zrušeno"}[r.stav] || "vyřízeno"} ${f(b)}`;
   return t;
 }
