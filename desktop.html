@@ -386,7 +386,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v4.3</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v4.5</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -397,7 +397,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.73"></script>
+<script src="sluzby-core.js?v=4.74"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -416,7 +416,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v4.3";
+const DESK_VER = "desktop v4.5";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
@@ -592,7 +592,9 @@ const incoming = () => PENDING.filter(r => SELF_NO && (
   (r.stav === "ceka" && r.typ === "presun" && isAdmin()) ||
   (r.stav === "ceka" && r.zaCislo === SELF_NO) ||
   (r.stav === "navrh" && r.odCislo === SELF_NO)));
-const offers = () => PENDING.filter(r => SELF_NO && r.stav === "ceka" && r.zaCislo == null && r.odCislo !== SELF_NO);
+// nabídku všem nevidí ten, kdo má ten den stejnou službu (den/den, noc/noc)
+const sameShift = r => { const o = r && r.od && M[r.mesic]; return !!(o && o.okP && SELF && hasShift(o.T, SELF, r.od.den, r.od.kind)); };
+const offers = () => PENDING.filter(r => SELF_NO && r.stav === "ceka" && r.zaCislo == null && r.odCislo !== SELF_NO && !sameShift(r));
 const mineOut = () => PENDING.filter(r => SELF_NO && r.odCislo === SELF_NO && r.stav === "ceka");
 function updateBadge(){ const n = incoming().length; $("navBadge").textContent = n; $("navBadge").hidden = !n; }
 function reqText(r){
@@ -626,7 +628,7 @@ function reqActions(r){
   return "";
 }
 function reqCard(r, withActions){
-  return `<div class="req" data-id="${r.id}"><p>${reqText(r)} <span class="stbadge">${ST_LBL[r.stav] || ""}</span></p>${reqTimes(r) ? `<p class="meta">${reqTimes(r)}</p>` : ""}${r.pozn ? `<p class="pz">„${esc(r.pozn)}“</p>` : ""}${r.skupina && r.skupina.length > 1 && r.stav === "ceka" ? `<p class="meta">Žádost dostalo ${r.skupina.length} kolegů – platí, kdo přijme první.</p>` : ""}${withActions ? reqActions(r) : ""}<div class="checks msg"></div><span class="go">Zobrazit v plánu ›</span></div>`;
+  return `<div class="req" data-id="${r.id}"><p>${reqText(r)} <span class="stbadge">${ST_LBL[r.stav] || ""}</span></p>${reqTimes(r) ? `<p class="meta">${reqTimes(r)}</p>` : ""}${r.odCislo === SELF_NO && (r.zaCislo == null || r.typ === "nabidka" || r.videli) && reqSeenLine(r) ? `<p class="meta">${reqSeenLine(r)}</p>` : ""}${r.pozn ? `<p class="pz">„${esc(r.pozn)}“</p>` : ""}${r.skupina && r.skupina.length > 1 && r.stav === "ceka" ? `<p class="meta">Žádost dostalo ${r.skupina.length} kolegů – platí, kdo přijme první.</p>` : ""}${withActions ? reqActions(r) : ""}<div class="checks msg"></div><span class="go">Zobrazit v plánu ›</span></div>`;
 }
 function propHTML(r){
   const [y, m] = ymOf(r.mesic), o = month(r.mesic), now = getNow(), picks = PROP.picks;
@@ -1130,6 +1132,7 @@ MAIN.addEventListener("change", e => { if (e.target.id === "meSel"){ ME = e.targ
 /* ----- výměny – přehled ----- */
 function vymHTML(){
   const inc = incoming(), off = offers(), mine = mineOut();
+  markReqSeen(db, [...inc, ...off], SELF_NO);
   const nowId = idOf(getNow()), o = month(nowId);
   const done = o.swaps.filter(r => r.stav === "prijato" && (r.odCislo === SELF_NO || r.zaCislo === SELF_NO));
   return `<div class="bar"><h1>Výměny služeb</h1><span class="status push">Novou výměnu začneš tlačítkem „Vyměnit…“ u své služby v týdnu, nebo zde:</span><button type="button" class="btn" id="newSwap">Nová výměna</button></div>

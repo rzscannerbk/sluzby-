@@ -78,7 +78,12 @@ exports.vymenaNova = onDocumentCreated("vymeny/{id}", async ev => {
     return send(t, "Žádost o přesun služby", `${r.od.jmeno} chce přesunout službu ${co} na ${fmtShift(r.mesic, r.za)} (${r.za.kod}).${r.pozn ? " „" + r.pozn + "“" : ""}`, VYM);
   }
   if (r.typ === "nabidka") {
-    const t = await tokensFor(x => String(x.cislo) !== String(r.odCislo));
+    // nedostane ji, kdo má ten den stejnou službu (den/den, noc/noc) – nemůže ji vzít
+    const [T, st] = await Promise.all([effectivePlan(r.mesic), db.collection("planSluzeb").doc("straznici").get()]);
+    const cisla = (st.data() || {}).cisla || {};
+    const busy = new Set(Object.entries(T || {}).filter(([, arr]) => (arr[r.od.den - 1] || ".").split("+").some(p => kindOf(p) === r.od.kind))
+      .map(([n]) => cisla[n]).filter(Boolean).map(String));
+    const t = await tokensFor(x => String(x.cislo) !== String(r.odCislo) && !busy.has(String(x.cislo)));
     return send(t, "Nabídka služby", `${r.od.jmeno} nabízí službu ${co}.${r.pozn ? " „" + r.pozn + "“" : ""}`, VYM);
   }
   const pp = t => { const [den, kind, kod] = String(t).split("|"); return { den: +den, kind, kod }; };

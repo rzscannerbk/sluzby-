@@ -225,6 +225,7 @@ ul.h li::before{content:"–";color:var(--ink2)}
 .req .st-odmitnuto{background:#D04848;border-color:#D04848;color:#fff}
 .req .st-zruseno{background:#3B6FD6;border-color:#3B6FD6;color:#fff}
 .btn.sec.btn-danger{border-color:#D04848;color:#D04848}
+.req .pz.seen{opacity:.9}
 .req .pz.tm{font-style:normal;font-size:12.5px;opacity:.75}
 .req .st-admin{background:#7A4FD6;border-color:#7A4FD6;color:#fff}
 .btn-admin{display:block;width:100%;margin-top:14px;font-family:var(--f-cond);font-weight:700;font-size:17px;padding:9px 12px;border-radius:8px;border:1.5px solid #7A4FD6;background:transparent;color:#7A4FD6;cursor:pointer}
@@ -512,7 +513,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.73</span>
+      <span class="ver" id="verDiag">v4.75</span>
     </div>
   </div>
 </header>
@@ -610,7 +611,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.73"></script>
+<script src="sluzby-core.js?v=4.74"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -1708,7 +1709,9 @@ function saveHidden(){
   HIDDEN = new Set([...HIDDEN].filter(id => live.has(id)));
   try { localStorage.setItem(HIDE_KEY, JSON.stringify([...HIDDEN])); } catch(e) {}
 }
-const incoming = () => PENDING.filter(r => SELF_NO && (
+// nabídku všem nevidí ten, kdo má ten den stejnou službu (den/den, noc/noc) – nemůže ji vzít
+const sameShift = r => !!(r && r.od && SELF && EFF_T && r.mesic === docId(YEAR, MONTH) && hasShift(EFF_T, SELF, r.od.den, r.od.kind));
+const incoming = () => PENDING.filter(r => SELF_NO && !(r.typ === "nabidka" && r.zaCislo == null && sameShift(r)) && (
   (r.stav === "ceka" && r.typ === "presun" && isAdminUI()) ||
   (r.stav === "ceka" && r.zaCislo === SELF_NO) ||
   (r.stav === "navrh" && r.odCislo === SELF_NO) ||
@@ -1764,7 +1767,7 @@ const ST_LBL = {ceka:"Čeká", navrh:"Návrh", prijato:"Přijato", odmitnuto:"Od
 function reqCard(r, actions, go){
   const props = r.stav === "navrh" && r.odCislo !== SELF_NO
     ? `<span class="pz">Navrženo místo toho: ${(r.navrhy || []).map(t => fmtS(r.mesic, parseProp(t))).join(", ")}</span>` : "";
-  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${typeof reqTimes === "function" && reqTimes(r) ? `<span class="pz tm">${reqTimes(r)}</span>` : ""}${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${r.skupina && r.skupina.length > 1 && (r.stav === "ceka" || r.stav === "navrh") ? `<span class="pz">Žádost dostalo ${r.skupina.length} kolegů – platí, kdo přijme první.</span>` : ""}${r.duvod === "jinde" ? `<span class="pz">Výměnu vzal jiný kolega.</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div><span class="go">${go || "Zobrazit v plánu"} ›</span></div>`;
+  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${typeof reqTimes === "function" && reqTimes(r) ? `<span class="pz tm">${reqTimes(r)}</span>` : ""}${r.odCislo === SELF_NO && typeof reqSeenLine === "function" && (r.zaCislo == null || r.typ === "nabidka" || r.videli) && reqSeenLine(r) ? `<span class="pz tm seen">${reqSeenLine(r)}</span>` : ""}${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${r.skupina && r.skupina.length > 1 && (r.stav === "ceka" || r.stav === "navrh") ? `<span class="pz">Žádost dostalo ${r.skupina.length} kolegů – platí, kdo přijme první.</span>` : ""}${r.duvod === "jinde" ? `<span class="pz">Výměnu vzal jiný kolega.</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div><span class="go">${go || "Zobrazit v plánu"} ›</span></div>`;
 }
 let PROP = null; // {id, picks:[]} – rozpracovaný návrh u žádosti
 function propChoiceHTML(r){
@@ -1818,11 +1821,12 @@ function propPickHTML(r){
 }
 function renderVym(){
   if (vym.hidden) return;
+  if (typeof markReqSeen === "function") markReqSeen(db, PENDING.filter(r => r.stav === "ceka" && ((r.zaCislo == null && r.odCislo !== SELF_NO && !sameShift(r)) || r.zaCislo === SELF_NO)), SELF_NO);
   const reqHTML = (r, a) => reqCard(r, a, "Můj kalendář");
   const forMe = PENDING.filter(r => r.stav === "ceka" && r.zaCislo === SELF_NO);
   const moves = isAdminUI() ? PENDING.filter(r => r.stav === "ceka" && r.typ === "presun") : [];
   const propsForMe = PENDING.filter(r => r.stav === "navrh" && r.odCislo === SELF_NO);
-  const offersAll = PENDING.filter(r => r.stav === "ceka" && r.zaCislo == null && r.odCislo !== SELF_NO);
+  const offersAll = PENDING.filter(r => r.stav === "ceka" && r.zaCislo == null && r.odCislo !== SELF_NO && !sameShift(r));
   const offers = offersAll.filter(r => !HIDDEN.has(r.id));
   const hidden = offersAll.filter(r => HIDDEN.has(r.id));
   const mine = PENDING.filter(r => (r.stav === "ceka" && r.odCislo === SELF_NO) || (r.stav === "navrh" && r.zaCislo === SELF_NO));
@@ -1889,6 +1893,7 @@ async function reqAction(e){
   }
   if (act === "hide" || act === "unhide"){
     if (act === "hide") HIDDEN.add(id); else HIDDEN.delete(id);
+    db.collection(SWAP_COL).doc(id).update({["nezajem." + SELF_NO]: act === "hide" ? firebase.firestore.FieldValue.serverTimestamp() : firebase.firestore.FieldValue.delete()}).catch(() => {});
     saveHidden(); updateBadge(); renderVym(); return;
   }
   const FV = firebase.firestore.FieldValue;
