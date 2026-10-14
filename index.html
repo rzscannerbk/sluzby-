@@ -522,7 +522,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.77</span>
+      <span class="ver" id="verDiag">v4.78</span>
     </div>
   </div>
 </header>
@@ -1170,7 +1170,7 @@ function fillCal(){
     const work = hasD || hasN || hasP;
     const aria = `${d}. ${MONTH+1}.${label ? ", " + label : ", volno"}${st ? ", stálá služba" : ""}`;
     // každý den je tlačítko – klepnutí přesune časovou osu na ten den
-    html += `<button type="button" class="${cls.join(" ")}" data-day="${d}" data-d="${d}" data-kind="${hasN && !hasD ? "N" : "D"}" aria-label="${aria}${xm ? (xm === "give" ? ", dáváš" : ", bereš") : ""}">${d}${label ? `<small>${label}</small>` : ""}${xm ? `<em class="xm">${xm === "give" ? "dávám" : "beru"}</em>` : ""}</button>`;
+    html += `<button type="button" class="${cls.join(" ")}" data-day="${d}" data-d="${d}" data-kind="${hasN && !hasD ? "N" : "D"}" aria-label="${aria}${xm ? (xm === "give" ? ", dáváš" : ", bereš") : ""}">${d}${label ? `<small>${label}</small>` : (xm === "take" && CAL_REQ.codes && CAL_REQ.codes[d] ? `<small>${esc(CAL_REQ.codes[d].replace(/\*/g, ""))}</small>` : "")}${xm ? `<em class="xm">${xm === "give" ? "dávám" : "beru"}</em>` : ""}</button>`;
   }
   document.getElementById("calGrid").innerHTML = html;
   fillCalReq(toks);
@@ -1444,7 +1444,8 @@ function fillCalReq(toks){
   if (!CAL_REQ || calName !== SELF){ box.hidden = true; return; }
   const ds = Object.keys(CAL_REQ.days).map(Number).sort((a, b) => a - b);
   const rows = ds.map(d => {
-    const tok = toks[d-1] || ".", x = new Date(YEAR, MONTH, d), give = CAL_REQ.days[d] === "give";
+    const give = CAL_REQ.days[d] === "give", tc = !give && CAL_REQ.codes && CAL_REQ.codes[d];
+    const tok = tc || toks[d-1] || ".", x = new Date(YEAR, MONTH, d);
     const notes = [MY_NOTES[noteKey(d)], ...snotesOf(noteKey(d) + "|D"), ...snotesOf(noteKey(d) + "|N")].filter(Boolean);
     return `<li class="${give ? "give" : "take"}"><span class="xl">${give ? "dávám" : "beru"}</span><b>${DOW[x.getDay()]} ${d}. ${MONTH+1}.</b> <span class="xt">${tok === "." ? "volno" : esc(tok.replace(/\*/g, " stálá"))}</span>${notes.length ? `<span class="xn">${notes.map(esc).join("<br>")}</span>` : ""}</li>`;
   }).join("");
@@ -1665,9 +1666,18 @@ function reqMarks(r){
   } else if (od.den) days[od.den] = "take"; // nabídka všem
   return days;
 }
+/* kód služby, kterou na daný den přebírám – bere se z žádosti (služba druhého), ne z mého plánu */
+function reqTakeCodes(r){
+  const od = r.od || {}, za = r.za || {}, codes = {};
+  const alts = (r.stav === "navrh" ? (r.navrhy || []) : (r.moznosti || [])).map(parseProp).filter(x => x.den);
+  const other = r.stav === "navrh" ? alts : [...(za.den ? [za] : []), ...alts];
+  const put = x => { if (x && x.den && !codes[x.den]) codes[x.den] = x.kod || (x.kind ? x.kind + "12" : ""); };
+  if (od.jmeno === SELF) other.forEach(put); else put(od);
+  return codes;
+}
 function openReqCal(r){
   const [y, m] = ymOf(r.mesic);
-  CAL_REQ = {mesic:r.mesic, days:reqMarks(r), text:reqText(r)};
+  CAL_REQ = {mesic:r.mesic, days:reqMarks(r), codes:reqTakeCodes(r), text:reqText(r) + (r.stav === "navrh" && (r.navrhy || []).length ? ` <b>Protinávrh:</b> ${r.navrhy.map(t => fmtS(r.mesic, parseProp(t))).join(", ")}.` : "")};
   if (y === YEAR && m === MONTH && PLAN){ openCal(SELF); return; }
   loadMonth(y, m, {cal:true});
 }

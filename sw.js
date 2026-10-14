@@ -37,7 +37,7 @@ try {
 
 
 // Při každé změně souborů zvyš verzi, aby se stará cache smazala.
-const VERSION = "sluzby-v108";
+const VERSION = "sluzby-v109";
 const LIB_CACHE = "sluzby-knihovny";
 const CORE = [
   "./",
