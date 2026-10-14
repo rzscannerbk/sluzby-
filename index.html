@@ -522,7 +522,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.76</span>
+      <span class="ver" id="verDiag">v4.77</span>
     </div>
   </div>
 </header>
@@ -1900,14 +1900,18 @@ function askConfirm(title, body, yesLbl, danger){
 }
 // popis výměny pro potvrzení: kdo komu kterou službu dá
 function swapDesc(r, za){
-  const nm = n => n === SELF ? "Ty" : esc(n), m = r.mesic, od = r.od;
-  const row = (t, who) => `<div class="ask-row"><i>${who}</i><span>${t}</span></div>`;
-  if (r.typ === "presun") return row(`${fmtS(m, od)} → ${fmtS(m, za || r.za)} (${esc((za || r.za).kod || "")})`, `${esc(od.jmeno)}:`);
-  if ((r.typ === "vymena") && za && za.den){
-    return row(`${fmtS(m, od)}`, `${nm(od.jmeno)} → ${nm(za.jmeno)}:`) + row(`${fmtS(m, za)}`, `${nm(za.jmeno)} → ${nm(od.jmeno)}:`);
+  const m = r.mesic, od = r.od;
+  const lbl = n => n === SELF ? "BEREŠ" : `${esc(surname(n).toUpperCase())} bere`;
+  const row = (who, t) => `<div class="ask-row"><i>${who}</i><span>→ ${t}</span></div>`;
+  if (r.typ === "presun") return `<div class="ask-row"><i>${esc(od.jmeno)}:</i><span>${fmtS(m, od)} → ${fmtS(m, za || r.za)} (${esc((za || r.za).kod || "")})</span></div>`;
+  if (r.typ === "vymena" && za && za.den){
+    // kdo bere kterou službu: příjemce bere službu autora, autor bere službu příjemce
+    const rows = [[za.jmeno, fmtS(m, od)], [od.jmeno, fmtS(m, za)]];
+    rows.sort((a, b) => (b[0] === SELF) - (a[0] === SELF));
+    return rows.map(([n, t]) => row(lbl(n), t)).join("");
   }
   const kdo = za && za.jmeno ? za.jmeno : SELF;
-  return row(`${fmtS(m, od)}`, `${nm(od.jmeno)} → ${nm(kdo)}:`);
+  return row(lbl(kdo), fmtS(m, od));
 }
 async function reqAction(e){
   const b = e.target.closest("button[data-act]"); if (!b) return;
