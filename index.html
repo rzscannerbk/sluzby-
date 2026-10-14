@@ -429,6 +429,15 @@ button.cal-day{cursor:pointer}
 .tag.sw{border-style:dashed}
 .swi{font-size:17px;line-height:1;opacity:.75;margin:0 1px 0 3px}
 .swap-open{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--fsab) + 16px);z-index:31;height:48px;display:flex;align-items:center;font-family:var(--f-cond);font-weight:700;font-size:19px;padding:0 28px;border:0;border-radius:999px;background:var(--hl);color:var(--hl-ink);box-shadow:0 6px 18px rgba(0,0,0,.3);cursor:pointer}
+.ask{position:fixed;inset:0;z-index:60;background:rgba(10,14,25,.5);display:flex;align-items:center;justify-content:center;padding:20px;animation:fullIn .14s ease-out}
+.ask>div{width:min(420px,100%);background:var(--sheet);color:var(--ink);border-radius:16px;padding:18px 18px 16px;box-shadow:0 14px 40px rgba(0,0,0,.35)}
+.ask h3{margin:0 0 10px;font-family:var(--f-cond);font-size:23px;line-height:1.15}
+.ask .ask-b{font-size:15px;line-height:1.45}
+.ask .ask-row{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:10px;background:var(--paper);margin:6px 0}
+.ask .ask-row i{font-style:normal;font-weight:700;flex:none}
+.ask .checks{margin-top:8px}
+.ask .btns{display:flex;gap:10px;margin-top:16px}
+.ask .btns .btn{flex:1}
 .vym{z-index:38}.vym .full-close{z-index:39}
 .swp{z-index:40}.swp .full-close{z-index:41}
 .sheet{flex:1 0 auto;background:var(--sheet);border:1.5px solid var(--ink);border-radius:16px;padding:20px 16px calc(var(--sab) + 100px)}
@@ -513,7 +522,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.75</span>
+      <span class="ver" id="verDiag">v4.76</span>
     </div>
   </div>
 </header>
@@ -1879,6 +1888,27 @@ async function siblingCheck(tx, r){
     if (s.exists && s.data().stav === "prijato") throw new Error("Výměnu už mezitím vzal jiný kolega.");
   }
 }
+/* potvrzovací okno před přijetím / odmítnutím (Ano provede, Ne vrátí zpět) */
+function askConfirm(title, body, yesLbl, danger){
+  return new Promise(res => {
+    const w = document.createElement("div"); w.className = "ask"; w.setAttribute("role", "dialog"); w.setAttribute("aria-modal", "true");
+    w.innerHTML = `<div><h3>${title}</h3><div class="ask-b">${body}</div><div class="btns"><button type="button" class="btn sec" data-ask="0">Ne</button><button type="button" class="btn ${danger ? "btn-no" : "btn-ok"}" data-ask="1">${yesLbl}</button></div></div>`;
+    const done = v => { w.remove(); res(v); };
+    w.addEventListener("click", e => { const b = e.target.closest("[data-ask]"); if (b) done(b.dataset.ask === "1"); else if (e.target === w) done(false); });
+    document.body.appendChild(w); w.querySelector('[data-ask="0"]').focus();
+  });
+}
+// popis výměny pro potvrzení: kdo komu kterou službu dá
+function swapDesc(r, za){
+  const nm = n => n === SELF ? "Ty" : esc(n), m = r.mesic, od = r.od;
+  const row = (t, who) => `<div class="ask-row"><i>${who}</i><span>${t}</span></div>`;
+  if (r.typ === "presun") return row(`${fmtS(m, od)} → ${fmtS(m, za || r.za)} (${esc((za || r.za).kod || "")})`, `${esc(od.jmeno)}:`);
+  if ((r.typ === "vymena") && za && za.den){
+    return row(`${fmtS(m, od)}`, `${nm(od.jmeno)} → ${nm(za.jmeno)}:`) + row(`${fmtS(m, za)}`, `${nm(za.jmeno)} → ${nm(od.jmeno)}:`);
+  }
+  const kdo = za && za.jmeno ? za.jmeno : SELF;
+  return row(`${fmtS(m, od)}`, `${nm(od.jmeno)} → ${nm(kdo)}:`);
+}
 async function reqAction(e){
   const b = e.target.closest("button[data-act]"); if (!b) return;
   const box = b.closest(".req"), id = box.dataset.id, msg = box.querySelector(".msg");
@@ -1905,7 +1935,9 @@ async function reqAction(e){
       const out = simulate(await loadMonthState(r.mesic), r, SELF, y, m);
       msg.innerHTML = checksHTML(out);
       if (out.e.length) throw null;
-      if (out.w.length && !confirm(r.typ === "presun" ? "Přesun má upozornění k odpočinku. Přesto schválit?" : "Výměna má upozornění k odpočinku. Přesto přijmout?")) throw null;
+      const zaX = act === "take" ? {jmeno:SELF} : r.za;
+      const ttl = r.typ === "presun" ? "Opravdu schválit přesun?" : act === "take" || r.typ !== "vymena" ? "Opravdu převzít službu?" : "Opravdu vyměnit službu?";
+      if (!await askConfirm(ttl, swapDesc(r, zaX) + (out.w.length ? `<div class="checks">${checksHTML({e:[], w:out.w, i:[]})}</div>` : ""), "Ano, potvrdit")) throw null;
       await db.runTransaction(async tx => {
         const s = await tx.get(ref);
         if (!s.exists || s.data().stav !== "ceka") throw new Error("Žádost už byla vyřízena.");
@@ -1923,7 +1955,7 @@ async function reqAction(e){
       const out = simulate(await loadMonthState(r.mesic), {...r, za:newZa}, SELF, y, m);
       msg.innerHTML = checksHTML(out);
       if (out.e.length) throw null;
-      if (out.w.length && !confirm("Výměna má upozornění k odpočinku. Přesto přijmout?")) throw null;
+      if (!await askConfirm("Opravdu vyměnit službu?", swapDesc({...r, za:newZa}, newZa) + (out.w.length ? `<div class="checks">${checksHTML({e:[], w:out.w, i:[]})}</div>` : ""), "Ano, potvrdit")) throw null;
       await db.runTransaction(async tx => {
         const s = await tx.get(ref);
         if (!s.exists || s.data().stav !== "ceka") throw new Error("Žádost už byla vyřízena.");
@@ -1945,7 +1977,7 @@ async function reqAction(e){
       const out = simulate(await loadMonthState(r.mesic), {...r, typ:"vymena", za:newZa}, null, y, m);
       msg.innerHTML = checksHTML(out);
       if (out.e.length) throw null;
-      if (out.w.length && !confirm("Výměna má upozornění. Přesto provést?")) throw null;
+      if (!await askConfirm("Opravdu vyměnit službu?", swapDesc({...r, typ:"vymena", za:newZa}, newZa) + (out.w.length ? `<div class="checks">${checksHTML({e:[], w:out.w, i:[]})}</div>` : ""), "Ano, potvrdit")) throw null;
       await db.runTransaction(async tx => {
         const s = await tx.get(ref);
         if (!s.exists || s.data().stav !== "navrh") throw new Error("Návrh už není platný.");
@@ -1953,8 +1985,11 @@ async function reqAction(e){
         tx.update(ref, {stav:"prijato", typ:"vymena", za:newZa, vyrizeno:FV.serverTimestamp()});
       });
     } else if (act === "rejectprop"){
+      if (!await askConfirm("Opravdu odmítnout návrhy?", `<p style="margin:0 0 6px">${esc(r.za.jmeno)} navrhl místo služby ${fmtS(r.mesic, r.od)}:</p>` + (r.navrhy || []).map(t => `<div class="ask-row"><span>${fmtS(r.mesic, parseProp(t))}</span></div>`).join(""), "Ano, odmítnout", true)) throw null;
       await ref.update({stav:"odmitnuto", vyrizeno:FV.serverTimestamp()});
     } else if (act === "reject"){
+      const ttl = r.typ === "presun" ? "Opravdu zamítnout přesun?" : r.typ === "vymena" ? "Opravdu odmítnout výměnu?" : "Opravdu odmítnout žádost?";
+      if (!await askConfirm(ttl, swapDesc(r, r.za && r.za.den ? r.za : (r.typ === "vymena" && r.moznosti ? null : r.za)) + (r.typ === "vymena" && r.moznosti && !(r.za || {}).den ? `<p style="margin:6px 0 0">za jednu ze služeb: ${r.moznosti.map(t => fmtS(r.mesic, parseProp(t))).join(", ")}</p>` : ""), "Ano, odmítnout", true)) throw null;
       await ref.update({stav:"odmitnuto", vyrizeno:FV.serverTimestamp()});
     } else if (act === "cancel"){
       await ref.update({stav:"zruseno", vyrizeno:FV.serverTimestamp()});
