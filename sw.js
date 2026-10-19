@@ -37,7 +37,7 @@ try {
 
 
 // Při každé změně souborů zvyš verzi, aby se stará cache smazala.
-const VERSION = "sluzby-v110";
+const VERSION = "sluzby-v111";
 const LIB_CACHE = "sluzby-knihovny";
 const CORE = [
   "./",
@@ -53,7 +53,8 @@ const CORE = [
   "./icon-512.png",
   "./badge-96.png",
   "./maskable-512.png",
-  "./apple-touch-icon.png"
+  "./apple-touch-icon.png",
+  "./apple-touch-icon-precomposed.png"
 ];
 // písma a knihovny Firebase – z cache, na pozadí obnovit
 const LIB_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com", "www.gstatic.com"];
