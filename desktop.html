@@ -61,6 +61,10 @@ h1,h2,h3{font-family:var(--f-cond);font-weight:700;margin:0;line-height:1.05}
 .bar h1{font-size:38px;margin-right:6px}
 .sq{width:44px;height:44px;border-radius:10px;border:1.5px solid var(--ink);background:var(--sheet);font-size:22px;line-height:1}
 .seg{display:flex;border:1.5px solid var(--ink);border-radius:10px;overflow:hidden}
+.acodes{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.acode{font:600 15px var(--f-body);padding:8px 12px;border-radius:10px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
+.acode[aria-pressed="true"]{background:var(--ink);color:#fff}
+.acheck{display:flex;align-items:center;gap:8px;font-size:15px;margin:4px 0}
 .seg button{min-height:40px;padding:0 18px;border:0;background:var(--sheet);font-weight:600}
 .seg button+button{border-left:1.5px solid var(--ink)}
 .seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
@@ -387,7 +391,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v4.6</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v4.8</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -398,7 +402,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.74"></script>
+<script src="sluzby-core.js?v=4.82"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -417,10 +421,10 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v4.6";
+const DESK_VER = "desktop v4.8";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
-let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:""};
+let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:"", day:null, codes:[], st:{}, mvDay:null, mvKod:null};
 document.head.insertAdjacentHTML("beforeend", `<style>${PRES_CSS}</style>`);
 const qNow = new URLSearchParams(location.search).get("now");
 const getNow = () => qNow ? new Date(qNow) : new Date();
@@ -590,7 +594,7 @@ function myShifts(fromDate, days){
 
 /* ---------- žádosti ---------- */
 const incoming = () => PENDING.filter(r => SELF_NO && (
-  (r.stav === "ceka" && r.typ === "presun" && isAdmin()) ||
+  (r.stav === "ceka" && (r.typ === "presun" || r.typ === "volno") && isAdmin()) ||
   (r.stav === "ceka" && r.zaCislo === SELF_NO) ||
   (r.stav === "navrh" && r.odCislo === SELF_NO)));
 // nabídku všem nevidí ten, kdo má ten den stejnou službu (den/den, noc/noc)
@@ -600,6 +604,9 @@ const mineOut = () => PENDING.filter(r => SELF_NO && r.odCislo === SELF_NO && r.
 function updateBadge(){ const n = incoming().length; $("navBadge").textContent = n; $("navBadge").hidden = !n; }
 function reqText(r){
   const od = r.od, za = r.za || {};
+  if (r.admin && r.typ === "uprava") return `Úprava dne: <b>${esc(od.jmeno)}</b> ${od.den}. ${ymOf(r.mesic)[1] + 1}. – ${esc(tokLbl(r.z))} → <b>${esc(tokLbl(r.na))}</b>.`;
+  if (r.admin && r.typ === "presun") return `Přesun služby: <b>${esc(od.jmeno)}</b> ${fmtS(r.mesic, od)} → ${fmtS(r.mesic, za)} (${esc(za.kod || "")}).`;
+  if (r.typ === "volno") return `<b>${esc(od.jmeno)}</b> žádá o ${VOLNO_ACC[r.druh] || "volno"}: ${volnoDays(r.mesic, r)}.`;
   if (r.typ === "presun") return `<b>${esc(od.jmeno)}</b> přesouvá svou službu ${fmtS(r.mesic, od)} na ${fmtS(r.mesic, za)} (${esc(za.kod || "")}).`;
   if (r.typ === "vymena" && r.moznosti && !za.den) return `<b>${esc(od.jmeno)}</b> dá svou ${fmtS(r.mesic, od)} za ${za.jmeno === SELF ? "jednu z tvých služeb" : `jednu ze služeb <b>${esc(za.jmeno)}</b>`}: ${r.moznosti.map(t => fmtS(r.mesic, parseProp(t))).join(", ")}.`;
   if (r.typ === "vymena") return `<b>${esc(od.jmeno)}</b> dá svou ${fmtS(r.mesic, od)} za ${za.jmeno === SELF ? "tvoji" : `službu <b>${esc(za.jmeno)}</b>`} ${fmtS(r.mesic, za)}.`;
@@ -609,7 +616,7 @@ function reqText(r){
 const ST_LBL = {ceka:"Čeká", navrh:"Návrh", prijato:"Přijato", odmitnuto:"Odmítnuto", zruseno:"Zrušeno"};
 function reqActions(r){
   const kc = x => x.kind === "N" ? " n" : "";
-  if (r.typ === "presun" && r.stav === "ceka"){
+  if ((r.typ === "presun" || r.typ === "volno") && r.stav === "ceka"){
     if (isAdmin()) return `<div class="btns"><button type="button" class="btn" data-act="accept">Schválit</button><button type="button" class="btn danger" data-act="reject">Zamítnout</button>${r.odCislo === SELF_NO ? `<button type="button" class="btn sec sm" data-act="cancel">Zrušit žádost</button>` : ""}</div>`;
     if (r.odCislo === SELF_NO) return `<p class="meta">Čeká na schválení správcem.</p><div class="btns"><button type="button" class="btn sec sm" data-act="cancel">Zrušit žádost</button></div>`;
     return "";
@@ -689,7 +696,7 @@ document.addEventListener("click", async e => {
         if (!s.exists || s.data().stav !== "ceka") throw new Error("Žádost už byla vyřízena.");
         await siblingCheck(tx, r);
         const upd = {stav:"prijato", vyrizeno:FV.serverTimestamp()};
-        if (r.typ === "presun") upd.schvalil = SELF;
+        if (r.typ === "presun" || r.typ === "volno") upd.schvalil = SELF;
         if (act === "take"){ upd.zaCislo = SELF_NO; upd.za = {jmeno:SELF, cislo:SELF_NO}; }
         tx.update(ref, upd);
       });
@@ -1396,7 +1403,20 @@ MAIN.addEventListener("click", async e => {
   }
 });
 /* ----- administrace ----- */
+const ADM_CODES = ["D12","D8","N12","N13","Nz7","Nk8","D2","DOV","ZdV"];
+const ADM_CODE_LBL = {D12:"D12 7–19", D8:"D8 10–18", N12:"N12 19–7", N13:"N13 19–8", Nz7:"Nz7 19–24", Nk8:"Nk8 dojezd", D2:"Porada", DOV:"Dovolená", ZdV:"Zdr. volno"};
+function admToken(){
+  const c = ADM_CODES.filter(x => ADM.codes.includes(x));
+  return c.length ? c.map(x => ADM.st[x] && kindOf(x) ? x + "*" : x).join("+") : ".";
+}
+const admOld = () => { const o = month(docId(ADM.y, ADM.m)); return ((o.T[ADM.from] || [])[ADM.day - 1]) || "."; };
 function admReq(){
+  const cislo = String(OFFICERS[ADM.from] || ""), mesic = docId(ADM.y, ADM.m);
+  if (ADM.typ === "uprava") return {typ:"uprava", admin:true, mesic, od:{jmeno:ADM.from, cislo, den:ADM.day}, za:null, z:admOld(), na:admToken()};
+  if (ADM.typ === "presun"){
+    const f = ADM.fromShift, kod = ADM.mvKod || f.kod.replace(/\*$/, "");
+    return {typ:"presun", admin:true, mesic, od:{jmeno:ADM.from, cislo, ...f}, za:{jmeno:ADM.from, cislo, den:ADM.mvDay, kind:kindOf(kod), kod}};
+  }
   const r = {typ:ADM.typ, mesic:docId(ADM.y, ADM.m), od:{jmeno:ADM.from, cislo:String(OFFICERS[ADM.from] || ""), ...ADM.fromShift}, za:{jmeno:ADM.to, cislo:String(OFFICERS[ADM.to] || "")}};
   if (ADM.typ === "vymena" && ADM.toShift) Object.assign(r.za, ADM.toShift);
   return r;
@@ -1408,6 +1428,40 @@ function admCal(id, name, side, sel, mark){
     const on = sel && sel.den === c.d && sel.kind === c.kind;
     return {cls:cls + (on ? "pick" : ""), attr:`data-apick="${side}|${c.d}|${c.kind}|${c.main}"`};
   });
+}
+function admEditHTML(id, opt, chk, ready){
+  const fs = t => fmtS(id, t), o = month(id), name = ADM.from;
+  const chips = (list, attr, on) => `<div class="acodes">${list.map(c => `<button type="button" class="acode" ${attr}="${c}" aria-pressed="${on(c)}">${ADM_CODE_LBL[c]}</button>`).join("")}</div>`;
+  let left = `<label class="field"><span style="font-family:var(--f-cond);font-weight:700;font-size:22px">Strážník</span><select id="admFrom">${opt(ADM.from, "")}</select></label>`;
+  let right = "", sum = "";
+  if (name && ADM.typ === "presun"){
+    left += `<p class="hint" style="margin-top:10px">Klepni na službu, kterou přesouváš.</p>${admCal(id, name, "from", ADM.fromShift, ADM.mvDay)}`;
+    if (ADM.fromShift){
+      const cur = ADM.mvKod || ADM.fromShift.kod.replace(/\*$/, "");
+      right = `<h2>Na který den</h2>${calHTML(id, name, c => ({cls:(ADM.mvDay === c.d ? "pick " : "") + (c.d === ADM.fromShift.den ? "give " : "") + (c.today ? "today" : ""), attr:`data-amv="${c.d}"`}))}
+        ${ADM.mvDay ? `<h2 style="margin-top:14px">Jaká služba</h2>${chips(["D12","D8","N12","N13","Nz7"], "data-mvkod", c => c === cur)}` : ""}`;
+      sum = `<p><b>${esc(name)}</b> · ${fs(ADM.fromShift)}</p>${ADM.mvDay ? `<p>→ ${fs({den:ADM.mvDay, kind:kindOf(cur)})} (${cur})</p>` : ""}`;
+    }
+  } else if (name){
+    left += `<p class="hint" style="margin-top:10px">Klepni na den, který chceš upravit.</p>${calHTML(id, name, c => ({cls:(ADM.day === c.d ? "pick " : "") + (c.today ? "today" : ""), attr:`data-aday="${c.d}"`}))}`;
+    if (ADM.day){
+      right = `<h2>Den ${ADM.day}. ${ADM.m + 1}.</h2><p class="hint">Vyber služby a volno pro tento den (nic = volný den).</p>
+        ${chips(ADM_CODES, "data-acode", c => ADM.codes.includes(c))}
+        ${ADM.codes.filter(c => kindOf(c)).map(c => `<label class="acheck"><input type="checkbox" data-ast="${c}" ${ADM.st[c] ? "checked" : ""}> ${c} jako stálá služba</label>`).join("")}`;
+      sum = `<p><b>${esc(name)}</b> · ${ADM.day}. ${ADM.m + 1}.</p><p>Teď: ${esc(tokLbl(admOld()))}</p><p>Nově: <b>${esc(tokLbl(admToken()))}</b></p>`;
+    }
+  }
+  return `<div class="cols">
+      <section class="panel">${left}</section>
+      <section class="panel">${right || `<p class="hint">${name ? (ADM.typ === "presun" ? "Nejdřív vyber službu vlevo." : "Nejdřív vyber den vlevo.") : "Vyber strážníka."}</p>`}</section>
+      <aside class="rail">
+        <section class="sum"><h2>Shrnutí</h2>${sum || `<p style="color:var(--ink2)">Zatím nic vybráno.</p>`}</section>
+        ${chk.e.length + chk.w.length + chk.i.length ? `<section class="panel checks"><h2 style="font-size:20px">Kontrola plánu</h2>${checksHTML(chk)}</section>` : ""}
+        <label class="field">Poznámka (nepovinné)<textarea id="admPozn" rows="2" maxlength="140">${esc(ADM.pozn)}</textarea></label>
+        <button type="button" class="btn" id="admSave" style="min-height:52px;font-family:var(--f-cond);font-size:22px" ${ready ? "" : "disabled"}>Uložit změnu</button>
+        <div class="checks" id="admMsg"></div>
+      </aside>
+    </div>`;
 }
 function admHTML(){
   if (!isAdmin()) return `<div class="panel"><p class="empty">Administrace je jen pro správce.</p></div>`;
@@ -1425,16 +1479,19 @@ function admHTML(){
   if (!o.exists) return bar + `<div class="panel"><p class="empty">Plán na tento měsíc není nahraný.</p></div>`;
   const names = Object.keys(o.T).sort((a, b) => a.localeCompare(b, "cs"));
   const opt = (sel, excl) => `<option value="">Vyber strážníka</option>` + names.filter(n => n !== excl).map(n => `<option${n === sel ? " selected" : ""}>${esc(n)}</option>`).join("");
-  const ready = ADM.from && ADM.fromShift && ADM.to && (ADM.typ === "prevzeti" || ADM.toShift);
+  const TY = ADM.typ;
+  const ready = TY === "uprava" ? !!(ADM.from && ADM.day && admToken() !== admOld())
+    : TY === "presun" ? !!(ADM.from && ADM.fromShift && ADM.mvDay)
+    : ADM.from && ADM.fromShift && ADM.to && (TY === "prevzeti" || ADM.toShift);
   const [y, m] = [ADM.y, ADM.m];
   const chk = ready ? simulate(o.T, admReq(), null, y, m) : {e:[], w:[], i:[]};
   const fs = t => fmtS(id, t);
   const log = o.swaps.slice().sort((a, b) => tsMs(b.vyrizeno || b.vytvoreno) - tsMs(a.vyrizeno || a.vytvoreno));
-  const logHTML = log.length ? log.map(r => `<div class="req" data-id="${r.id}"><p>${r.admin ? (r.typ === "vymena" ? `<b>${esc(r.od.jmeno)}</b> ${fs(r.od)} ⇄ <b>${esc(r.za.jmeno)}</b> ${fs(r.za)}.` : `Služba ${fs(r.od)} převedena: <b>${esc(r.od.jmeno)}</b> → <b>${esc(r.za.jmeno)}</b>.`) : reqText(r)} <span class="stbadge">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav] || ""}</span></p>${reqTimes(r) ? `<p class="meta">${reqTimes(r)}</p>` : ""}${r.pozn ? `<p class="pz">„${esc(r.pozn)}“</p>` : ""}${r.stav === "prijato" ? `<div class="btns"><button type="button" class="btn danger sm" data-act="revoke">Zrušit výměnu</button></div>` : ""}<div class="checks msg"></div><span class="go">Zobrazit v plánu ›</span></div>`).join("") : `<p class="empty">Zatím žádné změny.</p>`;
+  const logHTML = log.length ? log.map(r => `<div class="req" data-id="${r.id}"><p>${r.admin && (r.typ === "uprava" || r.typ === "presun") ? reqText(r) : r.admin ? (r.typ === "vymena" ? `<b>${esc(r.od.jmeno)}</b> ${fs(r.od)} ⇄ <b>${esc(r.za.jmeno)}</b> ${fs(r.za)}.` : `Služba ${fs(r.od)} převedena: <b>${esc(r.od.jmeno)}</b> → <b>${esc(r.za.jmeno)}</b>.`) : reqText(r)} <span class="stbadge">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav] || ""}</span></p>${reqTimes(r) ? `<p class="meta">${reqTimes(r)}</p>` : ""}${r.pozn ? `<p class="pz">„${esc(r.pozn)}“</p>` : ""}${r.stav === "prijato" ? `<div class="btns"><button type="button" class="btn danger sm" data-act="revoke">${r.typ === "volno" ? "Zrušit volno" : r.typ === "uprava" ? "Vrátit úpravu" : r.typ === "presun" ? "Zrušit přesun" : "Zrušit výměnu"}</button></div>` : ""}<div class="checks msg"></div><span class="go">Zobrazit v plánu ›</span></div>`).join("") : `<p class="empty">Zatím žádné změny.</p>`;
   return `${bar}
     <p class="status">Změna platí hned, bez potvrzení strážníků.</p>
-    <div class="seg" role="group" aria-label="Typ změny" style="align-self:flex-start"><button type="button" data-atyp="prevzeti" aria-pressed="${ADM.typ === "prevzeti"}">Převést službu</button><button type="button" data-atyp="vymena" aria-pressed="${ADM.typ === "vymena"}">Vyměnit služby</button></div>
-    <div class="cols">
+    <div class="seg" role="group" aria-label="Typ změny" style="align-self:flex-start"><button type="button" data-atyp="prevzeti" aria-pressed="${ADM.typ === "prevzeti"}">Převést službu</button><button type="button" data-atyp="vymena" aria-pressed="${ADM.typ === "vymena"}">Vyměnit služby</button><button type="button" data-atyp="presun" aria-pressed="${ADM.typ === "presun"}">Přesunout službu</button><button type="button" data-atyp="uprava" aria-pressed="${ADM.typ === "uprava"}">Upravit den</button></div>
+    ${TY === "presun" || TY === "uprava" ? admEditHTML(id, opt, chk, ready) : `<div class="cols">
       <section class="panel"><label class="field"><span style="font-family:var(--f-cond);font-weight:700;font-size:22px">${ADM.typ === "vymena" ? "První strážník" : "Komu službu vzít"}</span><select id="admFrom">${opt(ADM.from, ADM.to)}</select></label>
         ${ADM.from ? `<div style="margin-top:12px">${admCal(id, ADM.from, "from", ADM.fromShift, ADM.typ === "vymena" && ADM.toShift ? ADM.toShift.den : null)}</div><p class="hint" style="margin-top:8px">${ADM.fromShift ? "Vybráno: <b>" + fs(ADM.fromShift) + "</b>" : "Klepni na jeho službu."}</p>` : ""}</section>
       <section class="panel"><label class="field"><span style="font-family:var(--f-cond);font-weight:700;font-size:22px">${ADM.typ === "vymena" ? "Druhý strážník" : "Komu službu dát"}</span><select id="admTo">${opt(ADM.to, ADM.from)}</select></label>
@@ -1447,24 +1504,29 @@ function admHTML(){
         <button type="button" class="btn" id="admSave" style="min-height:52px;font-family:var(--f-cond);font-size:22px" ${ready ? "" : "disabled"}>Uložit změnu</button>
         <div class="checks" id="admMsg"></div>
       </aside>
-    </div>
+    </div>`}
     <section class="panel"><h2>Všechny změny – ${MONTHS[ADM.m]}</h2>${logHTML}</section>`;
 }
 MAIN.addEventListener("click", async e => {
   if (VIEW !== "admin" || SW) return;
   const tb = e.target.closest("[data-atab]"); if (tb){ ADM.tab = tb.dataset.atab; render(); return; }
   const an = e.target.closest("[data-anav]"); if (an){ const t = new Date(ADM.y, ADM.m + (+an.dataset.anav), 1); ADM.y = t.getFullYear(); ADM.m = t.getMonth(); ADM.fromShift = ADM.toShift = null; render(); return; }
-  const ty = e.target.closest("[data-atyp]"); if (ty){ ADM.typ = ty.dataset.atyp; ADM.toShift = null; render(); return; }
-  const pk = e.target.closest("[data-apick]"); if (pk){ const [side, d, k, c] = pk.dataset.apick.split("|"), v = {den:+d, kind:k, kod:c}; if (side === "to") ADM.toShift = v; else ADM.fromShift = v; render(); return; }
+  const ty = e.target.closest("[data-atyp]"); if (ty){ ADM.typ = ty.dataset.atyp; ADM.toShift = null; ADM.fromShift = null; ADM.day = null; ADM.mvDay = null; ADM.mvKod = null; render(); return; }
+  const ad = e.target.closest("[data-aday]");
+  if (ad){ ADM.day = +ad.dataset.aday; const parts = admOld().split("+").filter(x => x !== "."); ADM.codes = parts.map(x => x.replace(/\*$/, "")); ADM.st = {}; parts.forEach(x => { if (x.endsWith("*")) ADM.st[x.slice(0, -1)] = true; }); render(); return; }
+  const amv = e.target.closest("[data-amv]"); if (amv){ ADM.mvDay = +amv.dataset.amv; render(); return; }
+  const mk = e.target.closest("[data-mvkod]"); if (mk){ ADM.mvKod = mk.dataset.mvkod; render(); return; }
+  const ac = e.target.closest("[data-acode]"); if (ac){ const c = ac.dataset.acode, i = ADM.codes.indexOf(c); if (i >= 0){ ADM.codes.splice(i, 1); delete ADM.st[c]; } else ADM.codes.push(c); render(); return; }
+  const pk = e.target.closest("[data-apick]"); if (pk){ const [side, d, k, c] = pk.dataset.apick.split("|"), v = {den:+d, kind:k, kod:c}; if (side === "to") ADM.toShift = v; else { ADM.fromShift = v; ADM.mvDay = null; ADM.mvKod = null; } render(); return; }
   if (e.target.id === "admSave"){
     const btn = e.target; btn.disabled = true;
     const r = admReq(), o = month(r.mesic), out = simulate(o.T, r, null, ADM.y, ADM.m);
     if ((out.e.length || out.w.length) && !confirm("Změna má upozornění:\n\n" + [...out.e, ...out.w].join("\n") + "\n\nPřesto uložit?")){ btn.disabled = false; return; }
     const FV = firebase.firestore.FieldValue;
     try {
-      await db.collection(SWAP_COL).add({typ:r.typ, admin:true, mesic:r.mesic, stav:"prijato", odCislo:r.od.cislo, zaCislo:r.za.cislo,
-        od:r.od, za:r.za, pozn:ADM.pozn.trim(), zmenil:SELF_EMAIL, vytvoreno:FV.serverTimestamp(), vyrizeno:FV.serverTimestamp()});
-      ADM.fromShift = ADM.toShift = null; ADM.pozn = ""; render();
+      await db.collection(SWAP_COL).add({typ:r.typ, admin:true, mesic:r.mesic, stav:"prijato", odCislo:r.od.cislo, zaCislo:r.za && r.typ !== "presun" ? r.za.cislo : null,
+        od:r.od, za:r.za, ...(r.typ === "uprava" ? {z:r.z, na:r.na} : {}), pozn:ADM.pozn.trim(), zmenil:SELF_EMAIL, vytvoreno:FV.serverTimestamp(), vyrizeno:FV.serverTimestamp()});
+      ADM.fromShift = ADM.toShift = null; ADM.day = ADM.mvDay = ADM.mvKod = null; ADM.pozn = ""; render();
     } catch (err){
       $("admMsg").innerHTML = `<p class="e">${esc(err.code === "permission-denied" ? "Uložení zamítnuto pravidly Firestore." : "Uložení se nepovedlo.")}</p>`;
       btn.disabled = false;
@@ -1473,7 +1535,8 @@ MAIN.addEventListener("click", async e => {
 });
 MAIN.addEventListener("change", e => {
   if (VIEW !== "admin") return;
-  if (e.target.id === "admFrom"){ ADM.from = e.target.value; ADM.fromShift = null; render(); }
+  if (e.target.id === "admFrom"){ ADM.from = e.target.value; ADM.fromShift = null; ADM.day = ADM.mvDay = ADM.mvKod = null; render(); }
+  if (e.target.dataset && e.target.dataset.ast){ ADM.st[e.target.dataset.ast] = e.target.checked; render(); }
   if (e.target.id === "admTo"){ ADM.to = e.target.value; ADM.toShift = null; render(); }
 });
 MAIN.addEventListener("input", e => { if (VIEW === "admin" && e.target.id === "admPozn") ADM.pozn = e.target.value; });

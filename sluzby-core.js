@@ -68,11 +68,37 @@ function movePresun(T, r, len){
   arr[r.za.den-1] = t === "." ? r.za.kod : t + "+" + r.za.kod;
   return true;
 }
+// dovolená / zdravotní volno (schvaluje správce): ve vybraných dnech se služba (den/noc) nahradí kódem DOV / ZdV
+const VOLNO_LBL = {DOV:"dovolená", ZdV:"zdravotní volno"};
+const VOLNO_ACC = {DOV:"dovolenou", ZdV:"zdravotní volno"};
+function applyVolno(T, r){
+  const arr = T[r.od.jmeno]; if (!arr) return false;
+  let any = false;
+  (r.dny || []).forEach(x => {
+    const parts = (arr[x.den-1] || ".") === "." ? [] : arr[x.den-1].split("+");
+    const i = parts.findIndex(p => kindOf(p) === x.kind); if (i < 0) return;
+    parts.splice(i, 1);
+    if (!parts.some(p => p.replace(/\*$/, "") === r.druh)) parts.push(r.druh);
+    arr[x.den-1] = parts.join("+"); any = true;
+  });
+  return any;
+}
+// úprava dne správcem: celý den strážníka se nastaví na nový zápis (např. „D12*“, „N13+D2“, „DOV“, „.“)
+function applyUprava(T, r, len){
+  if (!r.od || !r.od.jmeno || !r.od.den) return false;
+  if (!T[r.od.jmeno]) T[r.od.jmeno] = Array(len).fill(".");
+  T[r.od.jmeno][r.od.den-1] = r.na || ".";
+  return true;
+}
+const tokLbl = t => !t || t === "." ? "volno" : t.split("+").map(p => p.endsWith("*") ? p.slice(0, -1) + " (stálá)" : p).join(" + ");
+const volnoDays = (mesic, r) => (r.dny || []).map(x => fmtS(mesic, x)).join(", ");
 const hasShift = (T, name, den, kind) => !!T[name] && (T[name][den-1] || ".").split("+").some(p => kindOf(p) === kind);
 const tsMs = x => (x && x.toMillis) ? x.toMillis() : Date.now();
 function applySwaps(plan, swaps, len){
   const T = tokensOf(plan), notes = {};
   swaps.filter(r => r.stav === "prijato").sort((a,b) => tsMs(a.vyrizeno) - tsMs(b.vyrizeno)).forEach(r => {
+    if (r.typ === "volno"){ applyVolno(T, r); return; }
+    if (r.typ === "uprava"){ applyUprava(T, r, len); notes[`${r.od.den}|*|${r.od.jmeno}`] = "upraveno správcem"; return; }
     if (r.typ === "presun"){ if (r.za && r.za.den && movePresun(T, r, len)) notes[`${r.za.den}|${r.za.kind}|${r.od.jmeno}`] = `přesun z ${r.od.den}.`; return; }
     if (!r.za || !r.za.jmeno) return;
     if (moveShift(T, r.od.jmeno, r.za.jmeno, r.od.den, r.od.kind, len)) notes[`${r.od.den}|${r.od.kind}|${r.za.jmeno}`] = `za ${zaTvar(r.od.jmeno)}`;
@@ -114,6 +140,18 @@ function simulate(T0, req, accepter, y, m){
   const len = new Date(y, m + 1, 0).getDate();
   const T = {}; for (const [n, a] of Object.entries(T0)) T[n] = a.slice();
   const out = {e:[], w:[], i:[]};
+  if (req.typ === "uprava"){
+    applyUprava(T, req, len);
+    checkPerson(T, req.od.jmeno, new Set([req.od.den]), y, m, out, true);
+    const kinds = (req.na || ".").split("+").map(kindOf).filter(Boolean);
+    if (new Set(kinds).size !== kinds.length) out.w.push("V jednom dni jsou dvě denní nebo dvě noční služby.");
+    return out;
+  }
+  if (req.typ === "volno"){
+    (req.dny || []).forEach(x => { if (!hasShift(T, req.od.jmeno, x.den, x.kind)) out.e.push(`${req.od.jmeno} už službu ${x.den}. ${m+1}. (${KIND_LBL[x.kind]}) nemá – mohla být mezitím vyměněna.`); });
+    if (!out.e.length) out.i.push(`${cap(VOLNO_LBL[req.druh] || "volno")} musí schválit správce.`);
+    return out;
+  }
   if (!hasShift(T, req.od.jmeno, req.od.den, req.od.kind)) out.e.push(`${req.od.jmeno} už službu ${req.od.den}. ${m+1}. nemá – mohla být mezitím vyměněna.`);
   if (req.typ === "presun"){
     if (!req.za || !req.za.den) return out;
@@ -124,7 +162,7 @@ function simulate(T0, req, accepter, y, m){
     movePresun(T, req, len);
     checkPerson(T, req.od.jmeno, new Set([req.za.den]), y, m, out);
     if (/\*$/.test(req.od.kod)) out.i.push("Stálá služba se přesunem nepřenáší – na novém dni budeš v hlídce.");
-    out.i.push("Přesun musí schválit správce.");
+    if (!req.admin) out.i.push("Přesun musí schválit správce.");
     return out;
   }
   if (req.typ === "vymena" && !hasShift(T, req.za.jmeno, req.za.den, req.za.kind)) out.e.push(`${req.za.jmeno} už službu ${req.za.den}. ${m+1}. nemá – mohla být mezitím vyměněna.`);
@@ -157,6 +195,34 @@ function reqTimes(r){
   let t = a ? `${autor ? `Vytvořil ${autor} · ` : "Vytvořeno "}${f(a)}` : "";
   if (b && r.stav !== "ceka" && r.stav !== "navrh" && Math.abs(b - a) > 60e3) t += `${t ? " · " : ""}${{prijato:"přijato", odmitnuto:"odmítnuto", zruseno:"zrušeno"}[r.stav] || "vyřízeno"} ${f(b)}`;
   return t;
+}
+// kdo žádost viděl / nemá zájem (zapisují si to kolegové sami při zobrazení nabídky) – řádek pro autora
+function reqSeenLine(r){
+  const ms = x => !x ? 0 : x.toMillis ? x.toMillis() : x.seconds ? x.seconds * 1000 : 0;
+  const offs = (typeof OFFICERS !== "undefined" && OFFICERS) || {};
+  const nm = c => { const n = Object.keys(offs).find(k => String(offs[k]) === String(c)); return n ? surname(n) : "č. " + c; };
+  const f = t => { if (!t) return ""; const d = new Date(t), n = new Date(); return d.toDateString() === n.toDateString() ? `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}` : `${d.getDate()}. ${d.getMonth()+1}.`; };
+  const list = o => Object.entries(o || {}).sort((a, b) => ms(a[1]) - ms(b[1])).map(([c, t]) => `${nm(c)}${ms(t) ? " " + f(ms(t)) : ""}`);
+  const no = list(r.nezajem), noSet = new Set(Object.keys(r.nezajem || {}));
+  const seen = list(Object.fromEntries(Object.entries(r.videli || {}).filter(([c]) => !noSet.has(c))));
+  const out = [];
+  if (seen.length) out.push(`👁 Viděl${seen.length > 1 ? "i" : ""} (${seen.length}): ${seen.join(", ")}`);
+  if (no.length) out.push(`✕ Nemá zájem (${no.length}): ${no.join(", ")}`);
+  if (!out.length && r.stav === "ceka") out.push("👁 Zatím nikdo neviděl");
+  return out.join("<br>");
+}
+// zapíše „viděl jsem“ k cizím čekajícím žádostem (nabídky všem a žádosti pro mě) – jednou za relaci
+const SEEN_DONE = new Set();
+function markReqSeen(db, list, me){
+  if (!db || !me) return;
+  const FV = firebase.firestore.FieldValue;
+  list.forEach(r => {
+    if (!r || !r.id || r.stav !== "ceka" || String(r.odCislo) === String(me) || SEEN_DONE.has(r.id)) return;
+    if (r.zaCislo != null && String(r.zaCislo) !== String(me)) return;
+    SEEN_DONE.add(r.id);
+    if (r.videli && r.videli[me]) return;
+    db.collection("vymeny").doc(r.id).update({["videli." + me]: FV.serverTimestamp()}).catch(() => {});
+  });
 }
 const ymOf = id => { const [y, m] = id.split("-").map(Number); return [y, m - 1]; };
 
