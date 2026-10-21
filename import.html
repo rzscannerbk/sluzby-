@@ -171,7 +171,7 @@ if (!cfg || !cfg.apiKey || cfg.apiKey === "DOPLNIT"){
     $("saveBtn").disabled = true;
     try {
       await db.collection(COLLECTION).doc(r.id).set({
-        plan: r.plan, udalosti: r.udalosti,
+        plan: r.plan, poradi: Object.keys(r.plan), udalosti: r.udalosti,
         upraveno: firebase.firestore.FieldValue.serverTimestamp(),
         upravil: auth.currentUser.email
       });
@@ -186,7 +186,9 @@ if (!cfg || !cfg.apiKey || cfg.apiKey === "DOPLNIT"){
       const s = await db.collection(COLLECTION).doc(id).get();
       if (!s.exists){ $("planOut").innerHTML = `<p class="warn">Plán na ${esc(id)} zatím uložený není.</p>`; return; }
       const d = s.data();
-      $("plan").value = Object.entries(d.plan || {}).map(([n, t]) => `${n}: ${t}`).join("\n");
+      const pl = d.plan || {}, ord = (d.poradi || []).filter(n => n in pl);
+      const names = [...ord, ...Object.keys(pl).filter(n => !ord.includes(n))];
+      $("plan").value = names.map(n => `${n}: ${pl[n]}`).join("\n");
       $("events").value = Object.entries(d.udalosti || {}).sort((a,b) => a[0]-b[0]).map(([k, v]) => `${k}: ${v}`).join("\n");
       $("planOut").innerHTML = `<p class="ok">Načten uložený plán na ${esc(id)}.</p>`;
     } catch (err) { $("planOut").innerHTML = `<p class="err">Načtení se nepovedlo (${esc(err.code)}).</p>`; }

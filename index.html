@@ -583,7 +583,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.84</span>
+      <span class="ver" id="verDiag">v4.85</span>
     </div>
   </div>
 </header>
@@ -689,7 +689,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.83"></script>
+<script src="sluzby-core.js?v=4.85"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -708,6 +708,7 @@ const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const qNow = new URLSearchParams(location.search).get("now");
 const getNow = () => qNow ? new Date(qNow) : new Date();
 
+let PLAN_ORDER = null;
 let PLAN = null, EVENTS = {}, OFFICERS = {}, YEAR = 0, MONTH = 0, GROUPS = [];
 
 /* ---------- data ---------- */
@@ -1086,7 +1087,7 @@ function loadMonth(y, m, scrollMode){
       return;
     }
     const d = snap.data();
-    PLAN = d.plan || {}; EVENTS = d.udalosti || {}; YEAR = y; MONTH = m;
+    PLAN = d.plan || {}; PLAN_ORDER = d.poradi || null; EVENTS = d.udalosti || {}; YEAR = y; MONTH = m;
     rebuild(); fillSelect(); render();
     const ps = pendingScroll; pendingScroll = null;
     if (ps === "now") goNow(false);
@@ -2624,7 +2625,8 @@ function mpHTML(){
   const n = new Date(YEAR, MONTH + 1, 0).getDate(), now = getNow();
   const todayD = now.getFullYear() === YEAR && now.getMonth() === MONTH ? now.getDate() : 0;
   const T = EFF_T || {};
-  const names = Object.keys(T).filter(nm => (T[nm] || []).some(t => t && t !== ".")).sort((a, b) => a.localeCompare(b, "cs"));
+  const act = Object.keys(T).filter(nm => (T[nm] || []).some(t => t && t !== "."));
+  const names = typeof planOrder === "function" ? planOrder(act, PLAN_ORDER, YEAR) : act.sort((a, b) => a.localeCompare(b, "cs"));
   const we = d => { const w = new Date(YEAR, MONTH, d).getDay(); return w === 0 || w === 6; };
   let h = `<table class="mp-t"><thead><tr><th class="nm">Strážník</th>`;
   for (let d = 1; d <= n; d++) h += `<th class="${we(d) ? "we" : ""}${d === todayD ? " today" : ""}" data-col="${d}">${d}.<small>${DOW_T[new Date(YEAR, MONTH, d).getDay()]}</small></th>`;

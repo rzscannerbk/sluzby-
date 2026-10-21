@@ -391,7 +391,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v4.8</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v4.9</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -402,7 +402,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.83"></script>
+<script src="sluzby-core.js?v=4.85"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -421,7 +421,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v4.8";
+const DESK_VER = "desktop v4.9";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:"", day:null, codes:[], st:{}, mvDay:null, mvKod:null};
@@ -552,7 +552,7 @@ function month(id){
   const recalc = () => { if (!o.okP) return; const r = applySwaps(o.plan || {}, o.swaps, o.len); o.T = r.T; o.notes = r.notes; render(); };
   o.unsub.push(db.collection(COLLECTION).doc(id).onSnapshot(s => {
     o.exists = s.exists; const d = s.exists ? s.data() : {};
-    o.plan = d.plan || {}; o.ev = d.udalosti || {}; o.okP = true; recalc();
+    o.plan = d.plan || {}; o.poradi = d.poradi || null; o.ev = d.udalosti || {}; o.okP = true; recalc();
   }, () => { o.okP = true; render(); }));
   o.unsub.push(db.collection(SWAP_COL).where("mesic", "==", id).onSnapshot(s => {
     o.swaps = s.docs.map(d => ({id:d.id, ...d.data()})); o.okS = true; recalc();
@@ -930,7 +930,7 @@ function monthHTML(){
   const title = `${cap(MONTHS[m])} ${y}`;
   if (!o.okP) return `${planBar(title)}<p class="status">Načítám plán…</p>`;
   if (!o.exists) return `${planBar(title)}<div class="panel"><p class="empty">Plán na ${MONTHS[m]} ${y} zatím není nahraný.</p></div>`;
-  const n = o.len, names = Object.keys(o.T).sort((a, b) => a.localeCompare(b, "cs"));
+  const n = o.len, names = typeof planOrder === "function" ? planOrder(Object.keys(o.T), o.poradi, y) : Object.keys(o.T).sort((a, b) => a.localeCompare(b, "cs"));
   const isToday = d => now.getFullYear() === y && now.getMonth() === m && now.getDate() === d;
   let h = `<div></div>`;
   for (let d = 1; d <= n; d++){ const w = new Date(y, m, d).getDay(); h += `<div class="mh${isToday(d) ? " today" : (w === 0 || w === 6) ? " we" : ""}"><b>${d}</b><span>${DOW_T[w]}</span></div>`; }

@@ -247,6 +247,13 @@ const dkey = (y, m, d) => `${y}-${String(m+1).padStart(2,"0")}-${String(d).padSt
 
 const dparse = k => { const [y, m, d] = k.split("-").map(Number); return {y, m:m-1, d}; };
 
+// pořadí strážníků jako v originálním plánu: uložené pořadí z importu („poradi“),
+// jinak pořadí z dlouhodobého plánu; kdo v něm chybí, jde na konec podle abecedy
+function planOrder(names, poradi, y){
+  const ref = (Array.isArray(poradi) && poradi.length ? poradi : Object.keys((DLP && DLP[y]) || DLP[2026] || {}));
+  const pos = n => { const i = ref.indexOf(n); return i < 0 ? 1e6 : i; };
+  return names.slice().sort((a, b) => pos(a) - pos(b) || a.localeCompare(b, "cs"));
+}
 const dlpOf = (name, y, m) => { const r = DLP[y] && DLP[y][name]; return r ? (r.split("|")[m] || "") : null; };
 
 function volLoad(data){
