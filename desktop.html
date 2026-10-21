@@ -391,7 +391,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v4.9</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v5.1</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -421,7 +421,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v4.9";
+const DESK_VER = "desktop v5.1";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:"", day:null, codes:[], st:{}, mvDay:null, mvKod:null};
@@ -595,7 +595,8 @@ function myShifts(fromDate, days){
 /* ---------- žádosti ---------- */
 const incoming = () => PENDING.filter(r => SELF_NO && (
   (r.stav === "ceka" && (r.typ === "presun" || r.typ === "volno") && isAdmin()) ||
-  (r.stav === "ceka" && r.zaCislo === SELF_NO) ||
+  (r.stav === "ceka" && r.zaCislo === SELF_NO && !r.souhlas) ||
+  (r.stav === "ceka" && r.odCislo === SELF_NO && r.souhlas) ||
   (r.stav === "navrh" && r.odCislo === SELF_NO)));
 // nabídku všem nevidí ten, kdo má ten den stejnou službu (den/den, noc/noc)
 const sameShift = r => { const o = r && r.od && M[r.mesic]; return !!(o && o.okP && SELF && hasShift(o.T, SELF, r.od.den, r.od.kind)); };
@@ -614,8 +615,11 @@ function reqText(r){
   return `<b>${esc(od.jmeno)}</b> nabízí službu ${fmtS(r.mesic, od)}${za.jmeno ? `, vzal ji <b>${esc(za.jmeno)}</b>` : " komukoli"}.`;
 }
 const ST_LBL = {ceka:"Čeká", navrh:"Návrh", prijato:"Přijato", odmitnuto:"Odmítnuto", zruseno:"Zrušeno"};
+const isGroup = r => !!(r && Array.isArray(r.skupina) && r.skupina.length > 1);
 function reqActions(r){
   const kc = x => x.kind === "N" ? " n" : "";
+  if (r.stav === "ceka" && r.souhlas && r.zaCislo === SELF_NO) return `<div class="btns"><button type="button" class="btn danger" data-act="reject">Odmítnout</button></div>`;
+  if (r.stav === "ceka" && r.souhlas && r.odCislo === SELF_NO) return `<div class="btns"><button type="button" class="btn" data-act="pick">Vybrat – ${esc(surname(r.za.jmeno))}</button><button type="button" class="btn sec sm" data-act="cancel">Zrušit žádost</button></div>`;
   if ((r.typ === "presun" || r.typ === "volno") && r.stav === "ceka"){
     if (isAdmin()) return `<div class="btns"><button type="button" class="btn" data-act="accept">Schválit</button><button type="button" class="btn danger" data-act="reject">Zamítnout</button>${r.odCislo === SELF_NO ? `<button type="button" class="btn sec sm" data-act="cancel">Zrušit žádost</button>` : ""}</div>`;
     if (r.odCislo === SELF_NO) return `<p class="meta">Čeká na schválení správcem.</p><div class="btns"><button type="button" class="btn sec sm" data-act="cancel">Zrušit žádost</button></div>`;
@@ -624,8 +628,8 @@ function reqActions(r){
   if (r.stav === "ceka" && r.zaCislo === SELF_NO){
     if (PROP && PROP.id === r.id) return propHTML(r);
     const acc = r.moznosti && !(r.za || {}).den
-      ? r.moznosti.map((t, i) => { const x = parseProp(t); return `<button type="button" class="opt${kc(x)}" data-act="acceptopt" data-n="${i}">${fmtS(r.mesic, x)} <span>Přijmout tuhle</span></button>`; }).join("")
-      : `<button type="button" class="btn" data-act="accept">Přijmout</button>`;
+      ? r.moznosti.map((t, i) => { const x = parseProp(t); return `<button type="button" class="opt${kc(x)}" data-act="acceptopt" data-n="${i}">${fmtS(r.mesic, x)} <span>${isGroup(r) ? "Souhlasím s touhle" : "Přijmout tuhle"}</span></button>`; }).join("")
+      : `<button type="button" class="btn" data-act="accept">${isGroup(r) ? "Souhlasím" : "Přijmout"}</button>`;
     return `<div class="people">${r.moznosti && !(r.za || {}).den ? acc : ""}</div><div class="btns">${r.moznosti && !(r.za || {}).den ? "" : acc}<button type="button" class="btn danger" data-act="reject">Odmítnout</button>${r.typ === "vymena" || r.typ === "prevzeti" ? `<button type="button" class="btn sec" data-act="propose">Navrhnout</button>` : ""}</div>`;
   }
   if (r.stav === "navrh" && r.odCislo === SELF_NO){
@@ -636,7 +640,7 @@ function reqActions(r){
   return "";
 }
 function reqCard(r, withActions){
-  return `<div class="req" data-id="${r.id}"><p>${reqText(r)} <span class="stbadge">${ST_LBL[r.stav] || ""}</span></p>${reqTimes(r) ? `<p class="meta">${reqTimes(r)}</p>` : ""}${r.odCislo === SELF_NO && (r.zaCislo == null || r.typ === "nabidka" || r.videli) && reqSeenLine(r) ? `<p class="meta">${reqSeenLine(r)}</p>` : ""}${r.pozn ? `<p class="pz">„${esc(r.pozn)}“</p>` : ""}${r.skupina && r.skupina.length > 1 && r.stav === "ceka" ? `<p class="meta">Žádost dostalo ${r.skupina.length} kolegů – platí, kdo přijme první.</p>` : ""}${withActions ? reqActions(r) : ""}<div class="checks msg"></div><span class="go">Zobrazit v plánu ›</span></div>`;
+  return `<div class="req" data-id="${r.id}"><p>${reqText(r)} <span class="stbadge">${ST_LBL[r.stav] || ""}</span></p>${reqTimes(r) ? `<p class="meta">${reqTimes(r)}</p>` : ""}${r.odCislo === SELF_NO && (r.zaCislo == null || r.typ === "nabidka" || r.videli) && reqSeenLine(r) ? `<p class="meta">${reqSeenLine(r)}</p>` : ""}${r.pozn ? `<p class="pz">„${esc(r.pozn)}“</p>` : ""}${isGroup(r) && r.stav === "ceka" ? `<p class="meta">Žádost dostalo ${r.skupina.length} kolegů – ${esc(surname(r.od.jmeno))} si vybere z těch, kdo souhlasí.</p>` : ""}${r.souhlas && r.stav === "ceka" ? `<p class="meta" style="color:#2E9E5B;font-weight:600">✓ ${r.zaCislo === SELF_NO ? `Souhlasíš – čeká se, až ${esc(surname(r.od.jmeno))} potvrdí` : esc(surname(r.za.jmeno)) + " souhlasí" + (r.za && r.za.den ? ` – dá ${fmtS(r.mesic, r.za)}` : "")}.</p>` : ""}${withActions ? reqActions(r) : ""}<div class="checks msg"></div><span class="go">Zobrazit v plánu ›</span></div>`;
 }
 function propHTML(r){
   const [y, m] = ymOf(r.mesic), o = month(r.mesic), now = getNow(), picks = PROP.picks;
@@ -689,7 +693,26 @@ document.addEventListener("click", async e => {
       if (out.e.length) throw null;
       if (out.w.length && !confirm("Výměna má upozornění. Přesto pokračovat?")) throw null;
     };
-    if (act === "accept" || act === "take"){
+    if ((act === "accept" || act === "acceptopt") && isGroup(r) && r.zaCislo === SELF_NO){
+      let za = r.za;
+      if (act === "acceptopt"){ const x = parseProp((r.moznosti || [])[+b.dataset.n]); za = {jmeno:r.za.jmeno, cislo:r.za.cislo, den:x.den, kind:x.kind, kod:x.kod}; }
+      await check({...r, za});
+      if (!confirm(`Souhlasíš s výměnou? ${surname(r.od.jmeno)} to ještě musí potvrdit – výměna se provede, až potvrdí.`)) throw null;
+      await db.runTransaction(async tx => {
+        const s = await tx.get(ref);
+        if (!s.exists || s.data().stav !== "ceka") throw new Error("Žádost už byla vyřízena.");
+        tx.update(ref, {souhlas:FV.serverTimestamp(), za});
+      });
+    } else if (act === "pick"){
+      await check(r);
+      if (!confirm(`Potvrdit výměnu – ${surname(r.za.jmeno)}? Ostatním kolegům se žádost zruší.`)) throw null;
+      await db.runTransaction(async tx => {
+        const s = await tx.get(ref);
+        if (!s.exists || s.data().stav !== "ceka" || !s.data().souhlas) throw new Error("Žádost už neplatí.");
+        await siblingCheck(tx, r);
+        tx.update(ref, {stav:"prijato", vyrizeno:FV.serverTimestamp()});
+      });
+    } else if (act === "accept" || act === "take"){
       await check(r);
       await db.runTransaction(async tx => {
         const s = await tx.get(ref);

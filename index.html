@@ -502,6 +502,17 @@ button.cal-day{cursor:pointer}
 .mp-t tfoot tr:first-child th,.mp-t tfoot tr:first-child td{bottom:26px}
 .mp-t tfoot th.nm{z-index:3;font-size:12px}
 .mp-t .sum{min-width:34px;font-size:12px;color:var(--ink2);font-weight:600}
+.mp-t td button.x-mine{box-shadow:inset 0 0 0 3px #D04848;outline:2px dashed #D04848;outline-offset:-6px}
+.mp-t td button.x-take{box-shadow:inset 0 0 0 3px #2E9E5B}
+.mp-t td button.x-take::after{content:"✓";position:absolute;top:1px;right:3px;width:auto;height:auto;background:none;box-shadow:none;font-size:11px;color:#fff;text-shadow:0 0 2px #000}
+.mp-t td button.x-no{opacity:.28}
+.mp-t td button.pressing{transform:scale(.9);transition:transform .25s}
+.req .pz.ok-s{color:#2E9E5B;font-weight:600;font-style:normal}
+.mp-bar{padding:8px 12px;border-top:1.5px solid var(--ink);background:var(--sheet);font-size:14px;color:var(--ink)}
+.mp-bar p{margin:0 0 6px;line-height:1.3}
+.mp-bar .x1{color:#D04848;font-weight:700}.mp-bar .x2{color:#2E9E5B;font-weight:700}
+.mp-bar .btns{display:flex;gap:8px}.mp-bar .btns .btn{flex:1;min-height:42px;padding:6px 8px}
+.mp-bar .checks p{margin:4px 0 0;font-size:13px}
 .mp-hint{margin:0;padding:4px 12px calc(var(--sab) + 6px) 12px;font-size:11.5px;color:var(--ink2)}
 .swp{z-index:40}.swp .full-close{z-index:41}
 .sheet{flex:1 0 auto;background:var(--sheet);border:1.5px solid var(--ink);border-radius:16px;padding:20px 16px calc(var(--sab) + 100px)}
@@ -586,7 +597,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.86</span>
+      <span class="ver" id="verDiag">v4.89</span>
     </div>
   </div>
 </header>
@@ -610,7 +621,8 @@ button.cal-day{cursor:pointer}
 <div class="mplan" id="mplan" role="dialog" aria-modal="true" aria-labelledby="mpTitle" hidden>
   <div class="mp-head"><h2 id="mpTitle">Plán služeb</h2><div class="mp-leg"><span><i class="k-d"></i>Denní</span><span><i class="k-n"></i>Noční</span><span><i class="k-p"></i>Porada</span><span><i class="mp-a"></i>Dovolená / ZdV</span><span><i class="mp-s"></i>Stálá</span><span>⇄ výměna</span></div></div>
   <div class="mp-wrap" id="mpWrap"></div>
-  <p class="mp-hint">Klepnutím na službu přejdeš na ni v plánu. Dny posouváš prstem do stran.</p>
+  <div class="mp-bar" id="mpBar" hidden></div>
+  <p class="mp-hint" id="mpHint">Klepnutím na službu přejdeš na ni v plánu. <b>Podržením své služby</b> začneš výměnu.</p>
   <button class="full-close" id="mpClose" type="button" aria-label="Zavřít celý plán">✕</button>
 </div>
 <div class="full" id="full" role="dialog" aria-modal="true" aria-label="Detail služby" hidden>
@@ -1885,7 +1897,8 @@ function saveHidden(){
 const sameShift = r => !!(r && r.od && SELF && EFF_T && r.mesic === docId(YEAR, MONTH) && hasShift(EFF_T, SELF, r.od.den, r.od.kind));
 const incoming = () => PENDING.filter(r => SELF_NO && !(r.typ === "nabidka" && r.zaCislo == null && sameShift(r)) && (
   (r.stav === "ceka" && (r.typ === "presun" || r.typ === "volno") && isAdminUI()) ||
-  (r.stav === "ceka" && r.zaCislo === SELF_NO) ||
+  (r.stav === "ceka" && r.zaCislo === SELF_NO && !r.souhlas) ||
+  (r.stav === "ceka" && r.odCislo === SELF_NO && r.souhlas) ||
   (r.stav === "navrh" && r.odCislo === SELF_NO) ||
   (r.stav === "ceka" && r.zaCislo == null && r.odCislo !== SELF_NO && !HIDDEN.has(r.id))));
 function updateBadge(){
@@ -1942,7 +1955,7 @@ const ST_LBL = {ceka:"Čeká", navrh:"Návrh", prijato:"Přijato", odmitnuto:"Od
 function reqCard(r, actions, go){
   const props = r.stav === "navrh" && r.odCislo !== SELF_NO
     ? `<span class="pz">Navrženo místo toho: ${(r.navrhy || []).map(t => fmtS(r.mesic, parseProp(t))).join(", ")}</span>` : "";
-  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${typeof reqTimes === "function" && reqTimes(r) ? `<span class="pz tm">${reqTimes(r)}</span>` : ""}${r.odCislo === SELF_NO && typeof reqSeenLine === "function" && (r.zaCislo == null || r.typ === "nabidka" || r.videli) && reqSeenLine(r) ? `<span class="pz tm seen">${reqSeenLine(r)}</span>` : ""}${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${r.skupina && r.skupina.length > 1 && (r.stav === "ceka" || r.stav === "navrh") ? `<span class="pz">Žádost dostalo ${r.skupina.length} kolegů – platí, kdo přijme první.</span>` : ""}${r.duvod === "jinde" ? `<span class="pz">Výměnu vzal jiný kolega.</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div><span class="go">${go || "Zobrazit v plánu"} ›</span></div>`;
+  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${typeof reqTimes === "function" && reqTimes(r) ? `<span class="pz tm">${reqTimes(r)}</span>` : ""}${r.odCislo === SELF_NO && typeof reqSeenLine === "function" && (r.zaCislo == null || r.typ === "nabidka" || r.videli) && reqSeenLine(r) ? `<span class="pz tm seen">${reqSeenLine(r)}</span>` : ""}${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${isGroup(r) && (r.stav === "ceka" || r.stav === "navrh") ? `<span class="pz">Žádost dostalo ${r.skupina.length} kolegů – ${esc(surname(r.od.jmeno))} si vybere z těch, kdo souhlasí.</span>` : ""}${r.souhlas && r.stav === "ceka" ? `<span class="pz ok-s">✓ ${r.zaCislo === SELF_NO ? `Souhlasíš – čeká se, až ${esc(surname(r.od.jmeno))} potvrdí` : esc(surname(r.za.jmeno)) + " souhlasí" + (r.za && r.za.den ? ` – dá ${fmtS(r.mesic, r.za)}` : "")}.</span>` : ""}${r.duvod === "jinde" ? `<span class="pz">${r.vybrano ? "Autor si vybral jiného kolegu." : "Výměnu vzal jiný kolega."}</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div><span class="go">${go || "Zobrazit v plánu"} ›</span></div>`;
 }
 let PROP = null; // {id, picks:[]} – rozpracovaný návrh u žádosti
 function propChoiceHTML(r){
@@ -1951,10 +1964,13 @@ function propChoiceHTML(r){
       return `<button type="button" class="person ${x.kind === "N" ? "pn" : "pd"}" data-act="choose" data-n="${i}"><b>${fmtS(r.mesic, x)}</b><small>${x.kod.replace("*","")}${x.kod.endsWith("*") ? " · stálá" : ""}</small></button>`; }).join("")}</div>
     <div class="btns"><button class="btn btn-no" data-act="rejectprop">Odmítnout návrhy</button></div>`;
 }
+// žádost poslaná víc kolegům: kolega jen souhlasí, autor si pak z ochotných vybere
+const isGroup = r => !!(r && Array.isArray(r.skupina) && r.skupina.length > 1);
 function optChoiceHTML(r){
-  return `<p class="pz">Vyber, kterou svou službu za ni dáš – výměna se provede hned:</p>
+  const g = isGroup(r);
+  return `<p class="pz">${g ? "Vyber, kterou svou službu bys za ni dal – autor si pak vybere z kolegů, kteří souhlasí:" : "Vyber, kterou svou službu za ni dáš – výměna se provede hned:"}</p>
     <div class="people">${r.moznosti.map((t, i) => { const x = parseProp(t);
-      return `<button type="button" class="person ${x.kind === "N" ? "pn" : "pd"}" data-act="acceptopt" data-n="${i}"><b>${fmtS(r.mesic, x)}</b><small>${x.kod.replace("*","")}${x.kod.endsWith("*") ? " · stálá" : ""} · Přijmout tuhle</small></button>`; }).join("")}</div>`;
+      return `<button type="button" class="person ${x.kind === "N" ? "pn" : "pd"}" data-act="acceptopt" data-n="${i}"><b>${fmtS(r.mesic, x)}</b><small>${x.kod.replace("*","")}${x.kod.endsWith("*") ? " · stálá" : ""} · ${g ? "Souhlasím s touhle" : "Přijmout tuhle"}</small></button>`; }).join("")}</div>`;
 }
 function propPickHTML(r){
   if (r.mesic !== docId(YEAR, MONTH)) return `<p class="pz">Pro návrh přepni na měsíc ${MONTHS[ymOf(r.mesic)[1]]}.</p>`;
@@ -2012,11 +2028,12 @@ function renderVym(){
     ${SELF ? `<p class="sub">Přihlášen jako ${esc(SELF)}</p>` : `<p class="note-id">Účet se nepodařilo spárovat se strážníkem. Výměny fungují s e-mailem ve tvaru prijmeni.cislo@… a se služebními čísly nahranými v importu.</p>`}
     ${SELF ? balanceHTML() : ""}
     ${sec("Čeká na tebe", [...propsForMe, ...forMe], r => r.stav === "navrh" ? propChoiceHTML(r) :
-      `${r.moznosti && !r.za.den ? optChoiceHTML(r) : `<button class="btn btn-ok" data-act="accept">Přijmout</button>`}<button class="btn btn-no" data-act="reject">Odmítnout</button>${r.za && r.za.jmeno === SELF ? `<button class="btn sec" data-act="propose">Navrhnout</button>` : ""}${PROP && PROP.id === r.id ? propPickHTML(r) : ""}`, "Nic nečeká.")}
+      r.souhlas ? `<button class="btn btn-no" data-act="reject">Odmítnout</button>` :
+      `${r.moznosti && !r.za.den ? optChoiceHTML(r) : `<button class="btn btn-ok" data-act="accept">${isGroup(r) ? "Souhlasím" : "Přijmout"}</button>`}<button class="btn btn-no" data-act="reject">Odmítnout</button>${r.za && r.za.jmeno === SELF ? `<button class="btn sec" data-act="propose">Navrhnout</button>` : ""}${PROP && PROP.id === r.id ? propPickHTML(r) : ""}`, "Nic nečeká.")}
     ${moves.length ? sec("Ke schválení správcem", moves, () => `<button class="btn btn-ok" data-act="accept">Schválit</button><button class="btn btn-no" data-act="reject">Zamítnout</button>`, "") : ""}
     ${sec("Nabídky kolegů", offers, () => `<button class="btn" data-act="take">Vzít službu</button><button class="btn sec" data-act="hide">Nemám zájem</button>`, hidden.length ? "Žádné další nabídky." : "Žádné otevřené nabídky.")}
     ${hidden.length ? `<details class="hid"><summary>Skryté nabídky (${hidden.length})</summary>${hidden.map(r => reqHTML(r, `<button class="btn" data-act="take">Vzít službu</button><button class="btn sec" data-act="unhide">Znovu zobrazit</button>`)).join("")}</details>` : ""}
-    ${sec("Moje žádosti", mine, r => r.stav === "navrh" ? `<span class="pz">Čeká, až si ${esc(surname(r.od.jmeno))} vybere z tvých návrhů.</span>` : `${r.typ === "presun" || r.typ === "volno" ? `<span class="pz">Čeká na schválení správcem.</span>` : ""}<button class="btn sec" data-act="cancel">Zrušit žádost</button>`, "Nemáš žádné otevřené žádosti.")}
+    ${sec("Moje žádosti", mine, r => r.stav === "ceka" && r.souhlas && r.odCislo === SELF_NO ? `<button class="btn btn-ok" data-act="pick">Vybrat – ${esc(surname(r.za.jmeno))}</button><button class="btn sec" data-act="cancel">Zrušit žádost</button>` : r.stav === "navrh" ? `<span class="pz">Čeká, až si ${esc(surname(r.od.jmeno))} vybere z tvých návrhů.</span>` : `${r.typ === "presun" || r.typ === "volno" ? `<span class="pz">Čeká na schválení správcem.</span>` : ""}<button class="btn sec" data-act="cancel">Zrušit žádost</button>`, "Nemáš žádné otevřené žádosti.")}
     ${sec(`Vyřízené – ${MONTHS[MONTH]}`, done, r => r.stav === "prijato" && isAdminUI() ? `<button class="btn sec btn-danger" data-act="revoke">${r.typ === "volno" ? "Zrušit volno" : "Zrušit výměnu"}</button>` : "", "Zatím žádné.")}`;
 }
 function openVym(){ vym.hidden = false; vym.scrollTop = 0; renderVym(); document.getElementById("vymClose").focus(); }
@@ -2100,7 +2117,35 @@ async function reqAction(e){
   const FV = firebase.firestore.FieldValue;
   box.querySelectorAll("button").forEach(x => x.disabled = true);
   try {
-    if (act === "accept" || act === "take"){
+    if ((act === "accept" || act === "acceptopt") && isGroup(r) && r.zaCislo === SELF_NO){
+      // skupinová žádost: jen souhlas – výměnu provede až výběr autora
+      let za = r.za;
+      if (act === "acceptopt"){ const x = parseProp((r.moznosti || [])[+b.dataset.n]); za = {jmeno:r.za.jmeno, cislo:r.za.cislo, den:x.den, kind:x.kind, kod:x.kod}; }
+      msg.innerHTML = `<p class="i">Kontroluji plán…</p>`;
+      const [y, m] = ymOf(r.mesic);
+      const out = simulate(await loadMonthState(r.mesic), {...r, za}, SELF, y, m);
+      msg.innerHTML = checksHTML(out);
+      if (out.e.length) throw null;
+      if (!await askConfirm("Souhlasíš s výměnou?", swapDesc({...r, za}, za) + `<p style="margin:8px 0 0;font-size:14px">${esc(surname(r.od.jmeno))} to ještě musí potvrdit – výměna se provede, až potvrdí.</p>`, "Ano, souhlasím")) throw null;
+      await db.runTransaction(async tx => {
+        const s = await tx.get(ref);
+        if (!s.exists || s.data().stav !== "ceka") throw new Error("Žádost už byla vyřízena.");
+        tx.update(ref, {souhlas:FV.serverTimestamp(), za});
+      });
+    } else if (act === "pick"){
+      msg.innerHTML = `<p class="i">Kontroluji plán…</p>`;
+      const [y, m] = ymOf(r.mesic);
+      const out = simulate(await loadMonthState(r.mesic), r, null, y, m);
+      msg.innerHTML = checksHTML(out);
+      if (out.e.length) throw null;
+      if (!await askConfirm(`Potvrdit výměnu – ${esc(surname(r.za.jmeno))}?`, swapDesc(r, r.za) + `<p style="margin:8px 0 0;font-size:14px">Ostatním kolegům se žádost zruší.</p>`, "Ano, vyměnit")) throw null;
+      await db.runTransaction(async tx => {
+        const s = await tx.get(ref);
+        if (!s.exists || s.data().stav !== "ceka" || !s.data().souhlas) throw new Error("Žádost už neplatí.");
+        await siblingCheck(tx, r);
+        tx.update(ref, {stav:"prijato", vyrizeno:FV.serverTimestamp()});
+      });
+    } else if (act === "accept" || act === "take"){
       msg.innerHTML = `<p class="i">Kontroluji plán…</p>`;
       const [y, m] = ymOf(r.mesic);
       const out = simulate(await loadMonthState(r.mesic), r, SELF, y, m);
@@ -2118,7 +2163,7 @@ async function reqAction(e){
         if (act === "take"){ upd.zaCislo = SELF_NO; upd.za = {jmeno:SELF, cislo:SELF_NO}; }
         tx.update(ref, upd);
       });
-    } else if (act === "acceptopt"){
+    } else if (act === "acceptopt" && !isGroup(r)){
       const x = parseProp((r.moznosti || [])[+b.dataset.n]);
       const newZa = {jmeno:r.za.jmeno, cislo:r.za.cislo, den:x.den, kind:x.kind, kod:x.kod};
       msg.innerHTML = `<p class="i">Kontroluji plán…</p>`;
@@ -2414,7 +2459,7 @@ function sumHTML(id, mine){
   if (!SW.targets.length) return "";
   const T = SW.targets;
   const take = multiPeople()
-    ? `<p>Vzal bych službu <b>${DOW[new Date(YEAR, MONTH, T[0].den).getDay()]} ${T[0].den}. ${MONTH+1}.</b> od jednoho z: <b>${T.map(t => `${esc(t.name)} (${KIND_LBL[t.kind]})`).join(", ")}</b></p><p class="sum-note">Žádost dostanou všichni označení – platí, kdo přijme první.</p>`
+    ? `<p>Vzal bych službu <b>${DOW[new Date(YEAR, MONTH, T[0].den).getDay()]} ${T[0].den}. ${MONTH+1}.</b> od jednoho z: <b>${T.map(t => `${esc(t.name)} (${KIND_LBL[t.kind]})`).join(", ")}</b></p><p class="sum-note">Žádost dostanou všichni označení – z těch, kdo souhlasí, si pak vybereš.</p>`
     : `<p>Vzal bych ${T.length > 1 ? "jednu ze služeb" : "službu"} <b>${T.map(t => fmtS(id, t)).join(", ")}</b></p>`;
   return `<div class="swp-sum"><p>Nabízím službu <b>${fmtS(id, mine)}</b></p>${take}</div>`;
 }
@@ -2654,7 +2699,9 @@ function mpHTML(){
       const sw = !!(NOTES && (NOTES[`${d}|D|${nm}`] || NOTES[`${d}|N|${nm}`]));
       const lbl = main.replace(/\*$/, "");
       const extra = codes.filter(x => x !== lbl);
-      h += `<td class="${cls}"><button type="button" class="${c}${st ? " st" : ""}${sw ? " sw" : ""}" data-mpd="${d}" data-mpk="${kind}" aria-label="${esc(nm)}, ${d}. ${MONTH + 1}., ${esc(typeof tokLbl === "function" ? tokLbl(tok) : tok)}">${esc(lbl)}${extra.length ? `<small>+${esc(extra.join("+"))}</small>` : ""}</button></td>`;
+      const xk = kD || kN ? kindOf(kD || kN) : null, xkod = kD || kN || "";
+      const xc = mpxClass(nm, d, xk, xkod);
+      h += `<td class="${cls}"><button type="button" class="${c}${st ? " st" : ""}${sw ? " sw" : ""}${xc}" data-mpd="${d}" data-mpk="${kind}" data-mpn="${esc(nm)}" data-mpx="${xk || ""}" data-mpkod="${esc(xkod)}" aria-label="${esc(nm)}, ${d}. ${MONTH + 1}., ${esc(typeof tokLbl === "function" ? tokLbl(tok) : tok)}">${esc(lbl)}${extra.length ? `<small>+${esc(extra.join("+"))}</small>` : ""}</button></td>`;
     }
     h += `<td class="sum">${sD}</td><td class="sum">${sN}</td></tr>`;
   });
@@ -2665,8 +2712,115 @@ function mpHTML(){
   h += `<td></td><td></td></tr></tfoot></table>`;
   return h;
 }
+/* výměna přímo z celého plánu: podržení vlastní služby → klepnutím vybrat až 3 cizí služby */
+let MPX = null; // {mine:{den, kind, kod}, targets:[{name, den, kind, kod}], ok:Set, msg}
+const mpStarted = (d, kod) => windowOf(new Date(YEAR, MONTH, d), String(kod).replace(/\*$/, ""))[0] <= getNow();
+function mpxReq(t){
+  return {typ:"vymena", mesic:docId(YEAR, MONTH), od:{jmeno:SELF, cislo:SELF_NO, ...MPX.mine}, za:{jmeno:t.name, cislo:String(OFFICERS[t.name] || ""), den:t.den, kind:t.kind, kod:t.kod}};
+}
+function mpxClass(nm, d, k, kod){
+  if (!MPX || !k) return "";
+  if (nm === SELF) return MPX.mine.den === d && MPX.mine.kind === k ? " x-mine" : " x-no";
+  if (MPX.targets.some(t => t.name === nm && t.den === d && t.kind === k)) return " x-take";
+  return MPX.ok.has(`${nm}|${d}|${k}`) ? "" : " x-no";
+}
+function mpxStart(d, k, kod){
+  MPX = {mine:{den:d, kind:k, kod}, targets:[], ok:new Set(), msg:""};
+  // předem spočítat, které cizí služby jdou za tu mou vzít (ostatní zešednou)
+  for (const [nm, arr] of Object.entries(EFF_T || {})){
+    if (nm === SELF) continue;
+    (arr || []).forEach((tok, i) => (tok || ".").split("+").forEach(p => {
+      const kk = kindOf(p); if (!kk || mpStarted(i + 1, p)) return;
+      const out = simulate(EFF_T, mpxReq({name:nm, den:i + 1, kind:kk, kod:p}), null, YEAR, MONTH);
+      if (!out.e.length) MPX.ok.add(`${nm}|${i + 1}|${kk}`);
+    }));
+  }
+}
+function mpRedraw(){
+  const w = document.getElementById("mpWrap"), sl = w.scrollLeft, st = w.scrollTop;
+  w.innerHTML = mpHTML();
+  const bar = document.getElementById("mpBar"), hint = document.getElementById("mpHint");
+  bar.hidden = !MPX; hint.hidden = !!MPX;
+  const fit = () => { mpFit(); w.scrollLeft = sl; w.scrollTop = st; };
+  if (!MPX){ fit(); return; }
+  const id = docId(YEAR, MONTH);
+  const tl = MPX.targets.map(t => `${esc(surname(t.name))} ${fmtS(id, t)}`).join(", ");
+  bar.innerHTML = `<p>Dávám <span class="x1">${fmtS(id, MPX.mine)}</span> za ${MPX.targets.length ? `<span class="x2">${tl}</span>` : "– klepni na 1 až 3 služby kolegů"}</p>
+    ${MPX.targets.length > 1 ? `<p class="small" style="font-size:12px;color:var(--ink2)">${new Set(MPX.targets.map(t => t.name)).size > 1 ? "Žádost dostane každý označený kolega – z těch, kdo souhlasí, si pak vybereš." : "Kolega si vybere jednu z variant."}</p>` : ""}
+    <div class="checks">${MPX.msg || ""}</div>
+    <div class="btns"><button type="button" class="btn" data-mpsend ${MPX.targets.length ? "" : "disabled"}>Odeslat žádost</button><button type="button" class="btn sec" data-mpcancel>Zrušit</button></div>`;
+  fit();
+}
+// žádosti: kolega s jednou službou → běžná výměna, se 2–3 službami → varianty; víc kolegů → každý svou (skupina)
+function mpxBuild(){
+  const by = {}; MPX.targets.forEach(t => (by[t.name] ||= []).push(t));
+  const id = docId(YEAR, MONTH);
+  return Object.entries(by).map(([nm, ts]) => {
+    const r = {typ:"vymena", mesic:id, od:{jmeno:SELF, cislo:SELF_NO, ...MPX.mine}, za:{jmeno:nm, cislo:String(OFFICERS[nm] || "")}};
+    if (ts.length === 1) Object.assign(r.za, {den:ts[0].den, kind:ts[0].kind, kod:ts[0].kod});
+    else r.moznosti = ts.map(tKey);
+    return r;
+  });
+}
+async function mpxSend(btn){
+  const list = mpxBuild(), id = docId(YEAR, MONTH);
+  const out = {e:[], w:[], i:[]};
+  list.forEach(r => { const o = simulateReq(r); ["e","w"].forEach(t => o[t].forEach(m => out[t].push(`${surname(r.za.jmeno)}: ${m}`))); });
+  MPX.msg = checksHTML(out);
+  if (out.e.length){ mpRedraw(); return; }
+  const body = `<div class="ask-row"><i>DÁVÁŠ</i><span>→ ${fmtS(id, MPX.mine)}</span></div>` +
+    MPX.targets.map(t => `<div class="ask-row"><i>${esc(surname(t.name).toUpperCase())}</i><span>→ ${fmtS(id, t)}</span></div>`).join("") +
+    (out.w.length ? `<div class="checks">${checksHTML({e:[], w:out.w, i:[]})}</div>` : "");
+  const nP = new Set(MPX.targets.map(t => t.name)).size;
+  const note = MPX.targets.length < 2 ? "" : `<p style="margin:8px 0 0;font-size:14px">${nP > 1 ? "Žádost dostane každý označený kolega. Kdo bude souhlasit, toho uvidíš ve Výměnách a sám si vybereš, s kým vyměníš." : "Kolega si vybere jednu ze služeb."}</p>`;
+  if (!await askConfirm("Odeslat žádost o výměnu?", body + note, "Ano, odeslat")) return;
+  btn.disabled = true;
+  try {
+    const col = db.collection(SWAP_COL), refs = list.map(() => col.doc()), batch = db.batch();
+    const skupina = list.length > 1 ? refs.map(x => x.id) : null;
+    list.forEach((q, i) => batch.set(refs[i], {
+      typ:"vymena", mesic:q.mesic, stav:"ceka", odCislo:SELF_NO, zaCislo:q.za.cislo,
+      od:q.od, za:q.za, pozn:"", ...(q.moznosti ? {moznosti:q.moznosti} : {}), ...(skupina ? {skupina} : {}),
+      vytvoreno:firebase.firestore.FieldValue.serverTimestamp(), vyrizeno:null
+    }));
+    await batch.commit();
+    MPX = null; mpRedraw();
+    const h = document.getElementById("mpHint");
+    h.innerHTML = `<b style="color:#2E9E5B">Žádost odeslána.</b> Najdeš ji ve Výměnách ⇄ v Moje žádosti.`;
+    setTimeout(() => { if (!MPX) h.innerHTML = `Klepnutím na službu přejdeš na ni v plánu. <b>Podržením své služby</b> začneš výměnu.`; }, 6000);
+  } catch (err){
+    MPX.msg = `<p class="e">${esc(err.code === "permission-denied" ? "Žádost nejde uložit – chybí oprávnění." : "Odeslání se nepovedlo.")}</p>`;
+    mpRedraw();
+  }
+}
+document.getElementById("mpBar").addEventListener("click", e => {
+  if (e.target.closest("[data-mpcancel]")){ MPX = null; mpRedraw(); }
+  const s = e.target.closest("[data-mpsend]"); if (s) mpxSend(s);
+});
+{
+  const w = document.getElementById("mpWrap");
+  let tm = null, fired = false, sx = 0, sy = 0, el = null;
+  const clear = () => { clearTimeout(tm); tm = null; if (el) el.classList.remove("pressing"); el = null; };
+  w.addEventListener("pointerdown", e => {
+    const b = e.target.closest("[data-mpd]"); fired = false; if (!b) return;
+    if (b.dataset.mpn !== SELF || !b.dataset.mpx || !SELF_NO) return;
+    sx = e.clientX; sy = e.clientY; el = b; b.classList.add("pressing");
+    tm = setTimeout(() => {
+      fired = true; const d = +b.dataset.mpd, k = b.dataset.mpx, kod = b.dataset.mpkod; clear();
+      if (MPX && MPX.mine.den === d && MPX.mine.kind === k){ MPX = null; mpRedraw(); return; }
+      if (mpStarted(d, kod)){ document.getElementById("mpHint").innerHTML = "Tahle služba už začala – vyměnit jde jen budoucí službu."; return; }
+      if (navigator.vibrate) navigator.vibrate(15);
+      mpxStart(d, k, kod); mpRedraw();
+    }, 500);
+  });
+  w.addEventListener("pointermove", e => { if (tm && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) clear(); });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(x => w.addEventListener(x, clear));
+  w.addEventListener("contextmenu", e => { if (e.target.closest("[data-mpd]")) e.preventDefault(); });
+  w.addEventListener("click", e => { if (fired){ fired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+}
 function openMplan(){
   if (!PLAN || !EFF_T) return;
+  MPX = null; document.getElementById("mpBar").hidden = true; document.getElementById("mpHint").hidden = false;
   document.getElementById("mpTitle").textContent = `Plán služeb – ${MONTHS[MONTH]} ${YEAR}`;
   const w = document.getElementById("mpWrap");
   w.innerHTML = mpHTML();
@@ -2690,10 +2844,22 @@ function mpFit(){
   t.classList.toggle("tight", rh < 30);
 }
 window.addEventListener("resize", () => { if (!mplan.hidden) mpFit(); });
-function closeMplan(){ mplan.hidden = true; }
+function closeMplan(){
+  if (MPX && MPX.targets.length && !confirm("Rozpracovaná výměna se zahodí. Zavřít?")) return;
+  MPX = null; mplan.hidden = true;
+}
 document.getElementById("mpClose").addEventListener("click", closeMplan);
 document.getElementById("mpWrap").addEventListener("click", e => {
   const b = e.target.closest("[data-mpd]"); if (!b) return;
+  if (MPX){
+    // režim výměny: klepnutí přidá / odebere cizí službu (max. 3)
+    const nm = b.dataset.mpn, d = +b.dataset.mpd, k = b.dataset.mpx;
+    if (!k || nm === SELF || !MPX.ok.has(`${nm}|${d}|${k}`)) return;
+    const i = MPX.targets.findIndex(t => t.name === nm && t.den === d && t.kind === k);
+    if (i >= 0) MPX.targets.splice(i, 1);
+    else if (MPX.targets.length < 3) MPX.targets.push({name:nm, den:d, kind:k, kod:b.dataset.mpkod});
+    MPX.msg = ""; mpRedraw(); return;
+  }
   closeMplan(); scrollToDay(+b.dataset.mpd, b.dataset.mpk);
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !mplan.hidden) closeMplan(); });
