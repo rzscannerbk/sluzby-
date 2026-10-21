@@ -461,6 +461,45 @@ button.cal-day{cursor:pointer}
 .ask .btns{display:flex;gap:10px;margin-top:16px}
 .ask .btns .btn{flex:1}
 .vym{z-index:38}.vym .full-close{z-index:39}
+/* celý plán měsíce (dlouhé podržení názvu měsíce) */
+.mplan{position:fixed;inset:0;z-index:44;display:flex;flex-direction:column;background:var(--paper);padding:calc(env(safe-area-inset-top,0px) + 8px) 0 0;animation:fullIn .16s ease-out}
+.mplan[hidden]{display:none}
+.mplan .full-close{z-index:46;top:calc(env(safe-area-inset-top,0px) + 8px);bottom:auto;right:12px;width:40px;height:40px;font-size:18px}
+.mplan .mp-head{padding-right:60px}
+#title.pressing{opacity:.55;transition:opacity .3s}
+.mp-head{padding:0 12px 8px}
+.mp-head h2{font-family:var(--f-cond);font-weight:600;font-size:24px;margin:0 0 4px;color:var(--ink)}
+.mp-leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--ink2)}
+.mp-leg span{display:inline-flex;align-items:center;gap:5px}
+.mp-leg i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.mp-leg i.mp-a{background:#E7A3BE}.mp-leg i.mp-s{background:#2E9E5B;border-radius:50%}
+.mp-wrap{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border-top:1px solid var(--line)}
+.mp-t{border-collapse:separate;border-spacing:0;font-family:var(--f-cond);color:var(--ink)}
+.mp-t th,.mp-t td{padding:0;text-align:center;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:38px;height:34px;font-size:13px;line-height:1.05}
+.mp-t thead th{position:sticky;top:0;z-index:2;background:var(--sheet);font-weight:700;height:40px}
+.mp-t thead th small{display:block;font-weight:500;font-size:11px;color:var(--ink2)}
+.mp-t th.nm{position:sticky;left:0;z-index:1;background:var(--sheet);text-align:left;padding:0 6px;min-width:84px;max-width:84px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;font-size:14px}
+.mp-t thead th.nm{z-index:3}
+.mp-t tr.mp-me th.nm{background:var(--hl);color:var(--hl-ink)}
+.mp-t tr.mp-me td{box-shadow:inset 0 2px 0 var(--hl),inset 0 -2px 0 var(--hl)}
+.mp-t .we{background:color-mix(in srgb,var(--line) 28%,transparent)}
+.mp-t th.today{background:var(--now);color:#fff}.mp-t th.today small{color:#fff}
+.mp-t td.today,.mp-t td.today button{box-shadow:inset 2px 0 0 var(--now),inset -2px 0 0 var(--now)}
+.mp-t td button,.mp-t th.nm{text-decoration:none}
+.mp-t td button{all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:34px;cursor:pointer;position:relative;font-weight:700}
+.mp-t td .c-d{background:#F2D24A;color:#1D2A4D}
+.mp-t td .c-n{background:#4B3F9E;color:#fff}
+.mp-t td .c-p{background:#3A9AD9;color:#fff}
+.mp-t td .c-pn{background:linear-gradient(to bottom,#3A9AD9 0 50%,#4B3F9E 50% 100%);color:#fff}
+.mp-t td .c-a{background:#E7A3BE;color:#5A1F38;font-size:11px}
+.mp-t td .st::after{content:"";position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:#2E9E5B;box-shadow:0 0 0 1.5px #fff}
+.mp-t td .sw::before{content:"⇄";position:absolute;bottom:1px;left:2px;font-size:9px;line-height:1}
+.mp-t td button small{font-size:9.5px;font-weight:600;opacity:.9;font-family:var(--f-body)}
+.mp-t tfoot th,.mp-t tfoot td{position:sticky;bottom:0;background:var(--sheet);font-size:12px;color:var(--ink2);height:26px}
+.mp-t tfoot tr:first-child th,.mp-t tfoot tr:first-child td{bottom:26px}
+.mp-t tfoot th.nm{z-index:3;font-size:12px}
+.mp-t .sum{min-width:34px;font-size:12px;color:var(--ink2);font-weight:600}
+.mp-hint{margin:0;padding:6px 12px calc(var(--sab) + 10px) 12px;font-size:12px;color:var(--ink2)}
 .swp{z-index:40}.swp .full-close{z-index:41}
 .sheet{flex:1 0 auto;background:var(--sheet);border:1.5px solid var(--ink);border-radius:16px;padding:20px 16px calc(var(--sab) + 100px)}
 .sheet h2{font-family:var(--f-cond);font-weight:600;font-size:26px;line-height:1.15;margin:0}
@@ -544,7 +583,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.82</span>
+      <span class="ver" id="verDiag">v4.84</span>
     </div>
   </div>
 </header>
@@ -564,6 +603,12 @@ button.cal-day{cursor:pointer}
     <div class="vol-sum" id="volRes" hidden></div>
     <div class="vol-list" id="volList"></div>
   </div>
+</div>
+<div class="mplan" id="mplan" role="dialog" aria-modal="true" aria-labelledby="mpTitle" hidden>
+  <div class="mp-head"><h2 id="mpTitle">Plán služeb</h2><div class="mp-leg"><span><i class="k-d"></i>Denní</span><span><i class="k-n"></i>Noční</span><span><i class="k-p"></i>Porada</span><span><i class="mp-a"></i>Dovolená / ZdV</span><span><i class="mp-s"></i>Stálá</span><span>⇄ výměna</span></div></div>
+  <div class="mp-wrap" id="mpWrap"></div>
+  <p class="mp-hint">Klepnutím na službu přejdeš na ni v plánu. Tabulka jde posouvat do stran i nahoru a dolů.</p>
+  <button class="full-close" id="mpClose" type="button" aria-label="Zavřít celý plán">✕</button>
 </div>
 <div class="full" id="full" role="dialog" aria-modal="true" aria-label="Detail služby" hidden>
   <button class="full-close" id="fullClose" type="button" aria-label="Zavřít">✕</button>
@@ -644,7 +689,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.82"></script>
+<script src="sluzby-core.js?v=4.83"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -2573,6 +2618,82 @@ async function pushRefresh(){
   } catch(e) {}
 }
 
+/* ---------- celý plán měsíce: dlouhé podržení názvu měsíce ---------- */
+const mplan = document.getElementById("mplan");
+function mpHTML(){
+  const n = new Date(YEAR, MONTH + 1, 0).getDate(), now = getNow();
+  const todayD = now.getFullYear() === YEAR && now.getMonth() === MONTH ? now.getDate() : 0;
+  const T = EFF_T || {};
+  const names = Object.keys(T).filter(nm => (T[nm] || []).some(t => t && t !== ".")).sort((a, b) => a.localeCompare(b, "cs"));
+  const we = d => { const w = new Date(YEAR, MONTH, d).getDay(); return w === 0 || w === 6; };
+  let h = `<table class="mp-t"><thead><tr><th class="nm">Strážník</th>`;
+  for (let d = 1; d <= n; d++) h += `<th class="${we(d) ? "we" : ""}${d === todayD ? " today" : ""}" data-col="${d}">${d}.<small>${DOW_T[new Date(YEAR, MONTH, d).getDay()]}</small></th>`;
+  h += `<th class="sum">D</th><th class="sum">N</th></tr></thead><tbody>`;
+  const cntD = Array(n + 1).fill(0), cntN = Array(n + 1).fill(0);
+  names.forEach(nm => {
+    let sD = 0, sN = 0;
+    const sn = nm.split(" "); h += `<tr class="${nm === ME || nm === SELF ? "mp-me" : ""}"><th class="nm" title="${esc(nm)}">${esc(sn[0])}${sn[1] ? " " + esc(sn[1].charAt(0)) + "." : ""}</th>`;
+    for (let d = 1; d <= n; d++){
+      const tok = (T[nm] || [])[d - 1] || ".";
+      const parts = tok === "." ? [] : tok.split("+");
+      const codes = parts.map(p => p.replace(/\*$/, ""));
+      const kD = parts.find(p => kindOf(p) === "D"), kN = parts.find(p => kindOf(p) === "N");
+      const hasP = codes.includes("D2"), abs = codes.find(c => c === "DOV" || c === "ZdV"), k8 = codes.includes("Nk8");
+      if (kD){ sD++; cntD[d]++; } if (kN){ sN++; cntN[d]++; }
+      const cls = [we(d) ? "we" : "", d === todayD ? "today" : ""].filter(Boolean).join(" ");
+      if (!parts.length){ h += `<td class="${cls}"></td>`; continue; }
+      const main = kD || kN || (hasP ? "D2" : k8 ? "Nk8" : abs || parts[0]);
+      const c = hasP && kN ? "c-pn" : kD ? "c-d" : kN || k8 ? "c-n" : hasP ? "c-p" : abs ? "c-a" : "";
+      const st = parts.some(p => p.endsWith("*"));
+      const kind = kN && !kD ? "N" : "D";
+      const sw = !!(NOTES && (NOTES[`${d}|D|${nm}`] || NOTES[`${d}|N|${nm}`]));
+      const lbl = main.replace(/\*$/, "");
+      const extra = codes.filter(x => x !== lbl);
+      h += `<td class="${cls}"><button type="button" class="${c}${st ? " st" : ""}${sw ? " sw" : ""}" data-mpd="${d}" data-mpk="${kind}" aria-label="${esc(nm)}, ${d}. ${MONTH + 1}., ${esc(typeof tokLbl === "function" ? tokLbl(tok) : tok)}">${esc(lbl)}${extra.length ? `<small>+${esc(extra.join("+"))}</small>` : ""}</button></td>`;
+    }
+    h += `<td class="sum">${sD}</td><td class="sum">${sN}</td></tr>`;
+  });
+  h += `</tbody><tfoot><tr><th class="nm">Denní</th>`;
+  for (let d = 1; d <= n; d++) h += `<td class="${we(d) ? "we" : ""}${d === todayD ? " today" : ""}">${cntD[d] || ""}</td>`;
+  h += `<td></td><td></td></tr><tr><th class="nm">Noční</th>`;
+  for (let d = 1; d <= n; d++) h += `<td class="${we(d) ? "we" : ""}${d === todayD ? " today" : ""}">${cntN[d] || ""}</td>`;
+  h += `<td></td><td></td></tr></tfoot></table>`;
+  return h;
+}
+function openMplan(){
+  if (!PLAN || !EFF_T) return;
+  document.getElementById("mpTitle").textContent = `Plán služeb – ${MONTHS[MONTH]} ${YEAR}`;
+  const w = document.getElementById("mpWrap");
+  w.innerHTML = mpHTML();
+  mplan.hidden = false;
+  // vodorovně na dnešek (2 dny před ním), svisle na mě
+  const th = w.querySelector("th.today");
+  if (th) w.scrollLeft = Math.max(0, th.offsetLeft - 84 - 2 * th.offsetWidth);
+  const me = w.querySelector("tr.mp-me");
+  if (me && me.offsetTop > w.clientHeight - 80) w.scrollTop = me.offsetTop - w.clientHeight / 2;
+  document.getElementById("mpClose").focus();
+}
+function closeMplan(){ mplan.hidden = true; }
+document.getElementById("mpClose").addEventListener("click", closeMplan);
+document.getElementById("mpWrap").addEventListener("click", e => {
+  const b = e.target.closest("[data-mpd]"); if (!b) return;
+  closeMplan(); scrollToDay(+b.dataset.mpd, b.dataset.mpk);
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !mplan.hidden) closeMplan(); });
+{
+  const t = document.getElementById("title");
+  let tm = null, fired = false, sx = 0, sy = 0;
+  const clear = () => { clearTimeout(tm); tm = null; t.classList.remove("pressing"); };
+  t.addEventListener("pointerdown", e => {
+    fired = false; sx = e.clientX; sy = e.clientY; t.classList.add("pressing");
+    tm = setTimeout(() => { fired = true; clear(); if (navigator.vibrate) navigator.vibrate(15); openMplan(); }, 550);
+  });
+  t.addEventListener("pointermove", e => { if (tm && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) clear(); });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(x => t.addEventListener(x, clear));
+  t.addEventListener("contextmenu", e => e.preventDefault());
+  t.addEventListener("click", e => { if (fired){ fired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  t.style.webkitUserSelect = "none"; t.style.userSelect = "none"; t.style.webkitTouchCallout = "none";
+}
 document.getElementById("title").addEventListener("click", () => { if (SELF && PLAN) openCal(SELF); });
 document.getElementById("title").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && SELF && PLAN){ e.preventDefault(); openCal(SELF); } });
 

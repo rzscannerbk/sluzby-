@@ -161,7 +161,7 @@ function simulate(T0, req, accepter, y, m){
     if (out.e.length) return out;
     movePresun(T, req, len);
     checkPerson(T, req.od.jmeno, new Set([req.za.den]), y, m, out);
-    if (/\*$/.test(req.od.kod)) out.i.push("Stálá služba se přesunem nepřenáší – na novém dni budeš v hlídce.");
+    if (/\*$/.test(req.od.kod)) out.i.push(req.admin ? "Stálá služba se přesunem nepřenáší – na novém dni bude v hlídce (stálou jde nastavit přes Upravit den)." : "Stálá služba se přesunem nepřenáší – na novém dni budeš v hlídce.");
     if (!req.admin) out.i.push("Přesun musí schválit správce.");
     return out;
   }
