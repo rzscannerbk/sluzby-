@@ -464,6 +464,7 @@ button.cal-day{cursor:pointer}
 /* celý plán měsíce (dlouhé podržení názvu měsíce) */
 .mplan{position:fixed;inset:0;z-index:44;display:flex;flex-direction:column;background:var(--paper);padding:calc(env(safe-area-inset-top,0px) + 8px) 0 0;animation:fullIn .16s ease-out}
 .mplan[hidden]{display:none}
+.mplan,.mplan *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 .mplan .full-close{z-index:46;top:calc(env(safe-area-inset-top,0px) + 8px);bottom:auto;right:12px;width:40px;height:40px;font-size:18px}
 .mplan .mp-head{padding-right:60px}
 #title.pressing{opacity:.55;transition:opacity .3s}
@@ -597,7 +598,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.89</span>
+      <span class="ver" id="verDiag">v4.90</span>
     </div>
   </div>
 </header>
@@ -2815,7 +2816,8 @@ document.getElementById("mpBar").addEventListener("click", e => {
   });
   w.addEventListener("pointermove", e => { if (tm && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) clear(); });
   ["pointerup", "pointercancel", "pointerleave"].forEach(x => w.addEventListener(x, clear));
-  w.addEventListener("contextmenu", e => { if (e.target.closest("[data-mpd]")) e.preventDefault(); });
+  w.addEventListener("contextmenu", e => e.preventDefault());
+  mplan.addEventListener("selectstart", e => e.preventDefault());
   w.addEventListener("click", e => { if (fired){ fired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 }
 function openMplan(){
