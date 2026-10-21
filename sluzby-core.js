@@ -248,9 +248,11 @@ const dkey = (y, m, d) => `${y}-${String(m+1).padStart(2,"0")}-${String(d).padSt
 const dparse = k => { const [y, m, d] = k.split("-").map(Number); return {y, m:m-1, d}; };
 
 // pořadí strážníků jako v originálním plánu: uložené pořadí z importu („poradi“),
-// jinak pořadí z dlouhodobého plánu; kdo v něm chybí, jde na konec podle abecedy
+// jinak pořadí z papírového plánu (říjen 2026); kdo v něm chybí, jde na konec podle abecedy
+const PORADI_VYCHOZI = ["Hlaváček Michal","Šenk Kamil","Tóth Pavel","Sehnal Petr","Přikryl Miroslav","Tóth Ondřej","Menšík Jaroslav","Liška Michal","Havel Radek",
+  "Vašíček Zdeněk","Grénar Martin","Chalupa Martin","Tesař Libor","Adámek Jaroslav","Hofman Radek","Parolek Antonín","Juračka Lukáš","Škvařil Libor"];
 function planOrder(names, poradi, y){
-  const ref = (Array.isArray(poradi) && poradi.length ? poradi : Object.keys((DLP && DLP[y]) || DLP[2026] || {}));
+  const ref = Array.isArray(poradi) && poradi.length ? poradi : PORADI_VYCHOZI;
   const pos = n => { const i = ref.indexOf(n); return i < 0 ? 1e6 : i; };
   return names.slice().sort((a, b) => pos(a) - pos(b) || a.localeCompare(b, "cs"));
 }

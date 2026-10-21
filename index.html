@@ -467,16 +467,19 @@ button.cal-day{cursor:pointer}
 .mplan .full-close{z-index:46;top:calc(env(safe-area-inset-top,0px) + 8px);bottom:auto;right:12px;width:40px;height:40px;font-size:18px}
 .mplan .mp-head{padding-right:60px}
 #title.pressing{opacity:.55;transition:opacity .3s}
-.mp-head{padding:0 12px 8px}
-.mp-head h2{font-family:var(--f-cond);font-weight:600;font-size:24px;margin:0 0 4px;color:var(--ink)}
-.mp-leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--ink2)}
+.mp-head{padding:0 12px 6px}
+.mp-head h2{font-family:var(--f-cond);font-weight:600;font-size:22px;margin:0 0 3px;color:var(--ink)}
+.mp-leg{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:11.5px;color:var(--ink2)}
 .mp-leg span{display:inline-flex;align-items:center;gap:5px}
 .mp-leg i{width:11px;height:11px;border-radius:3px;display:inline-block}
 .mp-leg i.mp-a{background:#E7A3BE}.mp-leg i.mp-s{background:#2E9E5B;border-radius:50%}
 .mp-wrap{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border-top:1px solid var(--line)}
 .mp-t{border-collapse:separate;border-spacing:0;font-family:var(--f-cond);color:var(--ink)}
-.mp-t th,.mp-t td{padding:0;text-align:center;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:38px;height:34px;font-size:13px;line-height:1.05}
-.mp-t thead th{position:sticky;top:0;z-index:2;background:var(--sheet);font-weight:700;height:40px}
+.mp-t{--rh:34px}
+.mp-t th,.mp-t td{padding:0;text-align:center;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:38px;height:var(--rh);font-size:13px;line-height:1.05}
+.mp-t.tight td button{font-size:12px}.mp-t.tight td button small{display:none}
+.mp-t.tight th.nm{font-size:13px}
+.mp-t thead th{position:sticky;top:0;z-index:2;background:var(--sheet);font-weight:700;height:36px}
 .mp-t thead th small{display:block;font-weight:500;font-size:11px;color:var(--ink2)}
 .mp-t th.nm{position:sticky;left:0;z-index:1;background:var(--sheet);text-align:left;padding:0 6px;min-width:84px;max-width:84px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;font-size:14px}
 .mp-t thead th.nm{z-index:3}
@@ -486,7 +489,7 @@ button.cal-day{cursor:pointer}
 .mp-t th.today{background:var(--now);color:#fff}.mp-t th.today small{color:#fff}
 .mp-t td.today,.mp-t td.today button{box-shadow:inset 2px 0 0 var(--now),inset -2px 0 0 var(--now)}
 .mp-t td button,.mp-t th.nm{text-decoration:none}
-.mp-t td button{all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:34px;cursor:pointer;position:relative;font-weight:700}
+.mp-t td button{all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:var(--rh);cursor:pointer;position:relative;font-weight:700}
 .mp-t td .c-d{background:#F2D24A;color:#1D2A4D}
 .mp-t td .c-n{background:#4B3F9E;color:#fff}
 .mp-t td .c-p{background:#3A9AD9;color:#fff}
@@ -499,7 +502,7 @@ button.cal-day{cursor:pointer}
 .mp-t tfoot tr:first-child th,.mp-t tfoot tr:first-child td{bottom:26px}
 .mp-t tfoot th.nm{z-index:3;font-size:12px}
 .mp-t .sum{min-width:34px;font-size:12px;color:var(--ink2);font-weight:600}
-.mp-hint{margin:0;padding:6px 12px calc(var(--sab) + 10px) 12px;font-size:12px;color:var(--ink2)}
+.mp-hint{margin:0;padding:4px 12px calc(var(--sab) + 6px) 12px;font-size:11.5px;color:var(--ink2)}
 .swp{z-index:40}.swp .full-close{z-index:41}
 .sheet{flex:1 0 auto;background:var(--sheet);border:1.5px solid var(--ink);border-radius:16px;padding:20px 16px calc(var(--sab) + 100px)}
 .sheet h2{font-family:var(--f-cond);font-weight:600;font-size:26px;line-height:1.15;margin:0}
@@ -583,7 +586,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.85</span>
+      <span class="ver" id="verDiag">v4.86</span>
     </div>
   </div>
 </header>
@@ -607,7 +610,7 @@ button.cal-day{cursor:pointer}
 <div class="mplan" id="mplan" role="dialog" aria-modal="true" aria-labelledby="mpTitle" hidden>
   <div class="mp-head"><h2 id="mpTitle">Plán služeb</h2><div class="mp-leg"><span><i class="k-d"></i>Denní</span><span><i class="k-n"></i>Noční</span><span><i class="k-p"></i>Porada</span><span><i class="mp-a"></i>Dovolená / ZdV</span><span><i class="mp-s"></i>Stálá</span><span>⇄ výměna</span></div></div>
   <div class="mp-wrap" id="mpWrap"></div>
-  <p class="mp-hint">Klepnutím na službu přejdeš na ni v plánu. Tabulka jde posouvat do stran i nahoru a dolů.</p>
+  <p class="mp-hint">Klepnutím na službu přejdeš na ni v plánu. Dny posouváš prstem do stran.</p>
   <button class="full-close" id="mpClose" type="button" aria-label="Zavřít celý plán">✕</button>
 </div>
 <div class="full" id="full" role="dialog" aria-modal="true" aria-label="Detail služby" hidden>
@@ -689,7 +692,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.85"></script>
+<script src="sluzby-core.js?v=4.86"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -2669,12 +2672,24 @@ function openMplan(){
   w.innerHTML = mpHTML();
   mplan.hidden = false;
   // vodorovně na dnešek (2 dny před ním), svisle na mě
+  mpFit();
   const th = w.querySelector("th.today");
   if (th) w.scrollLeft = Math.max(0, th.offsetLeft - 84 - 2 * th.offsetWidth);
   const me = w.querySelector("tr.mp-me");
   if (me && me.offsetTop > w.clientHeight - 80) w.scrollTop = me.offsetTop - w.clientHeight / 2;
   document.getElementById("mpClose").focus();
 }
+// výška řádků tak, aby se všichni strážníci vešli na jednu obrazovku (min. 22 px)
+function mpFit(){
+  const w = document.getElementById("mpWrap"), t = w.querySelector(".mp-t"); if (!t) return;
+  const rows = t.tBodies[0].rows.length; if (!rows) return;
+  const head = t.tHead.offsetHeight, foot = t.tFoot ? t.tFoot.offsetHeight : 0;
+  const avail = w.clientHeight - head - foot - 2;
+  const rh = Math.max(22, Math.min(40, Math.floor(avail / rows) - 1));
+  t.style.setProperty("--rh", rh + "px");
+  t.classList.toggle("tight", rh < 30);
+}
+window.addEventListener("resize", () => { if (!mplan.hidden) mpFit(); });
 function closeMplan(){ mplan.hidden = true; }
 document.getElementById("mpClose").addEventListener("click", closeMplan);
 document.getElementById("mpWrap").addEventListener("click", e => {
