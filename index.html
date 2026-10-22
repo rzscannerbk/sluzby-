@@ -598,7 +598,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.90</span>
+      <span class="ver" id="verDiag">v4.91</span>
     </div>
   </div>
 </header>
@@ -1928,7 +1928,8 @@ function reqText(r){
 }
 const sluzeb = n => n === 1 ? "službu" : (n >= 2 && n <= 4) ? "služby" : "služeb";
 function balanceHTML(){
-  const list = [...MY_OD, ...MY_ZA].filter((r, i, a) => r.typ !== "vymena" && !r.admin && r.za && r.za.jmeno && a.findIndex(x => x.id === r.id) === i)
+  // dluh vzniká převzetím / vzetím nabídky – i převodem služby správcem (pokud ho správce nevyřadil z dluhů)
+  const list = [...MY_OD, ...MY_ZA].filter((r, i, a) => (r.typ === "prevzeti" || r.typ === "nabidka") && !r.bezDluhu && r.za && r.za.jmeno && r.za.jmeno !== r.od.jmeno && a.findIndex(x => x.id === r.id) === i)
     .sort((a,b) => (a.mesic + String(a.od.den).padStart(2,"0")).localeCompare(b.mesic + String(b.od.den).padStart(2,"0")));
   const per = {};
   list.forEach(r => {
@@ -1945,7 +1946,7 @@ function balanceHTML(){
     const score = net > 0 ? `${net}:0` : net < 0 ? `0:${-net}` : "0:0";
     const netTxt = net > 0 ? `dluží ti ${net} ${sluzeb(net)}` : net < 0 ? `dlužíš ${-net} ${sluzeb(-net)}` : "vyrovnáno";
     const items = list.filter(r => x.mine.includes(r) || x.theirs.includes(r))
-      .map(r => `<li>${x.mine.includes(r) ? "ty za něj" : "on za tebe"}: ${fmtS(r.mesic, r.od)}</li>`).join("");
+      .map(r => `<li>${x.mine.includes(r) ? "ty za něj" : "on za tebe"}: ${fmtS(r.mesic, r.od)}${r.admin ? " (převedl správce)" : ""}</li>`).join("");
     return `<details class="bal"><summary><span class="bn">${esc(who)}</span><span class="bs ${net > 0 ? "plus" : net < 0 ? "minus" : ""}">${score}</span><span class="bnet">${netTxt}</span></summary><ul>${items}</ul></details>`;
   }).join("");
   return `<h3>Převzaté služby</h3>
@@ -2976,6 +2977,7 @@ function renderAdm(){
     <label class="f" for="admTo">${ADM.typ === "vymena" ? "Druhý strážník" : "Komu službu dát"}</label>
     <select id="admTo">${opt(ADM.to, ADM.from)}</select>
     ${ADM.typ === "vymena" && ADM.to ? `<label class="f">Jeho služba</label>${admCalHTML(ADM.to, ADM.toShift, ADM.fromShift ? ADM.fromShift.den : null).replace(/class="cal-grid"/, 'class="cal-grid" data-side="to"')}${ADM.toShift ? `<p class="sub">Vybráno: ${fmtS(id, ADM.toShift)}</p>` : ""}` : ""}`}
+    ${ADM.typ === "prevzeti" ? `<label class="acheck"><input type="checkbox" id="admDluh" ${ADM.bezDluhu ? "" : "checked"}> Započítat do Převzatých služeb (kdo komu dluží)</label>` : ""}
     <label class="f" for="admPozn">Poznámka (nepovinné)</label>
     <input type="text" id="admPozn" maxlength="140" value="${esc(ADM.pozn)}">
     <div class="checks">${checksHTML(checks)}</div>
@@ -3035,6 +3037,7 @@ admBody.addEventListener("input", e => { if (e.target.id === "admPozn") ADM.pozn
 admBody.addEventListener("change", e => {
   if (e.target.id === "admFrom"){ ADM.from = e.target.value; ADM.fromShift = null; ADM.day = null; ADM.mvDay = null; ADM.mvKod = null; renderAdm(); }
   const st = e.target.dataset && e.target.dataset.ast; if (st){ ADM.st[st] = e.target.checked; renderAdm(); }
+  if (e.target.id === "admDluh") ADM.bezDluhu = !e.target.checked;
   if (e.target.id === "admTo"){ ADM.to = e.target.value; ADM.toShift = null; renderAdm(); }
 });
 admBody.addEventListener("click", async e => {
@@ -3066,7 +3069,7 @@ admBody.addEventListener("click", async e => {
       await db.collection(SWAP_COL).add({
         typ:r.typ, admin:true, mesic:r.mesic, stav:"prijato",
         odCislo:r.od.cislo, zaCislo:r.za && r.typ !== "presun" ? r.za.cislo : null,
-        od:r.od, za:r.za, ...(r.typ === "uprava" ? {z:r.z, na:r.na} : {}), pozn:ADM.pozn.trim(), zmenil:SELF_EMAIL,
+        od:r.od, za:r.za, ...(r.typ === "uprava" ? {z:r.z, na:r.na} : {}), ...(r.typ === "prevzeti" && ADM.bezDluhu ? {bezDluhu:true} : {}), pozn:ADM.pozn.trim(), zmenil:SELF_EMAIL,
         vytvoreno:FV.serverTimestamp(), vyrizeno:FV.serverTimestamp()
       });
       closeAdm(); openVym();

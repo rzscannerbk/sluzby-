@@ -391,7 +391,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v5.1</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v5.2</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -421,7 +421,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v5.1";
+const DESK_VER = "desktop v5.2";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:"", day:null, codes:[], st:{}, mvDay:null, mvKod:null};
@@ -1523,6 +1523,7 @@ function admHTML(){
         <section class="sum"><h2>Shrnutí</h2>${ADM.fromShift && ADM.from ? `<p><b>${esc(ADM.from)}</b> · ${fs(ADM.fromShift)}</p>` : `<p style="color:var(--ink2)">Vyber prvního strážníka a službu.</p>`}
           ${ADM.to ? `<p>${ADM.typ === "vymena" ? "⇄" : "→"} <b>${esc(ADM.to)}</b>${ADM.toShift ? " · " + fs(ADM.toShift) : ""}</p>` : ""}</section>
         ${chk.e.length + chk.w.length + chk.i.length ? `<section class="panel checks"><h2 style="font-size:20px">Kontrola plánu</h2>${checksHTML(chk)}</section>` : ""}
+        ${ADM.typ === "prevzeti" ? `<label class="acheck"><input type="checkbox" id="admDluh" ${ADM.bezDluhu ? "" : "checked"}> Započítat do Převzatých služeb (kdo komu dluží)</label>` : ""}
         <label class="field">Poznámka (nepovinné)<textarea id="admPozn" rows="2" maxlength="140">${esc(ADM.pozn)}</textarea></label>
         <button type="button" class="btn" id="admSave" style="min-height:52px;font-family:var(--f-cond);font-size:22px" ${ready ? "" : "disabled"}>Uložit změnu</button>
         <div class="checks" id="admMsg"></div>
@@ -1548,7 +1549,7 @@ MAIN.addEventListener("click", async e => {
     const FV = firebase.firestore.FieldValue;
     try {
       await db.collection(SWAP_COL).add({typ:r.typ, admin:true, mesic:r.mesic, stav:"prijato", odCislo:r.od.cislo, zaCislo:r.za && r.typ !== "presun" ? r.za.cislo : null,
-        od:r.od, za:r.za, ...(r.typ === "uprava" ? {z:r.z, na:r.na} : {}), pozn:ADM.pozn.trim(), zmenil:SELF_EMAIL, vytvoreno:FV.serverTimestamp(), vyrizeno:FV.serverTimestamp()});
+        od:r.od, za:r.za, ...(r.typ === "uprava" ? {z:r.z, na:r.na} : {}), ...(r.typ === "prevzeti" && ADM.bezDluhu ? {bezDluhu:true} : {}), pozn:ADM.pozn.trim(), zmenil:SELF_EMAIL, vytvoreno:FV.serverTimestamp(), vyrizeno:FV.serverTimestamp()});
       ADM.fromShift = ADM.toShift = null; ADM.day = ADM.mvDay = ADM.mvKod = null; ADM.pozn = ""; render();
     } catch (err){
       $("admMsg").innerHTML = `<p class="e">${esc(err.code === "permission-denied" ? "Uložení zamítnuto pravidly Firestore." : "Uložení se nepovedlo.")}</p>`;
@@ -1559,6 +1560,7 @@ MAIN.addEventListener("click", async e => {
 MAIN.addEventListener("change", e => {
   if (VIEW !== "admin") return;
   if (e.target.id === "admFrom"){ ADM.from = e.target.value; ADM.fromShift = null; ADM.day = ADM.mvDay = ADM.mvKod = null; render(); }
+  if (e.target.id === "admDluh") ADM.bezDluhu = !e.target.checked;
   if (e.target.dataset && e.target.dataset.ast){ ADM.st[e.target.dataset.ast] = e.target.checked; render(); }
   if (e.target.id === "admTo"){ ADM.to = e.target.value; ADM.toShift = null; render(); }
 });
