@@ -598,7 +598,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.92</span>
+      <span class="ver" id="verDiag">v4.93</span>
     </div>
   </div>
 </header>
@@ -1962,7 +1962,7 @@ const ST_LBL = {ceka:"Čeká", navrh:"Návrh", prijato:"Přijato", odmitnuto:"Od
 function reqCard(r, actions, go){
   const props = r.stav === "navrh" && r.odCislo !== SELF_NO
     ? `<span class="pz">Navrženo místo toho: ${(r.navrhy || []).map(t => fmtS(r.mesic, parseProp(t))).join(", ")}</span>` : "";
-  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${typeof reqTimes === "function" && reqTimes(r) ? `<span class="pz tm">${reqTimes(r)}</span>` : ""}${r.odCislo === SELF_NO && typeof reqSeenLine === "function" && (r.zaCislo == null || r.typ === "nabidka" || r.videli) && reqSeenLine(r) ? `<span class="pz tm seen">${reqSeenLine(r)}</span>` : ""}${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${isGroup(r) && (r.stav === "ceka" || r.stav === "navrh") ? `<span class="pz">Žádost dostalo ${r.skupina.length} kolegů – ${esc(surname(r.od.jmeno))} si vybere z těch, kdo souhlasí.</span>` : ""}${r.souhlas && r.stav === "ceka" ? `<span class="pz ok-s">✓ ${r.zaCislo === SELF_NO ? `Souhlasíš – čeká se, až ${esc(surname(r.od.jmeno))} potvrdí` : esc(surname(r.za.jmeno)) + " souhlasí" + (r.za && r.za.den ? ` – dá ${fmtS(r.mesic, r.za)}` : "")}.</span>` : ""}${r.duvod === "jinde" ? `<span class="pz">${r.vybrano ? "Autor si vybral jiného kolegu." : "Výměnu vzal jiný kolega."}</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div><span class="go">${go || "Zobrazit v plánu"} ›</span></div>`;
+  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${typeof reqTimes === "function" && reqTimes(r) ? `<span class="pz tm">${reqTimes(r)}</span>` : ""}${r.odCislo === SELF_NO && typeof reqSeenLine === "function" && (r.zaCislo == null || r.typ === "nabidka" || r.videli) && reqSeenLine(r) ? `<span class="pz tm seen">${reqSeenLine(r)}</span>` : ""}${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${isGroup(r) && (r.stav === "ceka" || r.stav === "navrh") ? `<span class="pz">Žádost dostalo ${r.skupina.length} kolegů – ${esc(surname(r.od.jmeno))} si vybere z těch, kdo souhlasí.</span>` : ""}${r.souhlas && r.stav === "ceka" ? `<span class="pz ok-s">✓ ${r.zaCislo === SELF_NO ? `Souhlasíš – čeká se, až ${esc(surname(r.od.jmeno))} potvrdí` : esc(surname(r.za.jmeno)) + " souhlasí" + (r.za && r.za.den ? ` – dá ${fmtS(r.mesic, r.za)}` : "")}.</span>` : ""}${r.zaKolegu ? `<span class="pz">Přijal správce (${esc(surname(r.zaKolegu))}) za ${esc(zaTvar(r.za.jmeno))}.</span>` : ""}${r.duvod === "jinde" ? `<span class="pz">${r.vybrano ? "Autor si vybral jiného kolegu." : "Výměnu vzal jiný kolega."}</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div><span class="go">${go || "Zobrazit v plánu"} ›</span></div>`;
 }
 let PROP = null; // {id, picks:[]} – rozpracovaný návrh u žádosti
 function propChoiceHTML(r){
@@ -2124,7 +2124,25 @@ async function reqAction(e){
   const FV = firebase.firestore.FieldValue;
   box.querySelectorAll("button").forEach(x => x.disabled = true);
   try {
-    if ((act === "accept" || act === "acceptopt") && isGroup(r) && r.zaCislo === SELF_NO){
+    if ((act === "proxy" || act === "proxyopt") && isAdminUI()){
+      let za = r.za;
+      if (act === "proxyopt"){ const x = parseProp((r.moznosti || [])[+b.dataset.n]); za = {jmeno:r.za.jmeno, cislo:r.za.cislo, den:x.den, kind:x.kind, kod:x.kod}; }
+      msg.innerHTML = `<p class="i">Kontroluji plán…</p>`;
+      const [y, m] = ymOf(r.mesic);
+      const out = simulate(await loadMonthState(r.mesic), {...r, za}, null, y, m);
+      msg.innerHTML = checksHTML(out);
+      if (out.e.length) throw null;
+      if (!await askConfirm(`Přijmout za ${esc(zaTvar(r.za.jmeno))}?`, `<p style="margin:0 0 6px">Výměna se provede, jako by ji přijal ${esc(r.za.jmeno)}.</p>` + swapDesc({...r, za}, za) + (out.w.length ? `<div class="checks">${checksHTML({e:[], w:out.w, i:[]})}</div>` : ""), "Ano, přijmout")) throw null;
+      await db.runTransaction(async tx => {
+        const s = await tx.get(ref);
+        if (!s.exists || s.data().stav !== "ceka") throw new Error("Žádost už byla vyřízena.");
+        await siblingCheck(tx, r);
+        tx.update(ref, {stav:"prijato", za, vyrizeno:FV.serverTimestamp(), zaKolegu:SELF, zmenil:SELF_EMAIL});
+      });
+    } else if (act === "proxycancel" && isAdminUI()){
+      if (!await askConfirm("Zrušit žádost?", swapDesc(r, r.za && r.za.den ? r.za : null), "Ano, zrušit", true)) throw null;
+      await ref.update({stav:"zruseno", vyrizeno:FV.serverTimestamp(), zmenil:SELF_EMAIL});
+    } else if ((act === "accept" || act === "acceptopt") && isGroup(r) && r.zaCislo === SELF_NO){
       // skupinová žádost: jen souhlas – výměnu provede až výběr autora
       let za = r.za;
       if (act === "acceptopt"){ const x = parseProp((r.moznosti || [])[+b.dataset.n]); za = {jmeno:r.za.jmeno, cislo:r.za.cislo, den:x.den, kind:x.kind, kod:x.kod}; }
@@ -3016,10 +3034,18 @@ function admMoveEditHTML(id, opt){
   }
   return h;
 }
+// správce dokončí čekající žádost za kolegu, který nemá aplikaci (souhlas dal jinak)
+function admProxyHTML(r){
+  const kdo = esc(zaTvar(r.za.jmeno));
+  const acc = r.moznosti && !r.za.den
+    ? r.moznosti.map((t, i) => { const x = parseProp(t); return `<button class="btn btn-ok" data-act="proxyopt" data-n="${i}">Za ${kdo}: ${fmtS(r.mesic, x)}</button>`; }).join("")
+    : `<button class="btn btn-ok" data-act="proxy">Přijmout za ${kdo}</button>`;
+  return `${acc}<button class="btn sec btn-danger" data-act="proxycancel">Zrušit žádost</button>`;
+}
 function admLogHTML(){
   const list = SWAPS_MONTH.slice().sort((a,b) => tsMs(b.vyrizeno || b.vytvoreno) - tsMs(a.vyrizeno || a.vytvoreno));
   return `<h3>Všechny změny – ${MONTHS[MONTH]}</h3>${list.length
-    ? list.map(r => reqCard(r, r.stav === "prijato" ? `<button class="btn sec btn-danger" data-act="revoke">${r.typ === "volno" ? "Zrušit volno" : r.typ === "uprava" ? "Vrátit úpravu" : r.typ === "presun" ? "Zrušit přesun" : "Zrušit výměnu"}</button>` : "")).join("")
+    ? list.map(r => reqCard(r, r.stav === "ceka" && r.za && r.za.jmeno && (r.typ === "vymena" || r.typ === "prevzeti") ? admProxyHTML(r) : r.stav === "prijato" ? `<button class="btn sec btn-danger" data-act="revoke">${r.typ === "volno" ? "Zrušit volno" : r.typ === "uprava" ? "Vrátit úpravu" : r.typ === "presun" ? "Zrušit přesun" : "Zrušit výměnu"}</button>` : "")).join("")
     : `<p class="empty-s">Zatím žádné změny.</p>`}`;
 }
 function openAdm(){
