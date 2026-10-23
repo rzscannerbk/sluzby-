@@ -391,7 +391,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v5.2</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v5.3</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -402,7 +402,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.86"></script>
+<script src="sluzby-core.js?v=4.92"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -421,7 +421,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v5.2";
+const DESK_VER = "desktop v5.3";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:"", day:null, codes:[], st:{}, mvDay:null, mvKod:null};
@@ -430,7 +430,7 @@ const qNow = new URLSearchParams(location.search).get("now");
 const getNow = () => qNow ? new Date(qNow) : new Date();
 const $ = id => document.getElementById(id);
 const MAIN = $("main");
-const NTIME = {N12:"19–7", N13:"19–8", Nz7:"19–24"};
+const NTIME = {N12:"19–7", N13:"19–8", Nz7:"19–24", Nz8:"19–24"};
 const MONTHS_GEN = ["ledna","února","března","dubna","května","června","července","srpna","září","října","listopadu","prosince"];
 
 let auth = null, db = null;
@@ -832,7 +832,7 @@ function weekHTML(){
       const [ws, we2] = windowOf(dt, code), live = now >= ws && now < we2;
       const mine = SELF && [s.stala, ...s.hl].some(p => p && p.name === SELF);
       const pct = live ? Math.round((now - ws) / (we2 - ws) * 100) : 0;
-      const absTxt = k === "D" ? [info.A.DOV ? "DOV " + info.A.DOV.map(n => n.split(" ")[0]).join(", ") : "", info.A.ZdV ? "ZdV " + info.A.ZdV.map(n => n.split(" ")[0]).join(", ") : "", info.P.length ? "Porada D2: " + info.P.length + "×" : ""].filter(Boolean).join(" · ") : "";
+      const absTxt = k === "D" ? [info.A.DOV ? "DOV " + info.A.DOV.map(n => n.split(" ")[0]).join(", ") : "", info.A.ZdV ? "ZdV " + info.A.ZdV.map(n => n.split(" ")[0]).join(", ") : "", info.P.length ? [...new Set(info.P.map(p => p.code || "D2"))].map(c => (CODES[c] && CODES[c].label || "Porada") + " " + c + ": " + info.P.filter(p => (p.code || "D2") === c).length + "×").join(" · ") : ""].filter(Boolean).join(" · ") : "";
       const canSwap = mine && ws > now;
       return `<div class="card ${k === "D" ? "day" : "night"}${live ? " live" : mine ? " mine" : ""}" data-det="${idOf(dt)}|${dt.getDate()}|${k}" tabindex="-1" role="button" aria-label="Detail – ${k === "D" ? "denní" : "noční"} služba ${dt.getDate()}. ${dt.getMonth() + 1}.">
         <div class="ch"><b>${k === "D" ? "Den" : "Noc"}</b><span>${k === "D" ? (code === "D8" ? "10–18" : "7–19") : (NTIME[code] || "19–8")}</span></div>
@@ -879,8 +879,8 @@ function railHTML(){
 
 /* ----- měsíc ----- */
 /* ----- můj plán (měsíc přihlášeného strážníka) ----- */
-const SHIFT_LBL = {D12:["Den", "7–19"], D8:["Den", "10–18"], N12:["Noc", "19–7"], N13:["Noc", "19–8"], Nz7:["Noc", "19–24"], Nk8:["Dojezd noci", "0–8"], D2:["Porada", "8–10"], DOV:["Dovolená", ""], ZdV:["Zdravotní volno", ""]};
-const SHIFT_H = {D12:12, D8:8, N12:12, N13:13, Nz7:5, Nk8:8, D2:2};
+const SHIFT_LBL = {D12:["Den", "7–19"], D8:["Den", "10–18"], N12:["Noc", "19–7"], N13:["Noc", "19–8"], Nz7:["Noc", "19–24"], Nz8:["Noc", "19–24"], Nk8:["Dojezd noci", "0–8"], Nk7:["Dojezd noci", "0–7"], D2:["Porada", "8–10"], D4:["Dopolední služba", "8–12"], D5:["Porada a školení", "8–13"], DOV:["Dovolená", ""], ZdV:["Zdravotní volno", ""]};
+const SHIFT_H = {D12:12, D8:8, N12:12, N13:13, Nz7:5, Nz8:5, Nk8:8, Nk7:7, D2:2, D4:4, D5:5};
 function mineHTML(){
   const {y, m} = MY_, id = docId(y, m), o = month(id), now = getNow();
   const title = `Můj plán · ${cap(MONTHS[m])} ${y}`;
@@ -901,8 +901,8 @@ function mineHTML(){
       const k = def.k === "D" ? "D" : def.k === "N" || def.k === "K" ? "N" : def.k === "P" ? "P" : "A";
       if (!kind || k === "D" || k === "N") kind = kind === "D" || kind === "N" ? kind : k;
       if (/^(D12|D8)$/.test(code)) cD++;
-      if (/^(N12|N13|Nz7)$/.test(code)) cN++;
-      if (code === "D2") cP++;
+      if (/^(N12|N13|Nz7|Nz8)$/.test(code)) cN++;
+      if (isP(code)) cP++;
       if (st) cS++;
       if (k === "A") cA++;
       hrs += SHIFT_H[code] || 0;
@@ -918,12 +918,12 @@ function mineHTML(){
     if (info){
       const slots = [];
       if (toks.some(c => /^(D12|D8)/.test(c)) || kind === "P") slots.push(["D", info.D]);
-      if (toks.some(c => /^(N1[23]|Nz7)/.test(c))) slots.push(["N", info.N]);
+      if (toks.some(c => /^(N1[23]|Nz[78])/.test(c))) slots.push(["N", info.N]);
       slots.forEach(([sk, sl]) => {
         const who = p => `<span class="${p.name === SELF ? "me" : ""}">${esc(shortName(p.name))}${p.note && p.name !== SELF ? ` <i class="swb">⇄ ${esc(p.note)}</i>` : ""}</span>`;
         body += `<div class="pteam">${slots.length > 1 ? `<small>${sk === "D" ? "Den" : "Noc"}:</small> ` : ""}${sl.stala ? `<span class="pst">${esc(shortName(sl.stala.name))}</span>` : ""}${sl.hl.map(who).join("")}</div>`;
       });
-      if (dk === "D" && info.P.length && kind !== "P") body += `<div class="pmeta">Porada: ${info.P.map(p => esc(p.name.split(" ")[0])).join(", ")}</div>`;
+      if (dk === "D" && info.P.length && kind !== "P") body += `<div class="pmeta">${[...new Set(info.P.map(p => p.code))].map(c => `${CODES[c].label || "Porada"} ${c}: ${info.P.filter(p => p.code === c).map(p => esc(p.name.split(" ")[0])).join(", ")}`).join(" · ")}</div>`;
       const abs = [info.A.DOV ? "DOV " + info.A.DOV.map(n => n.split(" ")[0]).join(", ") : "", info.A.ZdV ? "ZdV " + info.A.ZdV.map(n => n.split(" ")[0]).join(", ") : ""].filter(Boolean).join(" · ");
       if (abs) body += `<div class="pmeta">${esc(abs)}</div>`;
     }
@@ -935,7 +935,7 @@ function mineHTML(){
   const sum = `<section class="panel"><h2>Souhrn – ${MONTHS[m]}</h2>
       <div class="msum"><div><b>${cD}</b><span>denních</span></div><div><b>${cN}</b><span>nočních</span></div><div><b>${hrs}</b><span>hodin</span></div></div>
       <div class="cal-sum" style="margin:10px 0 0">${cP ? `<span><i style="background:var(--pd)"></i>Porada <b>${cP}</b></span>` : ""}<span><i style="background:var(--green)"></i>Stálá <b>${cS}</b></span>${cA ? `<span><i style="background:var(--absBg)"></i>Dovolená / ZdV <b>${cA}</b></span>` : ""}</div></section>`;
-  const lst = `<section class="panel"><h2>Moje služby</h2>${list.map(x => `<button type="button" class="next lnk" data-det="${id}|${x.d}|${x.k === "N" ? "N" : "D"}"><i style="background:${x.k === "D" ? "var(--day)" : x.k === "P" ? "var(--pd)" : "var(--night)"}"></i><span>${DOW[x.wd]} ${x.d}. ${m + 1}. ${x.k === "D" ? "denní" : x.k === "P" ? "porada" : "noční"}${x.st ? " (stálá)" : ""}${x.sw ? ` · ⇄ ${esc(x.sw)}` : ""}</span><b>${x.code}</b></button>`).join("") || `<p class="empty">V tomto měsíci nemáš žádnou službu.</p>`}</section>`;
+  const lst = `<section class="panel"><h2>Moje služby</h2>${list.map(x => `<button type="button" class="next lnk" data-det="${id}|${x.d}|${x.k === "N" ? "N" : "D"}"><i style="background:${x.k === "D" ? "var(--day)" : x.k === "P" ? "var(--pd)" : "var(--night)"}"></i><span>${DOW[x.wd]} ${x.d}. ${m + 1}. ${x.k === "D" ? "denní" : x.k === "P" ? (CODES[x.code] && CODES[x.code].label || "porada").toLowerCase() : "noční"}${x.st ? " (stálá)" : ""}${x.sw ? ` · ⇄ ${esc(x.sw)}` : ""}</span><b>${x.code}</b></button>`).join("") || `<p class="empty">V tomto měsíci nemáš žádnou službu.</p>`}</section>`;
   return `${planBar(title)}<div class="planwrap"><div class="mineview"><div class="pgrid">${cells}</div><p class="hint" style="margin-top:10px">Klikni na den – otevře se detail služby. Šipky na klávesnici procházejí dny, Enter otevře detail.</p></div><aside class="rail">${sum}${lst}</aside></div>`;
 }
 /* filtr měsíčního plánu podle typu (klik na legendu) */
@@ -964,13 +964,13 @@ function monthHTML(){
     for (let d = 1; d <= n; d++){
       const toks = tokens(o.T, name, d).filter(c => c !== ".");
       let cls = "", t = "";
-      const main = toks.find(c => /^(D12|D8|N1[23]|Nz7)/.test(c)) || toks[0];
+      const main = toks.find(c => /^(D12|D8|N1[23]|Nz[78])/.test(c)) || toks[0];
       if (main){
         const code = main.replace(/\*$/, ""), def = CODES[code] || {};
         cls = def.k === "D" ? "D" : def.k === "N" || def.k === "K" ? "N" : def.k === "P" ? "P" : def.k === "A" ? "A" : "";
         t = code;
         if (toks.some(c => /^(D12|D8)/.test(c))) cD++;
-        if (toks.some(c => /^(N1[23]|Nz7)/.test(c))) cN++;
+        if (toks.some(c => /^(N1[23]|Nz[78])/.test(c))) cN++;
       }
       const swp = main && Object.keys(o.notes).some(k => k.startsWith(`${d}|`) && k.endsWith(`|${name}`));
       const dk = main ? (kindOf(main) || (cls === "N" ? "N" : "D")) : "D";
@@ -1064,8 +1064,8 @@ function myCalHTML(){
   for (let d = 1; d <= o.len; d++){
     const t = tokens(o.T, SELF, d).filter(c => c !== ".");
     if (t.some(c => /^(D12|D8)/.test(c))) cD++;
-    if (t.some(c => /^(N1[23]|Nz7)/.test(c))) cN++;
-    if (t.some(c => /^D2/.test(c))) cP++;
+    if (t.some(c => /^(N1[23]|Nz[78])/.test(c))) cN++;
+    if (t.some(c => isP(c))) cP++;
     if (t.some(c => c.endsWith("*"))) cS++;
     if (t.some(c => /^(DOV|ZdV)/.test(c))) cA++;
   }
@@ -1095,7 +1095,7 @@ function detHTML(){
   const extra = [];
   if (k === "D"){
     if (info.ev) String(info.ev).split(/\s*·\s*/).filter(Boolean).forEach(t => extra.push(`<p class="dev">${esc(t)}</p>`));
-    if (info.P.length) extra.push(`<p><b>Porada 8:00–10:00:</b> ${info.P.map(p => esc(p.name)).join(", ")}</p>`);
+    [...new Set(info.P.map(p => p.code))].forEach(c => { const d = CODES[c]; extra.push(`<p><b>${d.label || "Porada"} ${d.s[0]}:${String(d.s[1]).padStart(2, "0")}–${d.e[0]}:${String(d.e[1]).padStart(2, "0")}:</b> ${info.P.filter(p => p.code === c).map(p => esc(p.name)).join(", ")}</p>`); });
     if (info.A.DOV) extra.push(`<p><b>Dovolená:</b> ${info.A.DOV.map(esc).join(", ")}</p>`);
     if (info.A.ZdV) extra.push(`<p><b>Zdravotní volno:</b> ${info.A.ZdV.map(esc).join(", ")}</p>`);
   }
@@ -1426,8 +1426,8 @@ MAIN.addEventListener("click", async e => {
   }
 });
 /* ----- administrace ----- */
-const ADM_CODES = ["D12","D8","N12","N13","Nz7","Nk8","D2","DOV","ZdV"];
-const ADM_CODE_LBL = {D12:"D12 7–19", D8:"D8 10–18", N12:"N12 19–7", N13:"N13 19–8", Nz7:"Nz7 19–24", Nk8:"Nk8 dojezd", D2:"Porada", DOV:"Dovolená", ZdV:"Zdr. volno"};
+const ADM_CODES = ["D12","D8","N12","N13","Nz8","Nk7","Nk8","D2","D4","D5","DOV","ZdV"];
+const ADM_CODE_LBL = {D12:"D12 7–19", D8:"D8 10–18", N12:"N12 19–7", N13:"N13 19–8", Nz7:"Nz7 19–24", Nz8:"Nz8 19–24", Nk7:"Nk7 0–7", Nk8:"Nk8 0–8", D2:"D2 porada", D4:"D4 8–12", D5:"D5 8–13", DOV:"Dovolená", ZdV:"Zdr. volno"};
 function admToken(){
   const c = ADM_CODES.filter(x => ADM.codes.includes(x));
   return c.length ? c.map(x => ADM.st[x] && kindOf(x) ? x + "*" : x).join("+") : ".";
@@ -1462,7 +1462,7 @@ function admEditHTML(id, opt, chk, ready){
     if (ADM.fromShift){
       const cur = ADM.mvKod || ADM.fromShift.kod.replace(/\*$/, "");
       right = `<h2>Na který den</h2>${calHTML(id, name, c => ({cls:(ADM.mvDay === c.d ? "pick " : "") + (c.d === ADM.fromShift.den ? "give " : "") + (c.today ? "today" : ""), attr:`data-amv="${c.d}"`}))}
-        ${ADM.mvDay ? `<h2 style="margin-top:14px">Jaká služba</h2>${chips(["D12","D8","N12","N13","Nz7"], "data-mvkod", c => c === cur)}` : ""}`;
+        ${ADM.mvDay ? `<h2 style="margin-top:14px">Jaká služba</h2>${chips(["D12","D8","N12","N13","Nz8"], "data-mvkod", c => c === cur)}` : ""}`;
       sum = `<p><b>${esc(name)}</b> · ${fs(ADM.fromShift)}</p>${ADM.mvDay ? `<p>→ ${fs({den:ADM.mvDay, kind:kindOf(cur)})} (${cur})</p>` : ""}`;
     }
   } else if (name){

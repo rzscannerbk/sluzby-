@@ -10,8 +10,12 @@ const CODES = {
   N13:{k:"N", s:[19,0], e:[8,0]},
   N12:{k:"N", s:[19,0], e:[7,0]},
   Nz7:{k:"N", s:[19,0], e:[24,0]},
+  Nz8:{k:"N", s:[19,0], e:[24,0]},
   Nk8:{k:"K", s:[0,0],  e:[8,0]},
-  D2: {k:"P", s:[8,0],  e:[10,0]},
+  Nk7:{k:"K", s:[0,0],  e:[7,0]},
+  D2: {k:"P", s:[8,0],  e:[10,0], label:"Porada"},
+  D4: {k:"P", s:[8,0],  e:[12,0], label:"Dopolední služba"},
+  D5: {k:"P", s:[8,0],  e:[13,0], label:"Porada a školení"},
   DOV:{k:"A", label:"Dovolená"},
   ZdV:{k:"A", label:"Zdravotní volno"}
 };
@@ -22,7 +26,9 @@ const DOW_T = ["Ne","Po","Út","St","Čt","Pá","So"];
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 const KIND_LBL = {D:"denní", N:"noční"};
-const kindOf = c => { c = c.replace(/\*$/, ""); return (c === "D12" || c === "D8") ? "D" : (c === "N12" || c === "N13" || c === "Nz7") ? "N" : null; };
+const kindOf = c => { c = c.replace(/\*$/, ""); return (c === "D12" || c === "D8") ? "D" : (c === "N12" || c === "N13" || c === "Nz7" || c === "Nz8") ? "N" : null; };
+const isP = c => { const d = CODES[String(c).replace(/\*$/, "")]; return !!d && d.k === "P"; };
+const isK = c => { const d = CODES[String(c).replace(/\*$/, "")]; return !!d && d.k === "K"; };
 const surname = n => String(n).split(" ")[0];
 // 4. pád pro štítek výměny „za …“ (za Hlaváčka, za Pavla Tótha…)
 const ZA_TVAR = {
@@ -108,7 +114,7 @@ function applySwaps(plan, swaps, len){
 }
 
 /* --- kontroly: kolize, odpočinek, dovolená --- */
-const SPAN = {D12:[7,19,0], D8:[10,18,0], N12:[19,7,1], N13:[19,8,1], Nz7:[19,0,1], Nk8:[0,8,0]};
+const SPAN = {D12:[7,19,0], D8:[10,18,0], N12:[19,7,1], N13:[19,8,1], Nz7:[19,0,1], Nz8:[19,0,1], Nk8:[0,8,0], Nk7:[0,7,0]};
 function intervals(T, name, y, m){
   const out = [];
   (T[name] || []).forEach((tok, i) => {
@@ -116,7 +122,7 @@ function intervals(T, name, y, m){
     tok.split("+").forEach(p => {
       const c = p.replace(/\*$/, ""), sp = SPAN[c]; if (!sp) return;
       const s = new Date(y, m, i+1, sp[0]), e = new Date(y, m, i+1 + sp[2], sp[1]);
-      out.push({s, e, day:i+1, lbl:`${i+1}. ${c === "Nk8" ? "dojezd noci" : KIND_LBL[kindOf(c)]} (${c})`});
+      out.push({s, e, day:i+1, lbl:`${i+1}. ${isK(c) ? "dojezd noci" : KIND_LBL[kindOf(c)]} (${c})`});
     });
   });
   return out.sort((a,b) => a.s - b.s);
