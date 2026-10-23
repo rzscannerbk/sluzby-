@@ -391,7 +391,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v5.3</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v5.5</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -402,7 +402,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.92"></script>
+<script src="sluzby-core.js?v=4.96"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -421,7 +421,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v5.3";
+const DESK_VER = "desktop v5.5";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:"", day:null, codes:[], st:{}, mvDay:null, mvKod:null};
@@ -549,14 +549,15 @@ function month(id){
   if (M[id]) return M[id];
   const [y, m] = ymOf(id);
   const o = M[id] = {id, y, m, len:new Date(y, m + 1, 0).getDate(), plan:null, ev:{}, swaps:[], T:{}, notes:{}, okP:false, okS:false, exists:false, unsub:[]};
-  const recalc = () => { if (!o.okP) return; const r = applySwaps(o.plan || {}, o.swaps, o.len); o.T = r.T; o.notes = r.notes; render(); };
+  let own = [], cross = [];
+  const recalc = () => { if (!o.okP) return; const r = applySwaps(o.plan || {}, o.swaps, o.len, id); o.T = r.T; o.notes = r.notes; render(); };
+  const merge = () => { const ids = new Set(own.map(x => x.id)); o.swaps = [...own, ...cross.filter(x => !ids.has(x.id))]; o.okS = true; recalc(); };
   o.unsub.push(db.collection(COLLECTION).doc(id).onSnapshot(s => {
     o.exists = s.exists; const d = s.exists ? s.data() : {};
     o.plan = d.plan || {}; o.poradi = d.poradi || null; o.ev = d.udalosti || {}; o.okP = true; recalc();
   }, () => { o.okP = true; render(); }));
-  o.unsub.push(db.collection(SWAP_COL).where("mesic", "==", id).onSnapshot(s => {
-    o.swaps = s.docs.map(d => ({id:d.id, ...d.data()})); o.okS = true; recalc();
-  }, () => {}));
+  o.unsub.push(db.collection(SWAP_COL).where("mesic", "==", id).onSnapshot(s => { own = s.docs.map(d => ({id:d.id, ...d.data()})); merge(); }, () => {}));
+  o.unsub.push(db.collection(SWAP_COL).where("zaMesic", "==", id).onSnapshot(s => { cross = s.docs.map(d => ({id:d.id, ...d.data()})); merge(); }, () => {}));
   return o;
 }
 function dayInfo(date){
@@ -609,7 +610,7 @@ function reqText(r){
   if (r.admin && r.typ === "presun") return `Přesun služby: <b>${esc(od.jmeno)}</b> ${fmtS(r.mesic, od)} → ${fmtS(r.mesic, za)} (${esc(za.kod || "")}).`;
   if (r.typ === "volno") return `<b>${esc(od.jmeno)}</b> žádá o ${VOLNO_ACC[r.druh] || "volno"}: ${volnoDays(r.mesic, r)}.`;
   if (r.typ === "presun") return `<b>${esc(od.jmeno)}</b> přesouvá svou službu ${fmtS(r.mesic, od)} na ${fmtS(r.mesic, za)} (${esc(za.kod || "")}).`;
-  if (r.typ === "vymena" && r.moznosti && !za.den) return `<b>${esc(od.jmeno)}</b> dá svou ${fmtS(r.mesic, od)} za ${za.jmeno === SELF ? "jednu z tvých služeb" : `jednu ze služeb <b>${esc(za.jmeno)}</b>`}: ${r.moznosti.map(t => fmtS(r.mesic, parseProp(t))).join(", ")}.`;
+  if (r.typ === "vymena" && r.moznosti && !za.den) return `<b>${esc(od.jmeno)}</b> dá svou ${fmtS(r.mesic, od)} za ${za.jmeno === SELF ? "jednu z tvých služeb" : `jednu ze služeb <b>${esc(za.jmeno)}</b>`}: ${r.moznosti.map(t => fmtS(zaM(r), parseProp(t))).join(", ")}.`;
   if (r.typ === "vymena") return `<b>${esc(od.jmeno)}</b> dá svou ${fmtS(r.mesic, od)} za ${za.jmeno === SELF ? "tvoji" : `službu <b>${esc(za.jmeno)}</b>`} ${fmtS(r.mesic, za)}.`;
   if (r.typ === "prevzeti") return `<b>${esc(od.jmeno)}</b> žádá ${za.jmeno === SELF ? "tebe" : `<b>${esc(za.jmeno)}</b>`} o převzetí služby ${fmtS(r.mesic, od)}.`;
   return `<b>${esc(od.jmeno)}</b> nabízí službu ${fmtS(r.mesic, od)}${za.jmeno ? `, vzal ji <b>${esc(za.jmeno)}</b>` : " komukoli"}.`;
@@ -628,12 +629,12 @@ function reqActions(r){
   if (r.stav === "ceka" && r.zaCislo === SELF_NO){
     if (PROP && PROP.id === r.id) return propHTML(r);
     const acc = r.moznosti && !(r.za || {}).den
-      ? r.moznosti.map((t, i) => { const x = parseProp(t); return `<button type="button" class="opt${kc(x)}" data-act="acceptopt" data-n="${i}">${fmtS(r.mesic, x)} <span>${isGroup(r) ? "Souhlasím s touhle" : "Přijmout tuhle"}</span></button>`; }).join("")
+      ? r.moznosti.map((t, i) => { const x = parseProp(t); return `<button type="button" class="opt${kc(x)}" data-act="acceptopt" data-n="${i}">${fmtS(zaM(r), x)} <span>${isGroup(r) ? "Souhlasím s touhle" : "Přijmout tuhle"}</span></button>`; }).join("")
       : `<button type="button" class="btn" data-act="accept">${isGroup(r) ? "Souhlasím" : "Přijmout"}</button>`;
     return `<div class="people">${r.moznosti && !(r.za || {}).den ? acc : ""}</div><div class="btns">${r.moznosti && !(r.za || {}).den ? "" : acc}<button type="button" class="btn danger" data-act="reject">Odmítnout</button>${r.typ === "vymena" || r.typ === "prevzeti" ? `<button type="button" class="btn sec" data-act="propose">Navrhnout</button>` : ""}</div>`;
   }
   if (r.stav === "navrh" && r.odCislo === SELF_NO){
-    return `<p class="meta">${esc(r.za.jmeno)} místo toho navrhuje – vyber jednu:</p><div class="people">${(r.navrhy || []).map((t, i) => { const x = parseProp(t); return `<button type="button" class="opt${kc(x)}" data-act="choose" data-n="${i}">${fmtS(r.mesic, x)} <span>Vzít tuhle</span></button>`; }).join("")}</div><div class="btns"><button type="button" class="btn danger" data-act="rejectprop">Odmítnout návrhy</button></div>`;
+    return `<p class="meta">${esc(r.za.jmeno)} místo toho navrhuje – vyber jednu:</p><div class="people">${(r.navrhy || []).map((t, i) => { const x = parseProp(t); return `<button type="button" class="opt${kc(x)}" data-act="choose" data-n="${i}">${fmtS(zaM(r), x)} <span>Vzít tuhle</span></button>`; }).join("")}</div><div class="btns"><button type="button" class="btn danger" data-act="rejectprop">Odmítnout návrhy</button></div>`;
   }
   if (r.stav === "ceka" && r.zaCislo == null && r.odCislo !== SELF_NO) return `<div class="btns"><button type="button" class="btn" data-act="take">Vzít službu</button></div>`;
   if (r.stav === "ceka" && r.odCislo === SELF_NO) return `<div class="btns"><button type="button" class="btn sec sm" data-act="cancel">Zrušit žádost</button></div>`;
@@ -643,14 +644,14 @@ function reqCard(r, withActions){
   return `<div class="req" data-id="${r.id}"><p>${reqText(r)} <span class="stbadge">${ST_LBL[r.stav] || ""}</span></p>${reqTimes(r) ? `<p class="meta">${reqTimes(r)}</p>` : ""}${r.odCislo === SELF_NO && (r.zaCislo == null || r.typ === "nabidka" || r.videli) && reqSeenLine(r) ? `<p class="meta">${reqSeenLine(r)}</p>` : ""}${r.pozn ? `<p class="pz">„${esc(r.pozn)}“</p>` : ""}${isGroup(r) && r.stav === "ceka" ? `<p class="meta">Žádost dostalo ${r.skupina.length} kolegů – ${esc(surname(r.od.jmeno))} si vybere z těch, kdo souhlasí.</p>` : ""}${r.souhlas && r.stav === "ceka" ? `<p class="meta" style="color:#2E9E5B;font-weight:600">✓ ${r.zaCislo === SELF_NO ? `Souhlasíš – čeká se, až ${esc(surname(r.od.jmeno))} potvrdí` : esc(surname(r.za.jmeno)) + " souhlasí" + (r.za && r.za.den ? ` – dá ${fmtS(r.mesic, r.za)}` : "")}.</p>` : ""}${withActions ? reqActions(r) : ""}<div class="checks msg"></div><span class="go">Zobrazit v plánu ›</span></div>`;
 }
 function propHTML(r){
-  const [y, m] = ymOf(r.mesic), o = month(r.mesic), now = getNow(), picks = PROP.picks;
+  const pm = zaM(r), [y, m] = ymOf(pm), o = month(pm), now = getNow(), picks = PROP.picks;
   const requested = new Set([(r.za && r.za.den) ? `${r.za.den}|${r.za.kind}` : "", ...(r.moznosti || []).map(t => { const x = parseProp(t); return `${x.den}|${x.kind}`; })]);
   const btns = [];
   (o.T[SELF] || []).forEach((tok, i) => tok.split("+").forEach(c => {
     const k = kindOf(c); if (!k) return;
     const d = i + 1; if (windowOf(new Date(y, m, d), c.replace(/\*$/, ""))[0] <= now || requested.has(`${d}|${k}`)) return;
     const key = `${d}|${k}|${c}`, on = picks.includes(key);
-    btns.push(`<button type="button" class="person ${k}" aria-pressed="${on}" data-act="ppick" data-key="${key}">${fmtS(r.mesic, {den:d, kind:k, kod:c})}</button>`);
+    btns.push(`<button type="button" class="person ${k}" aria-pressed="${on}" data-act="ppick" data-key="${key}">${fmtS(pm, {den:d, kind:k, kod:c})}</button>`);
   }));
   return `<p class="meta">Označ až 3 své služby, které nabízíš místo požadované (vybráno ${picks.length}/3):</p><div class="people">${btns.join("") || `<p class="empty">Nemáš v tom měsíci žádnou další budoucí službu.</p>`}</div>
     <div class="btns"><button type="button" class="btn" data-act="propsend" ${picks.length ? "" : "disabled"}>Odeslat návrh</button><button type="button" class="btn sec" data-act="propcancel">Zrušit</button></div>`;
@@ -658,8 +659,16 @@ function propHTML(r){
 async function loadMonthState(id){
   const [y, m] = ymOf(id);
   const p = await db.collection(COLLECTION).doc(id).get();
-  const sw = await db.collection(SWAP_COL).where("mesic", "==", id).get();
-  return applySwaps(p.exists ? p.data().plan : {}, sw.docs.map(d => ({id:d.id, ...d.data()})), new Date(y, m + 1, 0).getDate()).T;
+  const [a, b] = await Promise.all([db.collection(SWAP_COL).where("mesic", "==", id).get(), db.collection(SWAP_COL).where("zaMesic", "==", id).get()]);
+  const seen = new Set(), swaps = [];
+  [...a.docs, ...b.docs].forEach(d => { if (!seen.has(d.id)){ seen.add(d.id); swaps.push({id:d.id, ...d.data()}); } });
+  return applySwaps(p.exists ? p.data().plan : {}, swaps, new Date(y, m + 1, 0).getDate(), id).T;
+}
+// kontrola žádosti nad aktuálním stavem z databáze – i pro výměnu přes přelom měsíce
+async function simAsync(req, accepter){
+  if (isCross(req) && req.typ === "vymena") return simulateCross(await loadMonthState(req.mesic), await loadMonthState(zaM(req)), req, accepter);
+  const [y, m] = ymOf(req.mesic);
+  return simulate(await loadMonthState(req.mesic), req, accepter, y, m);
 }
 async function siblingCheck(tx, r){
   for (const sid of (r.skupina || [])){
@@ -688,14 +697,14 @@ document.addEventListener("click", async e => {
     const [y, m] = ymOf(r.mesic);
     const check = async req => {
       msg.innerHTML = `<p class="i">Kontroluji plán…</p>`;
-      const out = simulate(await loadMonthState(r.mesic), req, act === "choose" ? null : SELF, y, m);
+      const out = await simAsync(req, act === "choose" ? null : SELF);
       msg.innerHTML = checksHTML(out);
       if (out.e.length) throw null;
       if (out.w.length && !confirm("Výměna má upozornění. Přesto pokračovat?")) throw null;
     };
     if ((act === "accept" || act === "acceptopt") && isGroup(r) && r.zaCislo === SELF_NO){
       let za = r.za;
-      if (act === "acceptopt"){ const x = parseProp((r.moznosti || [])[+b.dataset.n]); za = {jmeno:r.za.jmeno, cislo:r.za.cislo, den:x.den, kind:x.kind, kod:x.kod}; }
+      if (act === "acceptopt"){ const x = parseProp((r.moznosti || [])[+b.dataset.n]); za = {jmeno:r.za.jmeno, cislo:r.za.cislo, den:x.den, kind:x.kind, kod:x.kod, ...(isCross(r) ? {mesic:zaM(r)} : {})}; }
       await check({...r, za});
       if (!confirm(`Souhlasíš s výměnou? ${surname(r.od.jmeno)} to ještě musí potvrdit – výměna se provede, až potvrdí.`)) throw null;
       await db.runTransaction(async tx => {
@@ -725,7 +734,7 @@ document.addEventListener("click", async e => {
       });
     } else if (act === "acceptopt" || act === "choose"){
       const list = act === "acceptopt" ? r.moznosti : r.navrhy, x = parseProp((list || [])[+b.dataset.n]);
-      const newZa = {jmeno:r.za.jmeno, cislo:r.za.cislo, den:x.den, kind:x.kind, kod:x.kod};
+      const newZa = {jmeno:r.za.jmeno, cislo:r.za.cislo, den:x.den, kind:x.kind, kod:x.kod, ...(isCross(r) ? {mesic:zaM(r)} : {})};
       await check(act === "choose" ? {...r, typ:"vymena", za:newZa} : {...r, za:newZa});
       await db.runTransaction(async tx => {
         const s = await tx.get(ref), want = act === "choose" ? "navrh" : "ceka";

@@ -100,9 +100,20 @@ const tokLbl = t => !t || t === "." ? "volno" : t.split("+").map(p => p.endsWith
 const volnoDays = (mesic, r) => (r.dny || []).map(x => fmtS(mesic, x)).join(", ");
 const hasShift = (T, name, den, kind) => !!T[name] && (T[name][den-1] || ".").split("+").some(p => kindOf(p) === kind);
 const tsMs = x => (x && x.toMillis) ? x.toMillis() : Date.now();
-function applySwaps(plan, swaps, len){
+// měsíc služby kolegy – u výměny přes přelom měsíce (zaMesic) jiný než měsíc nabízené služby
+const zaM = r => (r && (r.zaMesic || (r.za && r.za.mesic))) || (r && r.mesic);
+const isCross = r => !!r && zaM(r) !== r.mesic;
+// mid = měsíc, pro který se plán počítá; výměna přes přelom se promítne do obou měsíců každá svou polovinou
+function applySwaps(plan, swaps, len, mid){
   const T = tokensOf(plan), notes = {};
   swaps.filter(r => r.stav === "prijato").sort((a,b) => tsMs(a.vyrizeno) - tsMs(b.vyrizeno)).forEach(r => {
+    if (mid && isCross(r) && r.typ === "vymena"){
+      if (!r.za || !r.za.jmeno) return;
+      if (r.mesic === mid && moveShift(T, r.od.jmeno, r.za.jmeno, r.od.den, r.od.kind, len)) notes[`${r.od.den}|${r.od.kind}|${r.za.jmeno}`] = `za ${zaTvar(r.od.jmeno)}`;
+      if (zaM(r) === mid && r.za.den && moveShift(T, r.za.jmeno, r.od.jmeno, r.za.den, r.za.kind, len)) notes[`${r.za.den}|${r.za.kind}|${r.od.jmeno}`] = `za ${zaTvar(r.za.jmeno)}`;
+      return;
+    }
+    if (mid && r.mesic !== mid) return;
     if (r.typ === "volno"){ applyVolno(T, r); return; }
     if (r.typ === "uprava"){ applyUprava(T, r, len); notes[`${r.od.den}|*|${r.od.jmeno}`] = "upraveno správcem"; return; }
     if (r.typ === "presun"){ if (r.za && r.za.den && movePresun(T, r, len)) notes[`${r.za.den}|${r.za.kind}|${r.od.jmeno}`] = `přesun z ${r.od.den}.`; return; }
@@ -140,6 +151,23 @@ function checkPerson(T, name, days, y, m, out, skipAbs){
       out.e.push(`${name}: ${a.lbl} končí v ${hm(a.e)}, ale ${b.lbl} začíná už v ${hm(b.s)}.`);
     }
   }
+}
+/* výměna přes přelom měsíce: Tod = plán měsíce nabízené služby, Tza = plán měsíce služby kolegy */
+function simulateCross(Tod, Tza, req, accepter){
+  const [y1, m1] = ymOf(req.mesic), [y2, m2] = ymOf(zaM(req));
+  const A = {}, B = {}; for (const [n, a] of Object.entries(Tod || {})) A[n] = a.slice(); for (const [n, a] of Object.entries(Tza || {})) B[n] = a.slice();
+  const out = {e:[], w:[], i:[]}, od = req.od, za = req.za || {}, recv = za.jmeno || accepter;
+  if (!hasShift(A, od.jmeno, od.den, od.kind)) out.e.push(`${od.jmeno} už službu ${od.den}. ${m1+1}. nemá – mohla být mezitím vyměněna.`);
+  if (za.den && !hasShift(B, za.jmeno, za.den, za.kind)) out.e.push(`${za.jmeno} už službu ${za.den}. ${m2+1}. nemá – mohla být mezitím vyměněna.`);
+  if (recv === od.jmeno) out.e.push("Nemůžeš převzít vlastní službu.");
+  if (recv && hasShift(A, recv, od.den, od.kind)) out.e.push(`${recv} už v té službě je.`);
+  if (za.den && hasShift(B, od.jmeno, za.den, za.kind)) out.e.push(`${od.jmeno} už ve službě ${za.den}. ${m2+1}. je.`);
+  if (out.e.length || !recv) return out;
+  moveShift(A, od.jmeno, recv, od.den, od.kind, new Date(y1, m1 + 1, 0).getDate());
+  checkPerson(A, recv, new Set([od.den]), y1, m1, out);
+  if (za.den){ moveShift(B, za.jmeno, od.jmeno, za.den, za.kind, new Date(y2, m2 + 1, 0).getDate()); checkPerson(B, od.jmeno, new Set([za.den]), y2, m2, out, true); }
+  out.i.push("Výměna přes přelom měsíce – odpočinek mezi posledním dnem a prvním dnem dalšího měsíce zkontroluj sám.");
+  return out;
 }
 /* simulace žádosti nad stavem měsíce; accepter = kdo bere nabídku */
 function simulate(T0, req, accepter, y, m){
@@ -233,7 +261,7 @@ function markReqSeen(db, list, me){
 const ymOf = id => { const [y, m] = id.split("-").map(Number); return [y, m - 1]; };
 
 function fmtS(mesic, x){
-  const [y, m] = ymOf(mesic), d = new Date(y, m, x.den);
+  const [y, m] = ymOf((x && x.mesic) || mesic), d = new Date(y, m, x.den);
   return `${DOW[d.getDay()]} ${x.den}. ${m+1}. ${KIND_LBL[x.kind]}${/\*$/.test(x.kod || "") ? " (stálá)" : ""}`;
 }
 
