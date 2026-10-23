@@ -464,6 +464,8 @@ button.cal-day{cursor:pointer}
 /* celý plán měsíce (dlouhé podržení názvu měsíce) */
 .mplan{position:fixed;inset:0;z-index:44;display:flex;flex-direction:column;background:var(--paper);padding:calc(env(safe-area-inset-top,0px) + 8px) 0 0;animation:fullIn .16s ease-out}
 .mplan[hidden]{display:none}
+.mnext{text-align:center;color:var(--ink2);font-size:15px;margin:18px 12px 0}
+.mdiv{font-family:var(--f-cond);font-weight:700;font-size:22px;color:var(--ink2);text-align:center;margin:6px 0 10px;padding:6px 0;border-top:2px dashed var(--line);border-bottom:2px dashed var(--line);letter-spacing:.02em}
 .mplan,.mplan *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 .mplan .full-close{z-index:46;top:calc(env(safe-area-inset-top,0px) + 8px);bottom:auto;right:12px;width:40px;height:40px;font-size:18px}
 .mplan .mp-head{padding-right:60px}
@@ -598,7 +600,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.93</span>
+      <span class="ver" id="verDiag">v4.94</span>
     </div>
   </div>
 </header>
@@ -730,10 +732,11 @@ let PLAN_ORDER = null;
 let PLAN = null, EVENTS = {}, OFFICERS = {}, YEAR = 0, MONTH = 0, GROUPS = [];
 
 /* ---------- data ---------- */
-function parsePlan(){
+function parsePlan(ms){
+  const YEAR = ms.y, MONTH = ms.m, EVENTS = ms.events || {};
   const n = new Date(YEAR, MONTH + 1, 0).getDate();
   const days = Array.from({length:n}, () => ({D:{stala:null,hl:[]}, N:{stala:null,hl:[]}, P:[], K:[], A:{}}));
-  for (const [name, str] of Object.entries(EFF || PLAN)){
+  for (const [name, str] of Object.entries(ms.EFF || ms.plan || {})){
     String(str).trim().split(/\s+/).forEach((tok, i) => {
       if (tok === "." || !days[i]) return;
       tok.split("+").forEach(c => {
@@ -752,10 +755,10 @@ function parsePlan(){
   const groups = [];
   if (days[0] && days[0].K.length){
     const prevName = MONTHS[(MONTH + 11) % 12], curName = MONTHS[MONTH];
-    groups.push({date:new Date(YEAR, MONTH, 0), prev:true, prevName, day:null,
+    groups.push({mid:ms.mid, key:ms.mid + "|prev", date:new Date(YEAR, MONTH, 0), prev:true, prevName, day:null,
       night:{stala:null, hl:days[0].K.map(p => ({name:p.name, code:p.code === "Nk7" ? "N12" : "N13"})), note:`Z plánu na ${prevName} – plán na ${curName} uvádí jen konec služby do ${days[0].K.some(p => p.code === "Nk7") ? "7" : "8"}:00.`}});
   }
-  days.forEach((d, i) => groups.push({date:new Date(YEAR, MONTH, i+1), day:{...d.D, P:d.P, A:d.A, ev:EVENTS[i+1] || EVENTS[String(i+1)]}, night:d.N}));
+  days.forEach((d, i) => groups.push({mid:ms.mid, key:ms.mid + "|" + (i+1), date:new Date(YEAR, MONTH, i+1), day:{...d.D, P:d.P, A:d.A, ev:EVENTS[i+1] || EVENTS[String(i+1)]}, night:d.N}));
   return groups;
 }
 
@@ -797,7 +800,7 @@ function person(p, base, ctx){
   const me = p.name === ME ? "me" : "";
   const c = CODES[p.code], b = CODES[base];
   const tag = c && b && (c.e[0] !== b.e[0] || c.e[1] !== b.e[1]) ? ` <span class="tag">do ${tPlain(c.e)}</span>` : "";
-  const sw = ctx && NOTES[`${ctx.d}|${ctx.k}|${p.name}`];
+  const sw = ctx && (ctx.notes || NOTES)[`${ctx.d}|${ctx.k}|${p.name}`];
   return `${nameBtn(p.name)}${tag}${sw ? ` <span class="swi" aria-hidden="true">⇄</span> <span class="tag sw">${esc(sw)}</span>` : ""}`;
 }
 
@@ -860,7 +863,7 @@ const subEl = document.getElementById("sub");
 
 function cardHTML(kind, g, slot, now){
   const base = baseCode(slot, kind);
-  const ctx = g.prev ? null : {d:g.date.getDate(), k:kind};
+  const ctx = g.prev ? null : {d:g.date.getDate(), k:kind, notes:(MS[g.mid] || {}).notes};
   const win = windowOf(g.date, base);
   const st = stateOf(win, now);
   const c = CODES[base];
@@ -904,13 +907,28 @@ function renderEmpty(head, text){
   left.innerHTML = `<div class="empty"><h2>${esc(head)}</h2><p>${esc(text)}</p></div>`;
 }
 
+// pod poslední službou: další měsíc ještě není nahraný
+function endNote(){
+  const last = GROUPS[GROUPS.length - 1]; if (!last) return "";
+  const t = new Date(last.date.getFullYear(), last.date.getMonth() + 1, 1), ms = MS[docId(t.getFullYear(), t.getMonth())];
+  return ms && ms.ready && !ms.exists ? `<p class="mnext">Plán na ${MONTHS[t.getMonth()]} ${t.getFullYear()} zatím není nahraný.</p>` : "";
+}
+let RENDERED = []; // klíče skupin z posledního vykreslení – pro udržení pozice při přidání měsíce nad
 function render(){
   if (!GROUPS.length) return;
   const now = getNow();
+  // kotva: skupina v ohnisku a posun od jejího začátku
+  let anchor = null;
+  if (L.length > 1 && RENDERED.length){
+    const f = left.scrollTop + left.clientHeight * FOCAL;
+    let i = 0; while (i < L.length - 2 && f >= L[i+1]) i++;
+    anchor = {key:RENDERED[i], off:f - L[i]};
+  }
   const keep = left.scrollTop;
   left.innerHTML = GROUPS.map((g, i) =>
-    `<section class="group" data-i="${i}">${g.day ? cardHTML("D", g, g.day, now) : ""}${cardHTML("N", g, g.night, now)}</section>`
-  ).join("") + `<div class="spacer" id="spacer"></div>`;
+    `<section class="group" data-i="${i}" data-key="${g.key}">${!g.prev && g.date.getDate() === 1 && i > 0 ? `<div class="mdiv">${cap(MONTHS[g.date.getMonth()])} ${g.date.getFullYear()}</div>` : ""}${g.day ? cardHTML("D", g, g.day, now) : ""}${cardHTML("N", g, g.night, now)}</section>`
+  ).join("") + `<div class="spacer" id="spacer">${endNote()}</div>`;
+  RENDERED = GROUPS.map(g => g.key);
 
   const today = new Date(now); today.setHours(0,0,0,0);
   track.innerHTML = GROUPS.map((g, i) => {
@@ -935,7 +953,8 @@ function render(){
       <span class="dow">${DOW_T[wd]}</span><span class="dt">${d.getDate()}. ${d.getMonth()+1}.</span>${ev ? `<span class="ev">${esc(ev)}</span>` : ""}</button>`;
   }).join("");
   measure();
-  left.scrollTop = keep;
+  const ai = anchor ? RENDERED.indexOf(anchor.key) : -1;
+  left.scrollTop = ai >= 0 ? L[ai] + anchor.off - left.clientHeight * FOCAL : keep;
   active = -1; update();
   if (fullRef) fillFull();
   if (calName) fillCal();
@@ -966,6 +985,8 @@ function update(){
   const r = R[i] + t * (R[i+1] - R[i]);
   track.style.transform = `translate3d(0,${(right.clientHeight * FOCAL - r).toFixed(1)}px,0)`;
   const part = f >= NT[i] ? "night" : "day";
+  const gm = GROUPS[i] && GROUPS[i].mid;
+  if (gm && gm !== ACTIVE && !mpOpenAny()) setActive(gm);
   if (i !== active || part !== activePart){
     const tiles = track.children;
     if (tiles[active]){ tiles[active].classList.remove("active","part-day","part-night"); tiles[active].removeAttribute("aria-current"); }
@@ -1084,42 +1105,120 @@ let offlineTimer = null, lastJSON = "";
 function setStatus(t){ subEl.textContent = t; subEl.hidden = !t; }
 let unsubMonth = null, unsubOfficers = null, viewY = 0, viewM = 0, pendingScroll = null;
 
-function loadMonth(y, m, scrollMode){
-  if (unsubMonth) unsubMonth();
-  viewY = y; viewM = m; pendingScroll = scrollMode;
-  PLAN = null; EFF = null;
-  watchMonthSwaps(docId(y, m));
-  titleEl.textContent = `${cap(MONTHS[m])} ${y}`;
-  setStatus("");
-  let shown = false;
-  unsubMonth = db.collection(COLLECTION).doc(docId(y, m)).onSnapshot({includeMetadataChanges:true}, snap => {
-    if (snap.metadata.fromCache){
-      clearTimeout(offlineTimer);
-      offlineTimer = setTimeout(() => setStatus("Bez připojení – uložená verze"), 2500);
-    } else { clearTimeout(offlineTimer); setStatus(""); }
-    // jen změna metadat (potvrzení ze serveru) – nic nepřekreslovat
-    if (shown && snap.metadata.hasPendingWrites === false && snap.metadata.fromCache === false && lastJSON === JSON.stringify(snap.data() || null)) return;
-    shown = true; lastJSON = JSON.stringify(snap.data() || null);
-    if (!snap.exists){
-      PLAN = null; fillSelect();
-      renderEmpty(`Plán na ${MONTHS[m]} zatím není`, snap.metadata.fromCache
-        ? "Bez připojení ho nejde načíst. Zkus to znovu, až budeš online."
-        : "Jakmile ho správce nahraje, objeví se tady.");
-      return;
+/* ---------- souvislá časová osa přes víc měsíců ----------
+   Každý měsíc má vlastní plán a výměny (MS[mid]); osa skládá souvislý řetěz načtených měsíců.
+   „Aktivní“ je měsíc, který je právě v ohnisku – podle něj pracuje kalendář, výměny, velký plán i administrace. */
+const MS = {};
+let ACTIVE = null;
+const mpOpenAny = () => !!document.querySelector(".full:not([hidden]), .mplan:not([hidden])");
+function msOf(y, m){ const t = new Date(y, m, 1); y = t.getFullYear(); m = t.getMonth(); const mid = docId(y, m); return MS[mid] || (MS[mid] = {y, m, mid, plan:null, swaps:[], exists:false, ready:false, groups:[]}); }
+function buildMonth(ms){
+  if (!ms.exists){ ms.groups = []; ms.T = {}; ms.EFF = {}; ms.notes = {}; return; }
+  const len = new Date(ms.y, ms.m + 1, 0).getDate();
+  const r = applySwaps(ms.plan, ms.swaps, len);
+  ms.T = r.T; ms.notes = r.notes;
+  ms.EFF = {}; for (const [n, a] of Object.entries(ms.T)) ms.EFF[n] = a.join(" ");
+  ms.groups = parsePlan(ms);
+}
+// souvislý řetěz existujících měsíců kolem aktivního
+function chain(){
+  const a = ACTIVE && MS[ACTIVE]; if (!a || !a.exists) return [];
+  const out = [a];
+  for (let k = -1; ; k--){ const x = MS[docId(new Date(a.y, a.m + k, 1).getFullYear(), new Date(a.y, a.m + k, 1).getMonth())]; if (!x || !x.exists) break; out.unshift(x); }
+  for (let k = 1; ; k++){ const x = MS[docId(new Date(a.y, a.m + k, 1).getFullYear(), new Date(a.y, a.m + k, 1).getMonth())]; if (!x || !x.exists) break; out.push(x); }
+  return out;
+}
+function relayout(){
+  const ch = chain();
+  GROUPS = ch.flatMap((ms, i) => i ? ms.groups.filter(g => !g.prev) : ms.groups);
+  if (GROUPS.length) render();
+}
+function setActive(mid){
+  const ms = MS[mid]; if (!ms) return;
+  const changed = ACTIVE !== mid;
+  ACTIVE = mid; viewY = ms.y; viewM = ms.m;
+  YEAR = ms.y; MONTH = ms.m;
+  PLAN = ms.exists ? ms.plan : null; PLAN_ORDER = ms.order || null; EVENTS = ms.events || {};
+  EFF_T = ms.T || {}; EFF = ms.EFF || {}; NOTES = ms.notes || {}; SWAPS_MONTH = ms.swaps || [];
+  titleEl.textContent = `${cap(MONTHS[ms.m])} ${ms.y}`;
+  if (changed){
+    // sousední měsíce načíst dopředu, ať osa plynule pokračuje
+    watchMonth(ms.y, ms.m - 1); watchMonth(ms.y, ms.m + 1);
+    fillSelect(); renderVym(); updateBadge();
+    if (typeof ADM !== "undefined" && ADM && !adm.hidden) renderAdm();
+  }
+}
+function monthChanged(ms){
+  buildMonth(ms);
+  if (ms.mid === ACTIVE) setActive(ms.mid);
+  const wasEmpty = !GROUPS.length;
+  if (ACTIVE && MS[ACTIVE] && MS[ACTIVE].exists) relayout();
+  if (ms.mid === ACTIVE){
+    if (!cal.hidden) fillCal();
+    renderVym();
+    if (typeof ADM !== "undefined" && ADM && !adm.hidden) renderAdm();
+  }
+  runPending(wasEmpty);
+}
+function watchMonth(y, m){
+  const ms = msOf(y, m);
+  if (ms.unsubP) return ms;
+  let shown = false, last = "";
+  ms.unsubP = db.collection(COLLECTION).doc(ms.mid).onSnapshot({includeMetadataChanges:true}, snap => {
+    if (ms.mid === ACTIVE){
+      if (snap.metadata.fromCache){ clearTimeout(offlineTimer); offlineTimer = setTimeout(() => setStatus("Bez připojení – uložená verze"), 2500); }
+      else { clearTimeout(offlineTimer); setStatus(""); }
     }
-    const d = snap.data();
-    PLAN = d.plan || {}; PLAN_ORDER = d.poradi || null; EVENTS = d.udalosti || {}; YEAR = y; MONTH = m;
-    rebuild(); fillSelect(); render();
-    const ps = pendingScroll; pendingScroll = null;
-    if (ps === "now") goNow(false);
-    else if (ps === "top") left.scrollTop = 0;
-    else if (ps && ps.cal){ if (CAL_REQ && SELF) openCal(SELF); }
-    else if (ps && ps.den) requestAnimationFrame(() => scrollToDay(ps.den, ps.kind));
-  }, err => {
-    clearTimeout(offlineTimer); setStatus("");
-    renderEmpty("Plán se nepodařilo načíst", err.code === "permission-denied"
-      ? "Účet nemá oprávnění číst plán. Zkontroluj pravidla ve Firestore."
-      : "Zkontroluj připojení a zkus to znovu. (" + err.code + ")");
+    const js = JSON.stringify(snap.data() || null);
+    if (shown && js === last) { if (!ms.ready){ ms.ready = true; monthChanged(ms); } return; }
+    shown = true; last = js;
+    const d = snap.data() || {};
+    ms.exists = snap.exists; ms.plan = d.plan || {}; ms.order = d.poradi || null; ms.events = d.udalosti || {};
+    ms.fromCache = snap.metadata.fromCache; ms.ready = true;
+    monthChanged(ms);
+  }, err => { ms.ready = true; ms.err = err.code; monthChanged(ms); });
+  ms.unsubS = db.collection(SWAP_COL).where("mesic", "==", ms.mid).onSnapshot(s => {
+    ms.swaps = s.docs.map(d => ({id:d.id, ...d.data()}));
+    if (ms.ready) monthChanged(ms);
+  }, () => {});
+  return ms;
+}
+function unwatchAll(){
+  for (const ms of Object.values(MS)){ if (ms.unsubP) ms.unsubP(); if (ms.unsubS) ms.unsubS(); }
+  for (const k of Object.keys(MS)) delete MS[k];
+  ACTIVE = null; GROUPS = []; RENDERED = [];
+}
+// přechod na měsíc: načíst (pokud ještě není) a po načtení provést požadovaný posun
+function loadMonth(y, m, scrollMode){
+  const ms = watchMonth(y, m);
+  pendingScroll = {mid:ms.mid, mode:scrollMode};
+  if (ms.ready) runPending(false);
+  else titleEl.textContent = `${cap(MONTHS[ms.m])} ${ms.y}`;
+}
+function runPending(wasEmpty){
+  // první načtení po startu: ukotvit na dnešní měsíc
+  if (!ACTIVE){ const n = getNow(), ms = MS[docId(n.getFullYear(), n.getMonth())]; if (ms && ms.ready) setActive(ms.mid); }
+  const ps = pendingScroll; if (!ps) return;
+  const ms = MS[ps.mid]; if (!ms || !ms.ready) return;
+  pendingScroll = null;
+  if (!ms.exists){
+    titleEl.textContent = `${cap(MONTHS[ms.m])} ${ms.y}`;
+    if (!GROUPS.length || ps.mode === "top"){
+      ACTIVE = ms.mid; setActive(ms.mid); GROUPS = []; RENDERED = [];
+      renderEmpty(`Plán na ${MONTHS[ms.m]} zatím není`, ms.err === "permission-denied" ? "Účet nemá oprávnění číst plán. Zkontroluj pravidla ve Firestore."
+        : ms.fromCache ? "Bez připojení ho nejde načíst. Zkus to znovu, až budeš online." : "Jakmile ho správce nahraje, objeví se tady.");
+    } else setStatus(`Plán na ${MONTHS[ms.m]} ${ms.y} zatím není nahraný.`);
+    return;
+  }
+  const inChain = GROUPS.some(g => g.mid === ms.mid);
+  setActive(ms.mid);
+  if (!inChain) relayout();
+  const mode = ps.mode;
+  requestAnimationFrame(() => {
+    if (mode === "now") goNow(false);
+    else if (mode === "top"){ const gi = GROUPS.findIndex(g => g.mid === ms.mid && !g.prev); if (gi >= 0) scrollLeftTo(L[gi] + 1, false); }
+    else if (mode && mode.cal){ if (CAL_REQ && SELF) openCal(SELF); }
+    else if (mode && mode.den) scrollToDay(mode.den, mode.kind);
   });
 }
 function start(){
@@ -1153,7 +1252,7 @@ function stop(){
   if (window.SluzbyChat) SluzbyChat.stop();
   document.getElementById("btnChat").hidden = true;
   if (PRES){ PRES.stop(); PRES = null; }
-  if (unsubMonth){ unsubMonth(); unsubMonth = null; }
+  unwatchAll();
   if (unsubOfficers){ unsubOfficers(); unsubOfficers = null; }
   stopSwaps(); stopNotes(); SELF = null; SELF_NO = null; updateSelfLabel();
   PLAN = null; EFF = null; OFFICERS = {};
@@ -1168,9 +1267,10 @@ if (auth){
 
 /* karta přes celý displej */
 const full = document.getElementById("full"), fullBody = document.getElementById("fullBody");
-let fullRef = null, fullReturn = null; // {g: index skupiny, k: "D"/"N"}
+let fullRef = null, fullReturn = null; // {key: klíč skupiny, g: index, k: "D"/"N"}
 function fillFull(){
   if (!fullRef) return;
+  fullRef.g = RENDERED.indexOf(fullRef.key);
   const g = left.querySelectorAll(".group")[fullRef.g];
   const card = g && g.querySelector(`.card[data-k="${fullRef.k}"]`);
   if (!card){ closeFull(); return; }
@@ -1195,7 +1295,8 @@ function fillFull(){
 }
 function openFull(card){
   const g = card.closest(".group");
-  fullRef = {g: +g.dataset.i, k: card.dataset.k};
+  fullRef = {g: +g.dataset.i, key: g.dataset.key, k: card.dataset.k};
+  const gm = GROUPS[fullRef.g] && GROUPS[fullRef.g].mid; if (gm && gm !== ACTIVE) setActive(gm);
   fullReturn = card;
   fillFull();
   full.hidden = false;
@@ -1459,7 +1560,7 @@ function buildIcs(name){
   let count = 0;
   toks.forEach((tok, i) => {
     if (tok === ".") return;
-    const d = i + 1, g = GROUPS.find(x => !x.prev && x.date.getDate() === d);
+    const d = i + 1, g = GROUPS.find(x => x.mid === ACTIVE && !x.prev && x.date.getDate() === d);
     tok.split("+").forEach(part => {
       const code = part.replace(/\*$/, ""), sp = ICS_SPAN[code]; if (!sp) return;
       const stala = part.endsWith("*");
@@ -1778,7 +1879,7 @@ document.getElementById("calGrid").addEventListener("click", e => {
   const b = e.target.closest("button.cal-day"); if (!b) return;
   const d = +b.dataset.day;
   if (ABS){ absToggle(d); return; }
-  const gi = GROUPS.findIndex(g => !g.prev && g.date.getDate() === d);
+  const gi = GROUPS.findIndex(g => g.mid === ACTIVE && !g.prev && g.date.getDate() === d);
   const fromVym = !!CAL_REQ;
   closeCal(); if (!full.hidden) closeFull(); if (fromVym && !vym.hidden) closeVym();
   const g = left.querySelectorAll(".group")[gi];
@@ -1790,7 +1891,7 @@ document.getElementById("calGrid").addEventListener("click", e => {
 
 /* přechod na den v časové ose (i v jiném měsíci) */
 function scrollToDay(den, kind){
-  const gi = GROUPS.findIndex(g => !g.prev && g.date.getDate() === den);
+  const gi = GROUPS.findIndex(g => g.mid === ACTIVE && !g.prev && g.date.getDate() === den);
   const g = left.querySelectorAll(".group")[gi]; if (!g) return;
   const target = (kind === "N" && g.querySelector(".card.night")) || g;
   scrollLeftTo(target.offsetTop, true);
@@ -1800,8 +1901,7 @@ function goToDay(mesic, den, kind){
   if (!vym.hidden) closeVym();
   if (!adm.hidden) closeAdm();
   if (!full.hidden) closeFull();
-  if (y === YEAR && m === MONTH && PLAN) scrollToDay(den, kind);
-  else loadMonth(y, m, {den, kind});
+  loadMonth(y, m, {den, kind});
 }
 // den, kdy má přihlášený strážník jít do služby (v administraci den toho, kdo výměnu nabízí)
 function reqDay(r, admin){
@@ -1879,13 +1979,7 @@ function updateSelfLabel(){
 }
 const isAdminUI = () => ADMINS.includes(SELF_EMAIL);
 
-function rebuild(){
-  const len = new Date(YEAR, MONTH + 1, 0).getDate();
-  const r = applySwaps(PLAN, SWAPS_MONTH, len);
-  EFF_T = r.T; NOTES = r.notes;
-  EFF = {}; for (const [n, a] of Object.entries(EFF_T)) EFF[n] = a.join(" ");
-  GROUPS = parsePlan();
-}
+function rebuild(){ if (ACTIVE && MS[ACTIVE]){ buildMonth(MS[ACTIVE]); setActive(ACTIVE); relayout(); } }
 
 const checksHTML = o => [...o.e.map(t => `<p class="e">${esc(t)}</p>`), ...o.w.map(t => `<p class="w">${esc(t)}</p>`), ...o.i.map(t => `<p class="i">${esc(t)}</p>`)].join("");
 
@@ -2574,16 +2668,7 @@ function startSwaps(){
     if (!cal.hidden && calName === SELF) fillCal();
   }, () => {});
 }
-function watchMonthSwaps(id){
-  if (unsubSwaps) unsubSwaps();
-  SWAPS_MONTH = [];
-  unsubSwaps = db.collection(SWAP_COL).where("mesic", "==", id).onSnapshot(s => {
-    SWAPS_MONTH = s.docs.map(d => ({id:d.id, ...d.data()}));
-    if (PLAN){ rebuild(); fillSelect(); render(); if (!cal.hidden) fillCal(); }
-    renderVym();
-    if (typeof ADM !== "undefined" && ADM && !adm.hidden) renderAdm();
-  }, () => {});
-}
+function watchMonthSwaps(id){ /* výměny se sledují po měsících ve watchMonth() */ }
 function stopSwaps(){
   if (unsubPending){ unsubPending(); unsubPending = null; }
   if (unsubSwaps){ unsubSwaps(); unsubSwaps = null; }
