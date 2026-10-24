@@ -604,7 +604,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.96</span>
+      <span class="ver" id="verDiag">v4.97</span>
     </div>
   </div>
 </header>
@@ -711,7 +711,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.96"></script>
+<script src="sluzby-core.js?v=4.97"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -2826,7 +2826,9 @@ function mpHTML(){
   const names = typeof planOrder === "function" ? planOrder(act, C.order, YEAR) : act.sort((a, b) => a.localeCompare(b, "cs"));
   const we = d => { const w = new Date(YEAR, MONTH, d).getDay(); return w === 0 || w === 6; };
   let h = `<table class="mp-t"><thead><tr><th class="nm">Strážník</th>`;
-  for (let d = 1; d <= n; d++) h += `<th class="${we(d) ? "we" : ""}${d === todayD ? " today" : ""}" data-col="${d}">${d}.<small>${DOW_T[new Date(YEAR, MONTH, d).getDay()]}</small></th>`;
+  // jen pro účet 1048: čísla dnů v sudém (ISO) týdnu zeleně
+  const evenW = d => { if (SELF_NO !== "1048") return false; const t = new Date(YEAR, MONTH, d); t.setDate(t.getDate() + 3 - (t.getDay() + 6) % 7); const w1 = new Date(t.getFullYear(), 0, 4); return (1 + Math.round(((t - w1) / 864e5 - 3 + (w1.getDay() + 6) % 7) / 7)) % 2 === 0; };
+  for (let d = 1; d <= n; d++) h += `<th class="${we(d) ? "we" : ""}${d === todayD ? " today" : ""}" data-col="${d}">${evenW(d) ? `<span style="color:#2E9E5B">${d}.</span>` : `${d}.`}<small>${DOW_T[new Date(YEAR, MONTH, d).getDay()]}</small></th>`;
   h += `<th class="sum">D</th><th class="sum">N</th></tr></thead><tbody>`;
   const cntD = Array(n + 1).fill(0), cntN = Array(n + 1).fill(0);
   names.forEach(nm => {
