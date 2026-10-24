@@ -414,7 +414,7 @@ button.cal-day{cursor:pointer}
 .snote-ed{position:fixed;left:12px;right:12px;bottom:calc(var(--fsab) + 76px);z-index:33;background:var(--sheet);color:var(--ink);border:1.5px solid #E07C7C;border-radius:14px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 .snote-ed[hidden]{display:none}
 .snote-ed label{display:block;font-weight:600;margin-bottom:6px}
-.snote-ed textarea{width:100%;min-height:90px;font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1.5px solid var(--ink);border-radius:8px;padding:8px 10px;resize:vertical}
+.snote-ed textarea{width:100%;min-height:70px;max-height:40vh;font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1.5px solid var(--ink);border-radius:8px;padding:8px 10px;resize:vertical}
 
 .bottom{display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1.5px solid var(--ink);font-size:14px}
 .bottom label{white-space:nowrap}
@@ -606,7 +606,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.98</span>
+      <span class="ver" id="verDiag">v4.99</span>
     </div>
   </div>
 </header>
@@ -713,7 +713,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.98"></script>
+<script src="sluzby-core.js?v=4.99"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -1416,17 +1416,23 @@ function openSnote(key, date, kind, idx){
   const t = document.getElementById("snoteText"); t.value = idx >= 0 ? (snotesOf(key)[idx] || "") : "";
   document.getElementById("snoteDel").hidden = idx < 0;
   document.getElementById("snoteEd").hidden = false;
+  fitSnote();
   setTimeout(() => t.focus(), 50);
 }
 function closeSnote(){ const ed = document.getElementById("snoteEd"); ed.hidden = true; ed.style.top = ed.style.bottom = ""; snoteRef = null; snoteIdx = -1; }
 // okno poznámky drží nad klávesnicí (iPhone klávesnice stránku nezmenší, jen překryje spodní část)
+// okno poznámky je při psaní ukotvené nahoře ve viditelné části obrazovky – klávesnice ho nezakryje,
+// ať iOS zmenší stránku, nebo ji jen překryje a posune
 function fitSnote(){
   const ed = document.getElementById("snoteEd"), vv = window.visualViewport;
-  if (!ed || ed.hidden || !vv) return;
-  const kb = window.innerHeight - vv.height;
-  if (kb < 80){ ed.style.top = ""; ed.style.bottom = ""; return; }
+  if (!ed || ed.hidden) return;
+  const off = vv ? Math.max(0, vv.offsetTop) : 0;
   ed.style.bottom = "auto";
-  ed.style.top = Math.max(vv.offsetTop + 8, vv.offsetTop + vv.height - ed.offsetHeight - 8) + "px";
+  ed.style.top = `calc(env(safe-area-inset-top, 0px) + ${Math.round(off) + 10}px)`;
+  // když je klávesnice vysoká a okno se nevejde, zmenšit pole pro text
+  const visH = vv ? vv.height : window.innerHeight, t = document.getElementById("snoteText");
+  const room = visH - (ed.offsetHeight - t.offsetHeight) - 30;
+  t.style.maxHeight = room > 60 ? room + "px" : "";
 }
 if (window.visualViewport){ visualViewport.addEventListener("resize", fitSnote); visualViewport.addEventListener("scroll", fitSnote); }
 document.getElementById("snoteText").addEventListener("focus", () => [60, 250, 500].forEach(t => setTimeout(fitSnote, t)));
