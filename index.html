@@ -493,6 +493,8 @@ button.cal-day{cursor:pointer}
 .mp-t tr.mp-me th.nm{background:var(--hl);color:var(--hl-ink)}
 .mp-t tr.mp-me td{box-shadow:inset 0 2px 0 var(--hl),inset 0 -2px 0 var(--hl)}
 .mp-t .we{background:color-mix(in srgb,var(--line) 28%,transparent)}
+.mp-t .ew{background:color-mix(in srgb,#2E9E5B 11%,var(--sheet))}
+.mp-t .ew.we{background:color-mix(in srgb,#2E9E5B 15%,color-mix(in srgb,var(--line) 28%,var(--sheet)))}
 .mp-t th.today{background:var(--now);color:#fff}.mp-t th.today small{color:#fff}
 .mp-t td.today,.mp-t td.today button{box-shadow:inset 2px 0 0 var(--now),inset -2px 0 0 var(--now)}
 .mp-t td button,.mp-t th.nm{text-decoration:none}
@@ -604,7 +606,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.97</span>
+      <span class="ver" id="verDiag">v4.98</span>
     </div>
   </div>
 </header>
@@ -711,7 +713,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.97"></script>
+<script src="sluzby-core.js?v=4.98"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -2825,10 +2827,11 @@ function mpHTML(){
   const act = Object.keys(T).filter(nm => (T[nm] || []).some(t => t && t !== "."));
   const names = typeof planOrder === "function" ? planOrder(act, C.order, YEAR) : act.sort((a, b) => a.localeCompare(b, "cs"));
   const we = d => { const w = new Date(YEAR, MONTH, d).getDay(); return w === 0 || w === 6; };
-  let h = `<table class="mp-t"><thead><tr><th class="nm">Strážník</th>`;
-  // jen pro účet 1048: čísla dnů v sudém (ISO) týdnu zeleně
+  // jen pro účet 1048: sudé (ISO) týdny – zelená čísla a lehce zelené sloupce
   const evenW = d => { if (SELF_NO !== "1048") return false; const t = new Date(YEAR, MONTH, d); t.setDate(t.getDate() + 3 - (t.getDay() + 6) % 7); const w1 = new Date(t.getFullYear(), 0, 4); return (1 + Math.round(((t - w1) / 864e5 - 3 + (w1.getDay() + 6) % 7) / 7)) % 2 === 0; };
-  for (let d = 1; d <= n; d++) h += `<th class="${we(d) ? "we" : ""}${d === todayD ? " today" : ""}" data-col="${d}">${evenW(d) ? `<span style="color:#2E9E5B">${d}.</span>` : `${d}.`}<small>${DOW_T[new Date(YEAR, MONTH, d).getDay()]}</small></th>`;
+  const wc = d => (we(d) ? "we" : "") + (evenW(d) ? " ew" : "");
+  let h = `<table class="mp-t"><thead><tr><th class="nm">Strážník</th>`;
+  for (let d = 1; d <= n; d++) h += `<th class="${wc(d)}${d === todayD ? " today" : ""}" data-col="${d}">${evenW(d) ? `<span style="color:#2E9E5B">${d}.</span>` : `${d}.`}<small>${DOW_T[new Date(YEAR, MONTH, d).getDay()]}</small></th>`;
   h += `<th class="sum">D</th><th class="sum">N</th></tr></thead><tbody>`;
   const cntD = Array(n + 1).fill(0), cntN = Array(n + 1).fill(0);
   names.forEach(nm => {
@@ -2841,7 +2844,7 @@ function mpHTML(){
       const kD = parts.find(p => kindOf(p) === "D"), kN = parts.find(p => kindOf(p) === "N");
       const hasP = codes.some(isP), abs = codes.find(c => c === "DOV" || c === "ZdV"), k8 = codes.some(isK);
       if (kD){ sD++; cntD[d]++; } if (kN){ sN++; cntN[d]++; }
-      const cls = [we(d) ? "we" : "", d === todayD ? "today" : ""].filter(Boolean).join(" ");
+      const cls = [wc(d).trim(), d === todayD ? "today" : ""].filter(Boolean).join(" ");
       if (!parts.length){ h += `<td class="${cls}"></td>`; continue; }
       const main = kD || kN || (hasP ? codes.find(isP) : k8 ? codes.find(isK) : abs || parts[0]);
       const c = hasP && kN ? "c-pn" : kD ? "c-d" : kN || k8 ? "c-n" : hasP ? "c-p" : abs ? "c-a" : "";
@@ -2857,9 +2860,9 @@ function mpHTML(){
     h += `<td class="sum">${sD}</td><td class="sum">${sN}</td></tr>`;
   });
   h += `</tbody><tfoot><tr><th class="nm">Denní</th>`;
-  for (let d = 1; d <= n; d++) h += `<td class="${we(d) ? "we" : ""}${d === todayD ? " today" : ""}">${cntD[d] || ""}</td>`;
+  for (let d = 1; d <= n; d++) h += `<td class="${wc(d)}${d === todayD ? " today" : ""}">${cntD[d] || ""}</td>`;
   h += `<td></td><td></td></tr><tr><th class="nm">Noční</th>`;
-  for (let d = 1; d <= n; d++) h += `<td class="${we(d) ? "we" : ""}${d === todayD ? " today" : ""}">${cntN[d] || ""}</td>`;
+  for (let d = 1; d <= n; d++) h += `<td class="${wc(d)}${d === todayD ? " today" : ""}">${cntN[d] || ""}</td>`;
   h += `<td></td><td></td></tr></tfoot></table>`;
   return h;
 }
