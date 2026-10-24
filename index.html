@@ -606,7 +606,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v4.99</span>
+      <span class="ver" id="verDiag">v5.00</span>
     </div>
   </div>
 </header>
@@ -713,7 +713,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=4.99"></script>
+<script src="sluzby-core.js?v=5.00"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -1417,7 +1417,8 @@ function openSnote(key, date, kind, idx){
   document.getElementById("snoteDel").hidden = idx < 0;
   document.getElementById("snoteEd").hidden = false;
   fitSnote();
-  setTimeout(() => t.focus(), 50);
+  try { t.focus({preventScroll:true}); } catch (e){ t.focus(); } // synchronně v klepnutí – jinak iOS klávesnici nevysune
+  t.setSelectionRange(t.value.length, t.value.length);
 }
 function closeSnote(){ const ed = document.getElementById("snoteEd"); ed.hidden = true; ed.style.top = ed.style.bottom = ""; snoteRef = null; snoteIdx = -1; }
 // okno poznámky drží nad klávesnicí (iPhone klávesnice stránku nezmenší, jen překryje spodní část)
@@ -1508,8 +1509,8 @@ function openNote(d){
   const t = document.getElementById("noteText"); t.value = MY_NOTES[noteKey(d)] || "";
   document.getElementById("noteDel").hidden = !MY_NOTES[noteKey(d)];
   ed.hidden = false;
-  ed.scrollIntoView({block:"nearest", behavior: reduceMotion ? "auto" : "smooth"});
-  setTimeout(() => t.focus(), 50);
+  try { t.focus({preventScroll:true}); } catch (e){ t.focus(); } // v klepnutí hned vysune klávesnici
+  ed.scrollIntoView({block:"nearest", behavior:"auto"});
 }
 function closeNote(){ document.getElementById("noteEd").hidden = true; noteDay = null; }
 async function saveNote(del){
@@ -1544,6 +1545,11 @@ calGridEl.addEventListener("pointerdown", e => {
 });
 calGridEl.addEventListener("pointermove", e => { if (lpTimer && lpStart && Math.hypot(e.clientX - lpStart.x, e.clientY - lpStart.y) > 10) lpClear(); });
 ["pointerup","pointercancel","pointerleave"].forEach(t => calGridEl.addEventListener(t, lpClear));
+calGridEl.addEventListener("touchend", () => {
+  if (!lpFired) return;
+  const t = document.getElementById("noteText");
+  if (!document.getElementById("noteEd").hidden && document.activeElement !== t){ try { t.focus({preventScroll:true}); } catch (e){ t.focus(); } }
+});
 calGridEl.addEventListener("contextmenu", e => { if (e.target.closest("[data-d]")) e.preventDefault(); });
 calGridEl.addEventListener("click", e => { if (lpFired){ lpFired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 
