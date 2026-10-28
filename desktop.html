@@ -391,7 +391,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v5.9</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v5.11</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -402,7 +402,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.00"></script>
+<script src="sluzby-core.js?v=5.02"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -421,7 +421,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v5.9";
+const DESK_VER = "desktop v5.11";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:"", day:null, codes:[], st:{}, mvDay:null, mvKod:null};
@@ -641,7 +641,7 @@ function reqActions(r){
   return "";
 }
 function reqCard(r, withActions){
-  return `<div class="req" data-id="${r.id}"><p>${reqText(r)} <span class="stbadge">${ST_LBL[r.stav] || ""}</span></p>${reqTimes(r) ? `<p class="meta">${reqTimes(r)}</p>` : ""}${r.odCislo === SELF_NO && (r.zaCislo == null || r.typ === "nabidka" || r.videli) && reqSeenLine(r) ? `<p class="meta">${reqSeenLine(r)}</p>` : ""}${r.pozn ? `<p class="pz">„${esc(r.pozn)}“</p>` : ""}${isGroup(r) && r.stav === "ceka" ? `<p class="meta">Žádost dostalo ${r.skupina.length} kolegů – ${esc(surname(r.od.jmeno))} si vybere z těch, kdo souhlasí.</p>` : ""}${r.souhlas && r.stav === "ceka" ? `<p class="meta" style="color:#2E9E5B;font-weight:600">✓ ${r.zaCislo === SELF_NO ? `Souhlasíš – čeká se, až ${esc(surname(r.od.jmeno))} potvrdí` : esc(surname(r.za.jmeno)) + " souhlasí" + (r.za && r.za.den ? ` – dá ${fmtS(r.mesic, r.za)}` : "")}.</p>` : ""}${withActions ? reqActions(r) : ""}<div class="checks msg"></div><span class="go">Zobrazit v plánu ›</span></div>`;
+  return `<div class="req" data-id="${r.id}"><p>${reqText(r)} <span class="stbadge">${ST_LBL[r.stav] || ""}</span></p>${reqTimes(r) ? `<p class="meta">${reqTimes(r)}</p>` : ""}${r.odCislo === SELF_NO && (r.zaCislo == null || r.typ === "nabidka" || r.videli) && reqSeenLine(r) ? `<p class="meta">${reqSeenLine(r)}</p>` : ""}${r.pozn ? `<p class="pz">„${esc(r.pozn)}“</p>` : ""}${isGroup(r) && r.stav === "ceka" ? `<p class="meta">Žádost odešla ${r.skupina.length} kolegům – ${esc(surname(r.od.jmeno))} si vybere z těch, kdo souhlasí.</p>` : ""}${r.souhlas && r.stav === "ceka" ? `<p class="meta" style="color:#2E9E5B;font-weight:600">✓ ${r.zaCislo === SELF_NO ? `Souhlasíš – čeká se, až ${esc(surname(r.od.jmeno))} potvrdí` : esc(surname(r.za.jmeno)) + " souhlasí" + (r.za && r.za.den ? ` – dá ${fmtS(r.mesic, r.za)}` : "")}.</p>` : ""}${withActions ? reqActions(r) : ""}<div class="checks msg"></div><span class="go">Zobrazit v plánu ›</span></div>`;
 }
 function propHTML(r){
   const pm = zaM(r), [y, m] = ymOf(pm), o = month(pm), now = getNow(), picks = PROP.picks;

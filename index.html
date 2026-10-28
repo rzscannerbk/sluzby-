@@ -100,10 +100,15 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 .tile.past{opacity:.5}
 .tile.prev{border-style:dashed}
 .tile.today{outline:2px solid var(--now);outline-offset:3px}
+.tile.my-d{background:#F2D24A;color:#1D2A4D;border-color:#1D2A4D}
+.tile.my-n{background:#4B3F9E;color:#fff;border-color:#1D2A4D}
+.tile.my-dn{background:linear-gradient(to bottom,#F2D24A 0 50%,#4B3F9E 50% 100%);color:#1D2A4D;border-color:#1D2A4D}
+.tile.my-dn .dt{color:#fff}
+.tile.my-d .ev,.tile.my-dn .ev{color:#1D2A4D}.tile.my-n .ev{color:#E4E1FF}
+.tile.my-d.active,.tile.my-n.active,.tile.my-dn.active{border-width:3px;box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--ink)}
 .tile.active{border-width:3px}
-.tile.active.part-day{background:var(--day);border-color:var(--day-line);color:var(--ink)}
-.tile.active.part-night{background:var(--night);color:var(--night-ink);border-color:var(--night-line)}
-.tile.active.part-night .ev{color:var(--night2)}
+/* barevné jsou jen dny mých služeb – aktivní cizí den má jen silný rámeček */
+.tile.active:not(.my-d):not(.my-n):not(.my-dn){box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--ink)}
 .tile.active.past{opacity:.85}
 .marks{position:absolute;top:4px;right:4px;display:flex;gap:2px;align-items:flex-start}
 .marks .mk{display:flex;flex-direction:column;gap:2px}
@@ -515,6 +520,10 @@ button.cal-day{cursor:pointer}
 .mp-t td button.x-take{box-shadow:inset 0 0 0 3px #2E9E5B}
 .mp-t td button.x-take::after{content:"✓";position:absolute;top:1px;right:3px;width:auto;height:auto;background:none;box-shadow:none;font-size:11px;color:#fff;text-shadow:0 0 2px #000}
 .mp-t td button.x-no{opacity:.28}
+.mp-t .mp-split{display:flex;flex-direction:column;height:var(--rh)}
+.mp-t td .mp-split button.hf{height:calc(var(--rh) / 2);font-size:10.5px;line-height:1}
+.mp-t td .mp-split button.st::after{top:1px;right:2px;width:6px;height:6px}
+.mp-t td .mp-split button.sw::before{bottom:0;font-size:8px}
 .mp-t td button.pressing{transform:scale(.9);transition:transform .25s}
 .req .pz.ok-s{color:#2E9E5B;font-weight:600;font-style:normal}
 .mp-bar{padding:8px 12px;border-top:1.5px solid var(--ink);background:var(--sheet);font-size:14px;color:var(--ink)}
@@ -606,7 +615,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.00</span>
+      <span class="ver" id="verDiag">v5.02</span>
     </div>
   </div>
 </header>
@@ -713,7 +722,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.00"></script>
+<script src="sluzby-core.js?v=5.02"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -949,9 +958,9 @@ function render(){
     if (ME){
       const on = slot => slot && (slot.stala?.name === ME ? "s" : slot.hl.some(p => p.name === ME) ? "x" : "");
       const dm = on(g.day), nm = on(g.night);
-      // tečka podle služby (žlutá denní, modrá noční), pod ní zelená, je-li stálá
-      const mk = (m, k) => m ? `<span class="mk"><i class="${k}"></i>${m === "s" ? `<i class="s"></i>` : ""}</span>` : "";
-      if (dm || nm) marks = `<span class="marks" aria-hidden="true">${mk(dm, "d")}${mk(nm, "n")}</span>`;
+      // den mé služby: celé políčko žlutě (denní) / modře (noční), obojí = půl na půl; zelená tečka = stálá
+      if (dm && nm) cls.push("my-dn"); else if (dm) cls.push("my-d"); else if (nm) cls.push("my-n");
+      if (dm === "s" || nm === "s") marks = `<span class="marks" aria-hidden="true"><span class="mk"><i class="s"></i></span></span>`;
     }
     const ev = g.prev ? g.prevName : "";
     const label = `${DOW_T[wd]} ${d.getDate()}. ${d.getMonth()+1}.${ev ? ", " + ev : g.day?.ev ? ", " + g.day.ev : ""}`;
@@ -2078,7 +2087,7 @@ const ST_LBL = {ceka:"Čeká", navrh:"Návrh", prijato:"Přijato", odmitnuto:"Od
 function reqCard(r, actions, go){
   const props = r.stav === "navrh" && r.odCislo !== SELF_NO
     ? `<span class="pz">Navrženo místo toho: ${(r.navrhy || []).map(t => fmtS(zaM(r), parseProp(t))).join(", ")}</span>` : "";
-  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${typeof reqTimes === "function" && reqTimes(r) ? `<span class="pz tm">${reqTimes(r)}</span>` : ""}${r.odCislo === SELF_NO && typeof reqSeenLine === "function" && (r.zaCislo == null || r.typ === "nabidka" || r.videli) && reqSeenLine(r) ? `<span class="pz tm seen">${reqSeenLine(r)}</span>` : ""}${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${isGroup(r) && (r.stav === "ceka" || r.stav === "navrh") ? `<span class="pz">Žádost dostalo ${r.skupina.length} kolegů – ${esc(surname(r.od.jmeno))} si vybere z těch, kdo souhlasí.</span>` : ""}${r.souhlas && r.stav === "ceka" ? `<span class="pz ok-s">✓ ${r.zaCislo === SELF_NO ? `Souhlasíš – čeká se, až ${esc(surname(r.od.jmeno))} potvrdí` : esc(surname(r.za.jmeno)) + " souhlasí" + (r.za && r.za.den ? ` – dá ${fmtS(r.mesic, r.za)}` : "")}.</span>` : ""}${r.zaKolegu ? `<span class="pz">Přijal správce (${esc(surname(r.zaKolegu))}) za ${esc(zaTvar(r.za.jmeno))}.</span>` : ""}${r.duvod === "jinde" ? `<span class="pz">${r.vybrano ? "Autor si vybral jiného kolegu." : "Výměnu vzal jiný kolega."}</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div><span class="go">${go || "Zobrazit v plánu"} ›</span></div>`;
+  return `<div class="req${r.stav === "ceka" || r.stav === "navrh" ? " pending" : ""}" data-id="${r.id}">${reqText(r)}${props}<span class="st st-${r.admin && r.stav === "prijato" ? "admin" : r.stav}">${r.admin && r.stav === "prijato" ? "Změna administrátorem" : ST_LBL[r.stav]}</span>${typeof reqTimes === "function" && reqTimes(r) ? `<span class="pz tm">${reqTimes(r)}</span>` : ""}${r.odCislo === SELF_NO && typeof reqSeenLine === "function" && (r.zaCislo == null || r.typ === "nabidka" || r.videli) && reqSeenLine(r) ? `<span class="pz tm seen">${reqSeenLine(r)}</span>` : ""}${r.pozn ? `<span class="pz">„${esc(r.pozn)}“</span>` : ""}${isGroup(r) && (r.stav === "ceka" || r.stav === "navrh") ? `<span class="pz">Žádost odešla ${r.skupina.length} kolegům – ${esc(surname(r.od.jmeno))} si vybere z těch, kdo souhlasí.</span>` : ""}${r.souhlas && r.stav === "ceka" ? `<span class="pz ok-s">✓ ${r.zaCislo === SELF_NO ? `Souhlasíš – čeká se, až ${esc(surname(r.od.jmeno))} potvrdí` : esc(surname(r.za.jmeno)) + " souhlasí" + (r.za && r.za.den ? ` – dá ${fmtS(r.mesic, r.za)}` : "")}.</span>` : ""}${r.zaKolegu ? `<span class="pz">Přijal správce (${esc(surname(r.zaKolegu))}) za ${esc(zaTvar(r.za.jmeno))}.</span>` : ""}${r.duvod === "jinde" ? `<span class="pz">${r.vybrano ? "Autor si vybral jiného kolegu." : "Výměnu vzal jiný kolega."}</span>` : ""}${actions ? `<div class="btns">${actions}</div>` : ""}<div class="msg checks"></div><span class="go">${go || "Zobrazit v plánu"} ›</span></div>`;
 }
 let PROP = null; // {id, picks:[]} – rozpracovaný návrh u žádosti
 function propChoiceHTML(r){
@@ -2858,6 +2867,15 @@ function mpHTML(){
       if (kD){ sD++; cntD[d]++; } if (kN){ sN++; cntN[d]++; }
       const cls = [wc(d).trim(), d === todayD ? "today" : ""].filter(Boolean).join(" ");
       if (!parts.length){ h += `<td class="${cls}"></td>`; continue; }
+      // denní i noční v jednom dni → políčko rozpůlené (nahoře den, dole noc), každá půlka zvlášť
+      if (kD && kN){
+        const half = (tk, k, cc) => {
+          const swh = !!(NOTES && NOTES[`${d}|${k}|${nm}`]);
+          return `<button type="button" class="${cc} hf${tk.endsWith("*") ? " st" : ""}${swh ? " sw" : ""}${mpxClass(nm, d, k, tk)}" data-mpd="${d}" data-mpk="${k}" data-mpn="${esc(nm)}" data-mpx="${k}" data-mpkod="${esc(tk)}" aria-label="${esc(nm)}, ${d}. ${MONTH + 1}., ${k === "N" ? "noční" : "denní"} ${esc(tk.replace(/\*$/, ""))}">${esc(tk.replace(/\*$/, ""))}</button>`;
+        };
+        h += `<td class="${cls}"><div class="mp-split">${half(kD, "D", "c-d")}${half(kN, "N", "c-n")}</div></td>`;
+        continue;
+      }
       const main = kD || kN || (hasP ? codes.find(isP) : k8 ? codes.find(isK) : abs || parts[0]);
       const c = hasP && kN ? "c-pn" : kD ? "c-d" : kN || k8 ? "c-n" : hasP ? "c-p" : abs ? "c-a" : "";
       const st = parts.some(p => p.endsWith("*"));
