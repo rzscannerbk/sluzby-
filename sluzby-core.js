@@ -48,9 +48,15 @@ function zaTvar(n){
 }
 
 /* --- efektivní plán = plán + přijaté výměny --- */
+// kódy v jednom dni seřadit podle začátku (ranní konec noci, porada, den, noc) – „D12+N13“, ne „N13+D12“
+const ordStart = p => { const c = CODES[String(p).replace(/\*$/, "")]; return c && c.s ? c.s[0] : 30; };
+function ordDay(tok){
+  if (!tok || tok === "." || tok.indexOf("+") < 0) return tok;
+  return tok.split("+").map((p, i) => [p, i]).sort((a, b) => ordStart(a[0]) - ordStart(b[0]) || a[1] - b[1]).map(x => x[0]).join("+");
+}
 function tokensOf(plan){
   const T = {};
-  for (const [n, s] of Object.entries(plan || {})) T[n] = String(s).trim().split(/\s+/);
+  for (const [n, s] of Object.entries(plan || {})) T[n] = String(s).trim().split(/\s+/).map(ordDay);
   return T;
 }
 function moveShift(T, from, to, den, kind, len){
@@ -61,7 +67,7 @@ function moveShift(T, from, to, den, kind, len){
   arr[den-1] = parts.length ? parts.join("+") : ".";
   if (!T[to]) T[to] = Array(len).fill(".");
   const t = T[to][den-1] || ".";
-  T[to][den-1] = t === "." ? part : t + "+" + part;
+  T[to][den-1] = t === "." ? part : ordDay(t + "+" + part);
   return true;
 }
 // přesun vlastní služby na jiný den (schvaluje správce): z od.den se služba odebere, na za.den přibude standardní D12 / N12
@@ -71,7 +77,7 @@ function movePresun(T, r, len){
   const i = parts.findIndex(p => kindOf(p) === r.od.kind); if (i < 0) return false;
   parts.splice(i, 1); arr[r.od.den-1] = parts.length ? parts.join("+") : ".";
   const t = arr[r.za.den-1] || ".";
-  arr[r.za.den-1] = t === "." ? r.za.kod : t + "+" + r.za.kod;
+  arr[r.za.den-1] = t === "." ? r.za.kod : ordDay(t + "+" + r.za.kod);
   return true;
 }
 // dovolená / zdravotní volno (schvaluje správce): ve vybraných dnech se služba (den/noc) nahradí kódem DOV / ZdV

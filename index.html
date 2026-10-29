@@ -102,8 +102,9 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 .tile.today{outline:2px solid var(--now);outline-offset:3px}
 .tile.my-d{background:#F2D24A;color:#1D2A4D;border-color:#1D2A4D}
 .tile.my-n{background:#4B3F9E;color:#fff;border-color:#1D2A4D}
-.tile.my-dn{background:linear-gradient(to bottom,#F2D24A 0 50%,#4B3F9E 50% 100%);color:#1D2A4D;border-color:#1D2A4D}
-.tile.my-dn .dt{color:#fff}
+.tile.my-dn{background:linear-gradient(to bottom right,#F2D24A 0 calc(50% - .5px),#4B3F9E calc(50% + .5px) 100%);color:#1D2A4D;border-color:#1D2A4D}
+.tile.my-dn .dow{text-shadow:0 0 3px rgba(255,255,255,.85)}
+.tile.my-dn .dt{color:#fff;text-shadow:0 0 3px rgba(0,0,0,.75),0 0 1px #000}
 .tile.my-d .ev,.tile.my-dn .ev{color:#1D2A4D}.tile.my-n .ev{color:#E4E1FF}
 .tile.my-d.active,.tile.my-n.active,.tile.my-dn.active{border-width:3px;box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--ink)}
 .tile.active{border-width:3px}
@@ -317,13 +318,15 @@ button.cal-day{cursor:pointer}
 .cal-day.k-n,.cal-day.k-p,.cal-day.k-pn{color:#fff}
 .cal-day.k-d{color:#1D2A4D}
 .k-pn{background:linear-gradient(to bottom,#3A9AD9 0 50%,#4B3F9E 50% 100%)}
+.k-dn{background:linear-gradient(to bottom right,#F2D24A 0 calc(50% - .5px),#4B3F9E calc(50% + .5px) 100%)}
+.cal-day.k-dn{color:#1D2A4D;text-shadow:0 0 3px rgba(255,255,255,.85)}.cal-day.k-dn small{color:#fff;text-shadow:0 0 3px rgba(0,0,0,.75),0 0 1px #000}
 .cal-day.abs small{color:var(--ink2)}
 .cal-day.stala::after{content:"";position:absolute;top:5px;right:5px;width:10px;height:10px;border-radius:50%;background:#2E9E5B;box-shadow:0 0 0 2px #fff}
 .cal-sum .k-s{background:#2E9E5B;border-radius:50%}
 .cal-day{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}
 .cal-day.note{box-shadow:inset 0 0 0 3px #F3A3A3}
-.cal-day.note:not(.k-d):not(.k-n):not(.k-p):not(.k-pn){background:#F9D3D3;color:#7A1F1F}
-.cal-day.note:not(.k-d):not(.k-n):not(.k-p):not(.k-pn) small{color:#7A1F1F}
+.cal-day.note:not(.k-d):not(.k-n):not(.k-p):not(.k-pn):not(.k-dn){background:#F9D3D3;color:#7A1F1F}
+.cal-day.note:not(.k-d):not(.k-n):not(.k-p):not(.k-pn):not(.k-dn) small{color:#7A1F1F}
 .cal-day.pressing{transform:scale(.94);transition:transform .2s}
 .note-hint{font-size:13px;color:var(--ink2);margin:10px 0 0}
 .vol-open{margin-top:18px;width:100%}
@@ -520,10 +523,14 @@ button.cal-day{cursor:pointer}
 .mp-t td button.x-take{box-shadow:inset 0 0 0 3px #2E9E5B}
 .mp-t td button.x-take::after{content:"✓";position:absolute;top:1px;right:3px;width:auto;height:auto;background:none;box-shadow:none;font-size:11px;color:#fff;text-shadow:0 0 2px #000}
 .mp-t td button.x-no{opacity:.28}
-.mp-t .mp-split{display:flex;flex-direction:column;height:var(--rh)}
-.mp-t td .mp-split button.hf{height:calc(var(--rh) / 2);font-size:10.5px;line-height:1}
-.mp-t td .mp-split button.st::after{top:1px;right:2px;width:6px;height:6px}
-.mp-t td .mp-split button.sw::before{bottom:0;font-size:8px}
+.mp-t .mp-split{position:relative;height:var(--rh)}
+.mp-t td .mp-split button.hf{position:absolute;inset:0;height:var(--rh);font-size:10px;line-height:1;padding:2px 3px}
+.mp-t td .mp-split button.c-d{clip-path:polygon(0 0,100% 0,0 100%);align-items:flex-start;justify-content:flex-start}
+.mp-t td .mp-split button.c-n{clip-path:polygon(100% 0,100% 100%,0 100%);align-items:flex-end;justify-content:flex-end}
+.mp-t td .mp-split button.c-d.st::after{top:auto;bottom:22%;left:3px;right:auto;width:6px;height:6px}
+.mp-t td .mp-split button.c-n.st::after{top:22%;right:3px;width:6px;height:6px}
+.mp-t td .mp-split button.c-d.sw::before{bottom:auto;top:55%;left:2px;font-size:8px}
+.mp-t td .mp-split button.c-n.sw::before{left:auto;right:2px;bottom:auto;top:30%;font-size:8px}
 .mp-t td button.pressing{transform:scale(.9);transition:transform .25s}
 .req .pz.ok-s{color:#2E9E5B;font-weight:600;font-style:normal}
 .mp-bar{padding:8px 12px;border-top:1.5px solid var(--ink);background:var(--sheet);font-size:14px;color:var(--ink)}
@@ -615,7 +622,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.02</span>
+      <span class="ver" id="verDiag">v5.04</span>
     </div>
   </div>
 </header>
@@ -722,7 +729,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.02"></script>
+<script src="sluzby-core.js?v=5.04"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -1365,7 +1372,7 @@ function fillCal(){
     if (hasD) cD++; if (hasN && !parts.every(p => isK(p.code))) cN++; if (hasP) cP++; if (st) cS++; if (abs) cA++;
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
-    if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
+    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
     if (st) cls.push("stala");
     if (wd === 0 || wd === 6) cls.push("we");
     if (date < today) cls.push("past");
@@ -2119,7 +2126,7 @@ function propPickHTML(r){
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
     const hasD = codes.includes("D12") || codes.includes("D8"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.some(isP);
-    if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p");
+    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p");
     if (parts.some(p => p.endsWith("*"))) cls.push("stala");
     if (wd === 0 || wd === 6) cls.push("we");
     if (date.getTime() === today.getTime()) cls.push("today");
@@ -2450,7 +2457,7 @@ function swapCalHTML(name, mine){
     const kind = shift ? kindOf(shift) : null;
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
-    if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
+    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
     if (parts.some(p => p.endsWith("*"))) cls.push("stala");
     if (wd === 0 || wd === 6) cls.push("we");
     if (date.getTime() === today.getTime()) cls.push("today");
@@ -2510,7 +2517,7 @@ function dayPickHTML(id, mine){
     const abs = codes.find(c => c === "DOV" || c === "ZdV");
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
-    if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
+    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
     if (parts.some(p => p.endsWith("*"))) cls.push("stala");
     if (wd === 0 || wd === 6) cls.push("we");
     if (date.getTime() === today.getTime()) cls.push("today");
@@ -2562,7 +2569,7 @@ function moveCalHTML(id, mine){
     const abs = codes.find(c => c === "DOV" || c === "ZdV");
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
-    if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
+    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
     if (parts.some(p => p.endsWith("*"))) cls.push("stala");
     if (wd === 0 || wd === 6) cls.push("we");
     if (date.getTime() === today.getTime()) cls.push("today");
@@ -3116,7 +3123,7 @@ function admCalHTML(name, sel, mark, all){
     const shift = parts.find(p => kindOf(p)), kind = shift ? kindOf(shift) : null;
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
-    if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
+    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
     if (parts.some(p => p.endsWith("*"))) cls.push("stala");
     if (wd === 0 || wd === 6) cls.push("we");
     if (date.getTime() === today.getTime()) cls.push("today");
