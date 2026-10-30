@@ -374,7 +374,7 @@ button.cal-day{cursor:pointer}
 .vol-pick[hidden]{display:none}
 .vp-t{margin:0 0 10px;font-family:var(--f-cond);font-weight:600;font-size:20px}
 .vp-t small{font-family:var(--f-body);font-weight:400;font-size:13px;color:var(--ink2);display:block}
-.vp-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.vp-opts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .vp-opts button{font:inherit;font-size:16px;font-weight:600;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:12px;padding:12px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
 .vp-opts button small{font-size:11px;font-weight:400;color:var(--ink2)}
 .vp-opts button[aria-pressed="true"]{border-color:#D04848;background:#D04848;color:#fff}
@@ -637,7 +637,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.08</span>
+      <span class="ver" id="verDiag">v5.11</span>
     </div>
   </div>
 </header>
@@ -653,7 +653,7 @@ button.cal-day{cursor:pointer}
     </div>
     <div class="cal-sum" id="volSum"></div>
     <div class="cal-grid" id="volGrid"></div>
-    <p class="note-hint" id="volHint">Služby podle dlouhodobého plánu. Klepni na den a vyber Volno, Ne den nebo Ne noc. Volno potvrď tlačítkem Uložit, přání se ukládají hned. Uložené volno upravíš klepnutím na něj v seznamu dole.</p>
+    <p class="note-hint" id="volHint">Služby podle dlouhodobého plánu. Klepni na den a vyber Volno, ZdV, Ne den nebo Ne noc. Volno potvrď tlačítkem Uložit, ostatní požadavky se ukládají hned. Uložené volno upravíš klepnutím na něj v seznamu dole.</p>
     <div class="vol-sum" id="volRes" hidden></div>
     <div class="vol-list" id="volList"></div>
   </div>
@@ -661,6 +661,7 @@ button.cal-day{cursor:pointer}
     <p class="vp-t" id="volPickT"></p>
     <div class="vp-opts">
       <button type="button" data-vp="V">Volno</button>
+      <button type="button" data-vp="Z">ZdV<small>zdravotní volno</small></button>
       <button type="button" data-vp="D">Ne den<small>noční můžu</small></button>
       <button type="button" data-vp="N">Ne noc<small>denní můžu</small></button>
     </div>
@@ -753,7 +754,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.08"></script>
+<script src="sluzby-core.js?v=5.11"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -1796,9 +1797,9 @@ document.getElementById("absPick").addEventListener("click", e => {
 const vol = document.getElementById("vol");
 let volY = 0, volM = 0, volSaving = false;
 let volDraft = new Set(), volEditId = null; // rozpracovaný výběr dnů „YYYY-MM-DD“
-// přání do plánu: „ne den“ (nechci denní, noční můžu) / „ne noc“ (nechci noční, denní můžu) – {"YYYY-MM-DD": "D" | "N"}
+// požadavky do plánu: „ne den“ (nechci denní, noční můžu) / „ne noc“ (nechci noční, denní můžu) / zdravotní volno – {"YYYY-MM-DD": "D" | "N" | "Z"}
 let MY_PRANI = {};
-const NE_LBL = {D:"ne den", N:"ne noc"};
+const NE_LBL = {D:"ne den", N:"ne noc", Z:"ZdV"};
 const dlpHas = (y, m) => !!dlpOf(SELF, y, m);
 const dlpCode = k => { const x = dparse(k), r = dlpOf(SELF, x.y, x.m) || ""; return r[x.d-1] || "."; };
 function volStats(dny){
@@ -1882,30 +1883,27 @@ function reqMonths(){
 }
 function reqMonthData(ym){
   const vd = []; MY_VOLP.forEach(e => e.dny.forEach(k => { if (k.startsWith(ym)) vd.push(k); }));
-  return {vd:vd.sort(), D:praniKeys("D", ym), N:praniKeys("N", ym)};
+  return {vd:vd.sort(), D:praniKeys("D", ym), N:praniKeys("N", ym), Z:praniKeys("Z", ym)};
 }
 const ymName = ym => { const [y, m] = ym.split("-").map(Number); return `${MONTHS[m-1]} ${y}`; };
 // jeden blok pro sdílení na celý měsíc: volno + ne den + ne noc
 function praniHTML(){
   return reqMonths().map(ym => { const x = reqMonthData(ym);
     const vol = volGroups(x.vd).map(g => `<p><b>Volno ${g.label.replace(/ \d{4}$/, "")}:</b> ${volLine(volStats(g.dny))}</p>`).join("");
-    return `<div class="vol-ne"><h3>Požadavky – ${ymName(ym)}</h3>${vol}${x.D.length ? `<p><b>Ne den:</b> ${praniDays(x.D)}</p>` : ""}${x.N.length ? `<p><b>Ne noc:</b> ${praniDays(x.N)}</p>` : ""}
+    return `<div class="vol-ne"><h3>Požadavky – ${ymName(ym)}</h3>${vol}${x.Z.length ? `<p><b>ZdV:</b> ${praniDays(x.Z)}</p>` : ""}${x.D.length ? `<p><b>Ne den:</b> ${praniDays(x.D)}</p>` : ""}${x.N.length ? `<p><b>Ne noc:</b> ${praniDays(x.N)}</p>` : ""}
       <button type="button" class="vol-share" data-pshare="${ym}" aria-label="Sdílet požadavky na ${ymName(ym)}">${SHARE_SVG}</button></div>`; }).join("");
 }
+// text ke sdílení – jen čísla dnů (vždy jeden měsíc), souvislé dny jako rozsah
 function praniText(ym){
-  const x = reqMonthData(ym), lines = [`Požadavky do plánu služeb – ${ymName(ym)}`, SELF];
-  if (x.vd.length){
-    lines.push("", "Volno:");
-    volGroups(x.vd).forEach(g => {
-      lines.push(`${g.label.replace(/ \d{4}$/, "")}: ${volLine(volStats(g.dny))}`);
-      g.dny.filter(k => dlpCode(k) !== ".").forEach(k => { const d = dparse(k), w = DOW[new Date(d.y, d.m, d.d).getDay()];
-        lines.push(`– ${w} ${d.d}. ${d.m+1}. ${dlpCode(k) === "N" ? "N12 noční" : "D12 denní"}`); });
-    });
-    if (volGroups(x.vd).length > 1) { const t = volLine(volStats(x.vd)); lines.push(`Celkem: ${t.charAt(0).toLowerCase() + t.slice(1)}`); }
-  }
-  if (x.D.length) lines.push("", "Nechci denní (noční můžu):", ...x.D.map(k => "– " + praniDays([k])));
-  if (x.N.length) lines.push("", "Nechci noční (denní můžu):", ...x.N.map(k => "– " + praniDays([k])));
-  return lines.join("\n").replace(/\u00a0/g, " ");
+  const x = reqMonthData(ym), lines = [`Požadavky do plánu služeb – ${ymName(ym)}`, SELF, ""];
+  const rng = g => { const a = dparse(g[0]).d, b = dparse(g[g.length - 1]).d; return a === b ? `${a}.` : `${a}.–${b}.`; };
+  const rows = [];
+  volGroups(x.vd).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} ${g.dny.some(k => dlpCode(k) !== ".") ? "dovolená" : "volno"}`]));
+  volGroups(x.Z).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} ZdV`]));
+  volGroups(x.D).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} ne den`]));
+  volGroups(x.N).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} ne noc`]));
+  rows.sort((p, q) => p[0] < q[0] ? -1 : 1).forEach(r => lines.push(r[1])); // podle dnů od 1. dál
+  return lines.join("\n");
 }
 async function praniSet(k, nove){
   if (!SELF_NO) return;
@@ -1914,7 +1912,7 @@ async function praniSet(k, nove){
   if (nove) MY_PRANI = {...MY_PRANI, [k]:nove}; else { MY_PRANI = {...MY_PRANI}; delete MY_PRANI[k]; }
   fillVol();
   try { await db.collection("poznamky").doc(SELF_NO).set({prani:{[k]: nove || FV.delete()}, upraveno:FV.serverTimestamp()}, {merge:true}); }
-  catch (err){ MY_PRANI = prev; fillVol(); alert("Přání se nepodařilo uložit."); }
+  catch (err){ MY_PRANI = prev; fillVol(); alert("Požadavek se nepodařilo uložit."); }
 }
 async function volWrite(list){
   const FV = firebase.firestore.FieldValue;
