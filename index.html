@@ -637,7 +637,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.15</span>
+      <span class="ver" id="verDiag">v5.16</span>
     </div>
   </div>
 </header>
@@ -754,8 +754,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.15"></script>
-<script src="sluzby-chat.js?v=5.15"></script>
+<script src="sluzby-core.js?v=5.16"></script>
+<script src="sluzby-chat.js?v=5.16"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1080,7 +1080,15 @@ track.addEventListener("click", e => {
   if (suppressClick) return;
   const t = e.target.closest(".tile"); if (!t) return;
   const g = left.querySelectorAll(".group")[+t.dataset.i];
-  if (g) scrollLeftTo(g.offsetTop, true);
+  if (!g) return;
+  // den, kdy má zvýrazněný strážník jen noční → noční karta doprostřed obrazovky
+  const n = t.classList.contains("my-n") && g.querySelector(".card.night");
+  if (n){
+    const H = left.clientHeight, mid = n.offsetTop + n.offsetHeight / 2 - H / 2;
+    left.scrollTo({top: Math.max(0, mid, n.offsetTop - H * FOCAL + 8), behavior: reduceMotion ? "auto" : "smooth"});
+    return;
+  }
+  scrollLeftTo(g.offsetTop, true);
 });
 
 /* výběr strážníka */
