@@ -338,6 +338,24 @@ const STYLE = `
 .pk-mini i.X::after{inset:8%;border-radius:0;background:linear-gradient(45deg,transparent 40%,#1D2A4D 40% 60%,transparent 60%),linear-gradient(-45deg,transparent 40%,#1D2A4D 40% 60%,transparent 60%)}
 .pk-mini i.O::after{border:1.6px solid #D04848}
 .pk-mini i.l{background:#FFF3B0}.pk-mini i.w{background:#CDEFD8}
+.ch-root .pk-hub{position:relative;flex:none;width:46px;height:46px;border-radius:50%;background:#F2D24A;border:2px solid #C9A90F;display:flex;align-items:center;justify-content:center;padding:0}
+.pk-hub i{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:10px;background:#D04848;color:#fff;font-style:normal;font-size:12px;font-weight:700;line-height:20px;padding:0 5px}
+.pk-stat{background:var(--sheet,#FAFBF7);border-radius:14px;padding:10px 12px;margin:0 0 6px}
+.pk-big{display:grid;grid-template-columns:repeat(4,1fr);text-align:center;gap:4px;margin:0 0 6px}
+.pk-big span{font-size:12px;color:var(--ink2,#5A6480)}
+.pk-big b{display:block;font-family:var(--f-cond,sans-serif);font-size:28px;color:var(--ink,#1D2A4D);line-height:1.1}
+.pk-big .v b{color:#2E9E5B}.pk-big .p b{color:#D04848}
+.pk-sr{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid var(--line,#DDE1E7);font-size:14.5px}
+.pk-sr:first-child{border-top:0}
+.pk-sr>span:first-child{display:flex;align-items:center;gap:8px;min-width:0}
+.pk-sr .ch-av{width:28px;height:28px;font-size:11px}
+.pk-sv{color:#2E9E5B}.pk-sp{color:#D04848}
+.pk-hist{background:var(--sheet,#FAFBF7);border-radius:14px;padding:2px 12px;margin:0 0 20px}
+.ch-root .pk-h,.pk-h{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:0;border-top:1px solid var(--line,#DDE1E7);background:transparent;padding:9px 0;text-align:left;font-size:14.5px;color:inherit}
+.pk-h:first-child{border-top:0}
+.pk-h small{display:block;color:var(--ink2,#5A6480);font-size:12.5px}
+.pk-h i{font-style:normal;font-weight:700;font-size:13px;padding:3px 8px;border-radius:8px;flex:none}
+.pk-h .r-v{background:rgba(46,158,91,.16);color:#2E9E5B}.pk-h .r-p{background:rgba(208,72,72,.14);color:#D04848}.pk-h .r-r{background:rgba(127,127,127,.15)}
 .pk-ic{display:inline-flex;width:30px;height:30px;border-radius:50%;background:#F2D24A;border:1.5px solid #C9A90F;align-items:center;justify-content:center}
 .pk-box{background:var(--sheet,#FAFBF7);border:2px solid var(--ink,#1D2A4D);border-radius:14px;padding:8px 12px 12px;margin:0 0 6px}
 .pk-row{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;border:0;border-bottom:1px solid var(--line,#DDE1E7);background:transparent;padding:9px 2px;font-size:14px;text-align:left}
@@ -387,7 +405,7 @@ const STYLE = `
 CH.init = function(opts){
   if (O) { CH.refresh(); return; }
   O = opts; S = {stage:[], newBelow:0, lastCount:null, set:undefined, threads:{}, vsichni:null, unsubs:[], tid:null, msgs:[], msgUnsub:null, msgFor:null, reply:null, edit:null,
-    search:"", searchOn:false, view:"list", archive:false, pick:false, pickHra:false, pinT:[], games:{}, pkId:null, pkSel:null, pkAI:null, pending:null, typingAt:0, err:"", open:false, firstScroll:true};
+    search:"", searchOn:false, view:"list", archive:false, pick:false, pickHra:false, pkView:false, pinT:[], games:{}, pkId:null, pkSel:null, pkAI:null, pending:null, typingAt:0, err:"", open:false, firstScroll:true};
   if (!$("chCss")){ const st = document.createElement("style"); st.id = "chCss"; st.textContent = STYLE; document.head.appendChild(st); }
   const root = document.createElement("div");
   root.className = "ch-root" + (O.desk ? " desk" : ""); root.id = "chRoot"; root.hidden = true;
@@ -583,7 +601,7 @@ CH.open = function(){
 };
 CH.close = function(){
   if (!S) return;
-  S.open = false; S.vvBase = null; const r = $("chRoot"); if (r){ r.hidden = true; r.classList.remove("kb"); }
+  S.open = false; S.vvBase = null; S.pkView = false; S.pickHra = false; const r = $("chRoot"); if (r){ r.hidden = true; r.classList.remove("kb"); }
   closeSheet();
   if (O && O.onClose) O.onClose();
 };
@@ -641,8 +659,11 @@ function hCardHTML(id, t){
 }
 function renderList(){
   const el = $("chList"); if (!el || !S.open) return;
-  const head = `<div class="ch-h"><h2>${S.archive ? "Archiv hlídek" : S.pickHra ? "Piškvorky – výzva" : S.pick ? "Nová zpráva" : "Chat"}</h2>${S.archive || S.pick || S.pickHra ? `<button type="button" class="ch-sec" data-chback-list style="margin:0;border:1.5px solid currentColor;border-radius:8px;padding:5px 10px;background:transparent;font-size:14px">‹ Zpět</button>` : ""}<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button></div>`;
+  const sub = S.archive || S.pick || S.pickHra || S.pkView, nT = pkTurnCount();
+  const pkBtn = PK_ON() && !sub ? `<button type="button" class="pk-hub" data-chpkhub aria-label="Piškvorky${nT ? ` – jsi na tahu (${nT})` : ""}" title="Piškvorky">${PK_ICO(30, 1)}${nT ? `<i>${nT}</i>` : ""}</button>` : "";
+  const head = `<div class="ch-h"><h2>${S.archive ? "Archiv hlídek" : S.pickHra ? "Piškvorky – výzva" : S.pkView ? "Piškvorky" : S.pick ? "Nová zpráva" : "Chat"}</h2>${pkBtn}${sub ? `<button type="button" class="ch-sec" data-chback-list style="margin:0;border:1.5px solid currentColor;border-radius:8px;padding:5px 10px;background:transparent;font-size:14px">‹ Zpět</button>` : ""}<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button></div>`;
   const test = S.set && !S.set.vsem ? `<p class="ch-test"><b>Testovací provoz</b> – chat zatím vidí jen ${testeri().map(c => esc(nameOf(c))).join(", ")}.</p>` : "";
+  if (S.pkView && !S.pickHra){ el.innerHTML = head + pkHubHTML(); return; }
   if (S.pickHra){
     const list = Object.entries(officers()).filter(([n, c]) => String(c) !== String(O.me) && (S.set.vsem || testeri().includes(String(c)))).sort((a, b) => a[0].localeCompare(b[0], "cs"));
     el.innerHTML = head + `<p class="ch-empty">Vyber kolegu – dostane výzvu do soukromých zpráv a notifikaci.</p>` + (list.length ? `<div class="ch-pick">${list.map(([n, c]) => { const ex = pkGameWith(c); return `<button type="button" data-chpkdm="${esc(c)}">${avHTML(String(c), initials(n))}<span>${esc(n)}${ex ? " · rozehráno" : ""}</span></button>`; }).join("")}</div>` : `<p class="ch-empty">Zatím nikdo další nemá chat povolený.</p>`);
@@ -672,7 +693,6 @@ function renderList(){
   el.innerHTML = head + test
     + `<div class="ch-sec">Hlídky</div>` + (act.length ? act.map(([id, t]) => hCardHTML(id, t)).join("") : `<p class="ch-empty">Teď nemáš žádnou hlídku. Vlákno se objeví den před službou.</p>`)
     + `<div class="ch-sec">Společné</div>` + rowHTML("vsichni", S.vsichni)
-    + (PK_ON() ? pkListHTML() : "")
     + `<div class="ch-sec">Soukromé zprávy <button type="button" data-chnew>+ Nová</button></div>`
     + (dms.length ? dms.map(([id, t]) => rowHTML(id, t)).join("") : `<p class="ch-empty">Zatím žádné. Napiš kolegovi přes „+ Nová“.</p>`)
     + `<button type="button" class="ch-arch" data-charch>Archiv hlídek${nArch ? ` (${nArch})` : ""}</button>`;
@@ -1199,13 +1219,14 @@ function bind(root){
     const c = x => e.target.closest(x);
     if (c("[data-chclose]")){ CH.close(); return; }
     if (c("[data-chback]")){ backToList(); return; }
-    if (c("[data-chback-list]")){ S.archive = false; S.pick = false; S.pickHra = false; renderList(); return; }
+    if (c("[data-chback-list]")){ if (S.pickHra && S.pkView){ S.pickHra = false; renderList(); return; } S.archive = false; S.pick = false; S.pickHra = false; S.pkView = false; renderList(); return; }
+    if (c("[data-chpkhub]")){ S.pkView = true; renderList(); $("chList").scrollTop = 0; return; }
     if (c("[data-charch]")){ S.archive = true; renderList(); $("chList").scrollTop = 0; return; }
     if (c("[data-chnew]")){ S.pick = true; renderList(); return; }
     const pkd = c("[data-chpkdm]"); if (pkd){ S.pickHra = false; pkChallenge(pkd.dataset.chpkdm); return; }
     const pkg = c("[data-chpk]"); if (pkg){ pkOpen(pkg.dataset.chpk); return; }
     if (c("[data-chpkai]")){ pkOpenAI(); return; }
-    if (c("[data-chpkpick]")){ S.pickHra = true; renderList(); $("chList").scrollTop = 0; return; }
+    if (c("[data-chpkpick]")){ S.pickHra = true; S.pkView = true; renderList(); $("chList").scrollTop = 0; return; }
     const dm = c("[data-chdm]"); if (dm){ S.pick = false; CH.openThread(dmId(O.me, dm.dataset.chdm)); return; }
     const th = c("[data-cht]"); if (th){ CH.openThread(th.dataset.cht); return; }
     const sb = c("[data-chsend]"); if (sb){ if (sb.dataset.tt){ delete sb.dataset.tt; return; } send(); return; }
@@ -1440,8 +1461,35 @@ function pkListHTML(){
   const act = pkActive(), ai = pkAIload();
   const rows = act.map(([id, g]) => `<button type="button" class="pk-row" data-chpk="${esc(id)}"><span>✕○ vs <b>${esc(shortName(nameOf(pkPeer(g))))}</b></span>${pkMyTurn(g) ? `<em>Jsi na tahu</em>` : `<small>na tahu je ${esc(surname(nameOf(pkPeer(g))))}</small>`}</button>`).join("")
     + (ai && ai.stav === "hraje" && ai.pocet ? `<button type="button" class="pk-row" data-chpkai><span>🖥️ <b>Počítač</b> · ${PK_LVL[ai.lvl] || "střední"}</span><small>tah ${ai.pocet}</small></button>` : "");
-  return `<div class="ch-sec">Piškvorky <span class="pk-ic">${PK_ICO(22, 1)}</span></div><div class="pk-box">${rows || `<p class="ch-empty" style="margin:0 0 6px">Žádná rozehraná hra.</p>`}
+  return `<div class="ch-sec">Rozehrané hry</div><div class="pk-box">${rows || `<p class="ch-empty" style="margin:0 0 6px">Žádná rozehraná hra.</p>`}
     <div class="pk-btns"><button type="button" class="pk-b" data-chpkai>Hrát proti počítači</button><button type="button" class="pk-b sec" data-chpkpick>Výzva…</button></div></div>`;
+}
+const pkResOf = g => !g.vitez ? "r" : String(g.vitez) === String(O.me) ? "v" : "p";
+const PK_RES = {v:"Výhra", p:"Prohra", r:"Remíza", z:"Vzdáno"};
+function pkDate(t){ const d = new Date(t); return `${DOW_S[d.getDay()]} ${d.getDate()}. ${d.getMonth() + 1}.`; }
+// celý přehled piškvorek (otevírá ikona v pravém horním rohu chatu): rozehrané, statistiky, odehrané hry
+function pkHubHTML(){
+  const done = Object.entries(S.games || {}).filter(([, g]) => g.stav === "konec").sort((a, b) => ms(b[1].zmeneno) - ms(a[1].zmeneno));
+  const tot = {v:0, p:0, r:0}, per = {};
+  done.forEach(([, g]) => { const r = pkResOf(g), c = pkPeer(g); tot[r]++; (per[c] = per[c] || {v:0, p:0, r:0})[r]++; });
+  const ai = pkAIload() || {}, bl = ai.bl || {}, hist = ai.hist || [];
+  const score = x => `<b class="pk-sv">${x.v}</b> : <b class="pk-sp">${x.p}</b>${x.r ? ` <small>(remízy ${x.r})</small>` : ""}`;
+  const colleagues = done.length ? `<div class="pk-stat"><div class="pk-big"><span><b>${done.length}</b>odehráno</span><span class="v"><b>${tot.v}</b>výher</span><span class="p"><b>${tot.p}</b>proher</span><span><b>${tot.r}</b>remíz</span></div>
+      ${Object.entries(per).sort((a, b) => (b[1].v + b[1].p + b[1].r) - (a[1].v + a[1].p + a[1].r)).map(([c, x]) => `<div class="pk-sr"><span>${avHTML(c, initials(nameOf(c)))}${esc(nameOf(c))}</span><span>${score(x)}</span></div>`).join("")}</div>`
+    : `<p class="ch-empty">Zatím žádná dohraná hra s kolegou.</p>`;
+  const levels = [1, 2, 3].filter(l => bl[l] && (bl[l].v + bl[l].p + bl[l].r));
+  const old = ai.bil && (ai.bil.v + ai.bil.p) && !levels.length;
+  const pc = levels.length || old
+    ? `<div class="pk-stat">${levels.length ? levels.map(l => `<div class="pk-sr"><span>🖥️ ${PK_LVL[l]}</span><span>${score(bl[l])}</span></div>`).join("") : `<div class="pk-sr"><span>🖥️ celkem</span><span>${score({v:ai.bil.v, p:ai.bil.p, r:0})}</span></div>`}</div>`
+    : `<p class="ch-empty">Zatím žádná dohraná hra proti počítači.</p>`;
+  const games = [
+    ...done.map(([id, g]) => ({at:ms(g.zmeneno), html:`<button type="button" class="pk-h" data-chpk="${esc(id)}"><span><b>${esc(shortName(nameOf(pkPeer(g))))}</b><small>${pkDate(ms(g.zmeneno))} · ${g.pocet || 0} tahů${g.vzdal ? " · vzdáno" : ""}</small></span><i class="r-${pkResOf(g)}">${PK_RES[pkResOf(g)]}</i></button>`})),
+    ...hist.map(h => ({at:h.at, html:`<div class="pk-h"><span><b>🖥️ Počítač · ${PK_LVL[h.lvl] || ""}</b><small>${pkDate(h.at)} · ${h.n} tahů</small></span><i class="r-${h.r === "z" ? "p" : h.r}">${PK_RES[h.r]}</i></div>`}))
+  ].sort((a, b) => b.at - a.at).slice(0, 30);
+  return pkListHTML()
+    + `<div class="ch-sec">Statistiky – proti kolegům</div>${colleagues}`
+    + `<div class="ch-sec">Statistiky – proti počítači</div>${pc}`
+    + `<div class="ch-sec">Odehrané hry</div>${games.length ? `<div class="pk-hist">${games.map(x => x.html).join("")}</div>` : `<p class="ch-empty">Zatím žádné.</p>`}`;
 }
 /* výzva a tahy */
 async function pkChallenge(peer){
@@ -1498,21 +1546,29 @@ async function pkResign(id){
 /* hra proti počítači – jen v tomto zařízení */
 function pkAIload(){ try { return JSON.parse(localStorage.getItem("pkAI") || "null"); } catch (e){ return null; } }
 function pkAIsave(g){ try { localStorage.setItem("pkAI", JSON.stringify(g)); } catch (e){} }
-function pkAInew(lvl){ const old = pkAIload() || {}; return {plocha:PK_EMPTY, pocet:0, posledni:-1, stav:"hraje", vitez:null, vyhra:[], lvl:lvl || old.lvl || 2, bil:old.bil || {v:0, p:0}, ty:old.ty === "x" ? "o" : "x"}; }
+function pkAInew(lvl){ const old = pkAIload() || {}; return {plocha:PK_EMPTY, pocet:0, posledni:-1, stav:"hraje", vitez:null, vyhra:[], lvl:lvl || old.lvl || 2,
+  bil:old.bil || {v:0, p:0}, bl:old.bl || {}, hist:old.hist || [], ty:old.ty === "x" ? "o" : "x"}; }
+// zápis výsledku hry proti počítači: v = výhra, p = prohra, r = remíza, z = vzdáno (počítá se jako prohra)
+function pkAIrec(g, r){
+  g.bil = g.bil || {v:0, p:0}; g.bl = g.bl || {}; g.hist = g.hist || [];
+  const L = g.bl[g.lvl] = g.bl[g.lvl] || {v:0, p:0, r:0};
+  if (r === "v"){ g.bil.v++; L.v++; } else if (r === "r"){ L.r++; g.bil.r = (g.bil.r || 0) + 1; } else { g.bil.p++; L.p++; }
+  g.hist.unshift({at:Date.now(), lvl:g.lvl, r, n:g.pocet}); g.hist = g.hist.slice(0, 40);
+}
 function pkAIstep(g){ // počítač táhne (hraje „o“)
   const b = g.plocha.split(""), i = pkAI(b, g.lvl); b[i] = "o";
   const w = pkWin(b, i, "o");
   Object.assign(g, {plocha:b.join(""), posledni:i, pocet:g.pocet + 1});
-  if (w){ g.stav = "konec"; g.vitez = "pc"; g.vyhra = w; g.bil.p++; }
-  else if (!b.includes(".")){ g.stav = "konec"; g.vitez = null; }
+  if (w){ g.stav = "konec"; g.vitez = "pc"; g.vyhra = w; pkAIrec(g, "p"); }
+  else if (!b.includes(".")){ g.stav = "konec"; g.vitez = null; pkAIrec(g, "r"); }
 }
 function pkAImove(i){
   const g = S.pkAI; if (!g || g.stav !== "hraje" || g.plocha[i] !== "." || S.pkBusy) return;
   const b = g.plocha.split(""); b[i] = "x";
   const w = pkWin(b, i, "x");
   Object.assign(g, {plocha:b.join(""), posledni:i, pocet:g.pocet + 1}); S.pkSel = null;
-  if (w){ g.stav = "konec"; g.vitez = "ty"; g.vyhra = w; g.bil.v++; pkAIsave(g); pkRender(); return; }
-  if (!b.includes(".")){ g.stav = "konec"; pkAIsave(g); pkRender(); return; }
+  if (w){ g.stav = "konec"; g.vitez = "ty"; g.vyhra = w; pkAIrec(g, "v"); pkAIsave(g); pkRender(); return; }
+  if (!b.includes(".")){ g.stav = "konec"; pkAIrec(g, "r"); pkAIsave(g); pkRender(); return; }
   S.pkBusy = true; pkAIsave(g); pkRender();
   setTimeout(() => { pkAIstep(g); S.pkBusy = false; pkAIsave(g); pkRender(); }, 380);
 }
@@ -1524,7 +1580,7 @@ function pkOpenAI(){
   if (g.pocet === 0 && g.ty === "o"){ pkAIstep(g); pkAIsave(g); }
   pkMount(); pkRender();
 }
-function pkClose(){ const v = $("pkOv"); if (v) v.remove(); S.pkId = null; S.pkSel = null; }
+function pkClose(){ const v = $("pkOv"); if (v) v.remove(); S.pkId = null; S.pkSel = null; if (S.open && S.view === "list") renderList(); }
 function pkMount(){
   if ($("pkOv")) return;
   const v = document.createElement("div"); v.className = "pk-ov" + (O.desk ? " desk" : ""); v.id = "pkOv";
@@ -1544,7 +1600,8 @@ function pkMount(){
     const lv = c("[data-pklvl]"); if (lv){ const g = S.pkAI; if (g.pocet && g.stav === "hraje" && !confirm("Změnou obtížnosti začne nová hra. Pokračovat?")) return;
       S.pkAI = pkAInew(+lv.dataset.pklvl); S.pkAI.ty = g.ty; if (S.pkAI.ty === "o") pkAIstep(S.pkAI); pkAIsave(S.pkAI); S.pkSel = null; pkRender(); return; }
     if (c("[data-pknew]")){ const g = S.pkAI; if (g.stav === "hraje" && g.pocet > 1 && !confirm("Rozehraná hra se zahodí. Nová hra?")) return;
-      S.pkAI = pkAInew(g.lvl); if (g.stav === "hraje" && g.pocet > 1){ S.pkAI.bil.p++; } if (S.pkAI.ty === "o") pkAIstep(S.pkAI); pkAIsave(S.pkAI); S.pkSel = null; pkRender(); return; }
+      if (g.stav === "hraje" && g.pocet > 1){ pkAIrec(g, "z"); pkAIsave(g); }
+      S.pkAI = pkAInew(g.lvl); if (S.pkAI.ty === "o") pkAIstep(S.pkAI); pkAIsave(S.pkAI); S.pkSel = null; pkRender(); return; }
   });
 }
 function pkCur(){ return S.pkId === "ai" ? S.pkAI : S.games && S.games[S.pkId]; }
@@ -1569,7 +1626,7 @@ function pkRender(){
     const x = g.plocha[i], sel = S.pkSel === i && x === ".";
     cells += `<button type="button" class="pk-c${i === g.posledni ? " last" : ""}${win.includes(i) ? " win" : ""}${sel ? " sel" : ""}" data-pki="${i}" aria-label="${pkPos(i)}${x === "x" ? " křížek" : x === "o" ? " kolečko" : ""}"${!can || x !== "." ? " tabindex=\"-1\"" : ""}>${x === "x" ? `<span class="X">✕</span>` : x === "o" ? `<span class="O">O</span>` : sel ? `<span class="${mySym === "x" ? "X" : "O"} ghost">${mySym === "x" ? "✕" : "O"}</span>` : ""}</button>`;
   }
-  const cap = ai ? `Obtížnost: ${[1,2,3].map(l => `<button type="button" class="pk-l${g.lvl === l ? " on" : ""}" data-pklvl="${l}">${PK_LVL[l]}</button>`).join(" · ")}<br>Bilance proti počítači ${g.bil.v} : ${g.bil.p}`
+  const cap = ai ? `Obtížnost: ${[1,2,3].map(l => `<button type="button" class="pk-l${g.lvl === l ? " on" : ""}" data-pklvl="${l}">${PK_LVL[l]}</button>`).join(" · ")}<br>Bilance (${PK_LVL[g.lvl]}) ${((g.bl || {})[g.lvl] || {v:0}).v} : ${((g.bl || {})[g.lvl] || {p:0}).p}`
     : g.stav === "hraje" ? (O.desk ? "Klepni na pole a tah se zahraje. Žlutě je poslední tah." : "Klepni na pole a potvrď <b>Táhnout</b> (nebo klepni na stejné pole ještě jednou). Žlutě je poslední tah.") : "";
   const btns = ai ? `<button type="button" class="pk-b sec" data-pkx>Zpět</button>${g.stav === "hraje" && !O.desk ? `<button type="button" class="pk-b" data-pkmove ${S.pkSel == null || !can ? "disabled" : ""}>Táhnout</button>` : ""}<button type="button" class="pk-b${g.stav === "konec" ? "" : " sec"}" data-pknew>Nová hra</button>`
     : g.stav === "hraje" ? `<button type="button" class="pk-b sec" data-pkresign>Vzdát</button><button type="button" class="pk-b sec" data-pkchat>Chat</button>${O.desk ? "" : `<button type="button" class="pk-b" data-pkmove ${S.pkSel == null || !can ? "disabled" : ""}>Táhnout</button>`}`
