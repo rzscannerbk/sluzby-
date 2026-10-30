@@ -26,7 +26,9 @@ const ICO = {
   del:   '<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   fwd:   '<path d="M15 7l5 5-5 5"/><path d="M20 12H10a6 6 0 0 0-6 6v1"/>',
-  save:  '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>'
+  save:  '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>',
+  bell:  '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+  bellOff: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/><path d="M4 4l16 16"/>'
 };
 
 let O = null;                 // volby z init()
@@ -177,6 +179,10 @@ const STYLE = `
 .ch-un{flex:none;min-width:20px;height:20px;border-radius:999px;background:#D04848;color:#fff;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
 .ch-un.mut{background:#9AA1B0}
 .ch-mute{font-size:12px;opacity:.7}
+.ch-ind{flex:none;display:inline-flex;opacity:.7;font-style:normal}
+.ch-hc .ch-ind{opacity:.85}
+.ch-row.pinned{box-shadow:inset 3px 0 0 #E2C33A,0 1px 0 rgba(0,0,0,.05)}
+.ch-row.hold,.ch-hc.hold{transform:scale(.98);transition:transform .2s}
 .ch-hc{display:block;width:100%;text-align:left;border:2px solid var(--day-line,var(--dayBd,#E2C33A));background:var(--dayBg,var(--day,#FBEFB8));color:var(--ink,#1D2A4D);border-radius:14px;padding:10px 12px;margin:0 0 8px}
 .ch-hc.N{background:var(--night,#4B3F9E);border-color:var(--night-line,#6C61C4);color:#fff}
 .ch-hc.on{outline:3px solid var(--ink,#1D2A4D);outline-offset:1px}
@@ -208,6 +214,9 @@ const STYLE = `
 .ch-tb{flex:1;min-width:0;text-align:center}
 .ch-tb.av{display:flex;align-items:center;justify-content:center;gap:8px;text-align:left}
 .ch-tb.av>span:last-child{min-width:0}
+/* jméno hned za šipkou zpět – co nejvíc místa pro jméno a stav */
+.ch-th .ch-side{min-width:0}
+.ch-th .ch-tb,.ch-th .ch-tb.av{text-align:left;justify-content:flex-start;padding-left:2px}
 .ch-tb .ch-av{width:34px;height:34px;font-size:13px}
 .ch-root.two .ch-tb.av{justify-content:flex-start}
 .ch-pick button{display:flex;align-items:center;gap:10px}
@@ -378,7 +387,7 @@ const STYLE = `
 CH.init = function(opts){
   if (O) { CH.refresh(); return; }
   O = opts; S = {stage:[], newBelow:0, lastCount:null, set:undefined, threads:{}, vsichni:null, unsubs:[], tid:null, msgs:[], msgUnsub:null, msgFor:null, reply:null, edit:null,
-    search:"", searchOn:false, view:"list", archive:false, pick:false, pickHra:false, games:{}, pkId:null, pkSel:null, pkAI:null, pending:null, typingAt:0, err:"", open:false, firstScroll:true};
+    search:"", searchOn:false, view:"list", archive:false, pick:false, pickHra:false, pinT:[], games:{}, pkId:null, pkSel:null, pkAI:null, pending:null, typingAt:0, err:"", open:false, firstScroll:true};
   if (!$("chCss")){ const st = document.createElement("style"); st.id = "chCss"; st.textContent = STYLE; document.head.appendChild(st); }
   const root = document.createElement("div");
   root.className = "ch-root" + (O.desk ? " desk" : ""); root.id = "chRoot"; root.hidden = true;
@@ -486,6 +495,10 @@ function startLive(){
     if (S.pkId && S.pkId !== "ai") pkRender();
     if (S.pending && S.pending.startsWith("hra:") && G[S.pending.slice(4)]){ const p = S.pending; S.pending = null; CH.openThread(p); }
   }, e => { console.warn("chat: piškvorky", e); }));
+  S.liveUnsubs.push(O.db.collection("poznamky").doc(String(O.me)).onSnapshot(s => {
+    S.pinT = ((s.exists && s.data().chatPripnute) || []).map(String);
+    if (S.open && (S.view === "list" || S.two)) renderList();
+  }, () => {}));
   S.liveUnsubs.push(col.doc("vsichni").onSnapshot(s => {
     if (!s.exists){ S.vsichni = null; col.doc("vsichni").set({typ:"vsichni", pocet:0}, {merge:true}).catch(() => {}); }
     else S.vsichni = s.data({serverTimestamps:"estimate"});
@@ -611,7 +624,8 @@ function rowHTML(id, t){
   const lastTxt = last ? `${String(last.od) === String(O.me) ? "Ty: " : (id === "vsichni" ? surname(last.jmeno || nameOf(last.od)) + ": " : "")}${last.text || ""}` : "Zatím žádné zprávy";
   const peer = id.startsWith("dm_") ? id.split("_").slice(1).find(c => c !== String(O.me)) || String(O.me) : null;
   const av = id === "vsichni" ? avHTML("vsichni", "VŠ", "all") : avHTML(peer, initials(title));
-  return `<button type="button" class="ch-row${S.tid === id && S.two ? " on" : ""}" data-cht="${esc(id)}">${av}<span class="ch-rb"><span class="ch-rt"><b>${esc(title)}</b><small>${whenShort(last && ms(last.at))}</small></span><span class="ch-rl"><span>${esc(lastTxt)}</span>${mut ? `<i class="ch-mute" title="Ztlumeno">🔕</i>` : ""}${un ? `<i class="ch-un${mut ? " mut" : ""}">${un > 99 ? "99+" : un}</i>` : ""}</span></span></button>`;
+  const pin = (S.pinT || []).includes(id);
+  return `<button type="button" class="ch-row${S.tid === id && S.two ? " on" : ""}${pin ? " pinned" : ""}" data-cht="${esc(id)}">${av}<span class="ch-rb"><span class="ch-rt"><b>${esc(title)}</b>${pin ? `<i class="ch-ind" title="Připnuto">${ic(ICO.pin, 16)}</i>` : ""}<small>${whenShort(last && ms(last.at))}</small></span><span class="ch-rl"><span>${esc(lastTxt)}</span>${mut ? `<i class="ch-ind" title="Ztlumeno">${ic(ICO.bellOff, 16)}</i>` : ""}${un ? `<i class="ch-un${mut ? " mut" : ""}">${un > 99 ? "99+" : un}</i>` : ""}</span></span></button>`;
 }
 function hCardHTML(id, t){
   const st = hState(t), un = unreadOf(t), mut = isMuted(t), last = t.posledni;
@@ -619,7 +633,7 @@ function hCardHTML(id, t){
   const soon = st === "brzy" && new Date(ms(t.start)).toDateString() === new Date(now()).toDateString() ? "Dnes" : lbl;
   return `<button type="button" class="ch-hc ${t.kind === "N" ? "N" : "D"}${S.tid === id && S.two ? " on" : ""}" data-cht="${esc(id)}">
     <span class="ch-rt"><b>${esc(hTitle(t))}</b><span class="ch-hst ${st}">${soon}</span></span>
-    <span class="ch-rl"><span>${hTimes(t)}</span>${mut ? `<i class="ch-mute">🔕</i>` : ""}${un ? `<i class="ch-un${mut ? " mut" : ""}">${un}</i>` : ""}</span>
+    <span class="ch-rl"><span>${hTimes(t)}</span>${mut ? `<i class="ch-ind" title="Ztlumeno">${ic(ICO.bellOff, 16)}</i>` : ""}${un ? `<i class="ch-un${mut ? " mut" : ""}">${un}</i>` : ""}</span>
     ${progHTML(t)}
     <span class="ch-mem">${hMembers(t)}</span>
     ${last ? `<span class="ch-rl"><span>${esc(String(last.od) === String(O.me) ? "Ty" : surname(last.jmeno || nameOf(last.od)))}: ${esc(last.text || "")}</span><small>${whenShort(ms(last.at))}</small></span>` : ""}
@@ -653,7 +667,8 @@ function renderList(){
   }
   const act = H.filter(([, t]) => { const s = hState(t); return s !== "skryte" && s !== "archiv"; }).sort((a, b) => ms(a[1].start) - ms(b[1].start));
   const nArch = H.filter(([, t]) => hState(t) === "archiv").length;
-  const dms = Object.entries(S.threads).filter(([, t]) => t.typ === "dm").sort((a, b) => ms(b[1].posledni && b[1].posledni.at) - ms(a[1].posledni && a[1].posledni.at));
+  const pinS = new Set(S.pinT || []);
+  const dms = Object.entries(S.threads).filter(([, t]) => t.typ === "dm").sort((a, b) => (pinS.has(b[0]) - pinS.has(a[0])) || ms(b[1].posledni && b[1].posledni.at) - ms(a[1].posledni && a[1].posledni.at));
   el.innerHTML = head + test
     + `<div class="ch-sec">Hlídky</div>` + (act.length ? act.map(([id, t]) => hCardHTML(id, t)).join("") : `<p class="ch-empty">Teď nemáš žádnou hlídku. Vlákno se objeví den před službou.</p>`)
     + `<div class="ch-sec">Společné</div>` + rowHTML("vsichni", S.vsichni)
@@ -727,7 +742,6 @@ function renderHead(){
   h.innerHTML = `<div class="ch-side l"><button type="button" class="ch-back" data-chback aria-label="Zpět na seznam chatů"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></div>
     <div class="ch-tb${hav ? " av" : ""}">${hav}<span><b>${esc(t && t.typ === "hlidka" && !S.two ? hTitle(t, true) : titleOf(tid, t))}</b>${sub === null ? `<small id="chPeer" class="${peerLine() === "online" ? "on" : ""}">${esc(peerLine())}</small>` : `<small>${esc(sub)}</small>`}</span></div>
     <div class="ch-side r">${PK_ON() && peer && tid !== "vsichni" ? `<button type="button" class="ch-ib pk" data-chpkdm="${esc(peer)}" aria-label="Piškvorky s ${esc(nameOf(peer))}" title="Piškvorky">${PK_ICO(26)}</button>` : ""}<button type="button" class="ch-ib${S.searchOn ? " on" : ""}" data-chsearch aria-label="Hledat ve vlákně" title="Hledat"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
-    ${t ? `<button type="button" class="ch-ib${mut ? " on" : ""}" data-chmute aria-pressed="${mut}" aria-label="${mut ? "Zrušit ztlumení" : "Ztlumit upozornění"}" title="${mut ? "Ztlumeno – upozornění vypnutá" : "Ztlumit upozornění"}">${mut ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/><path d="M4 4l16 16"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>`}</button>` : ""}
     ${O.desk ? `<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button>` : ""}</div>${progHTML(t) ? `<div class="ch-thp">${progHTML(t)}</div>` : ""}`;
   const pb = $("chPinBox");
   if (pb) pb.innerHTML = t && t.pinned ? `<div class="ch-pin">${ic(ICO.pin, 18)}<button type="button" data-chgo="${esc(t.pinned.id)}"><b>${esc(surname(t.pinned.jmeno || ""))}:</b> ${esc(t.pinned.text || "fotka")}</button><button type="button" class="ch-unpin" data-chunpin aria-label="Odepnout">✕</button></div>` : "";
@@ -961,6 +975,27 @@ function toggleRx(mid, key){
 
 /* ---------- nabídka u zprávy ---------- */
 function closeSheet(){ const s = document.querySelector(".ch-sheet"); if (s) s.remove(); }
+/* dlouhé podržení konverzace v seznamu: ztlumit / připnout (připnout jen soukromé) */
+function openRowSheet(tid){
+  const t = thread(tid), mut = isMuted(t), dm = tid.startsWith("dm_"), pin = (S.pinT || []).includes(tid);
+  closeSheet();
+  const s = document.createElement("div"); s.className = "ch-sheet";
+  s.innerHTML = `<div role="dialog" aria-label="Možnosti konverzace"><h3>${esc(titleOf(tid, t))}</h3>
+    ${t ? `<button type="button" class="ch-act" data-chr="mute">${ic(mut ? ICO.bell : ICO.bellOff)}<span>${mut ? "Zrušit ztlumení" : "Ztlumit konverzaci"}<small>${mut ? "upozornění se znovu zapnou" : "nepřijdou upozornění na nové zprávy"}</small></span></button>` : ""}
+    ${dm ? `<button type="button" class="ch-act" data-chr="pin">${ic(pin ? ICO.unpin : ICO.pin)}<span>${pin ? "Odepnout konverzaci" : "Připnout konverzaci"}<small>${pin ? "vrátí se mezi ostatní podle času" : "zůstane nahoře v soukromých zprávách"}</small></span></button>` : ""}
+    <button type="button" class="ch-act" data-chr="x">${ic(ICO.close)}Zavřít</button></div>`;
+  s.addEventListener("click", e => {
+    if (e.target === s){ closeSheet(); return; }
+    const a = e.target.closest("[data-chr]"); if (!a) return;
+    const act = a.dataset.chr; closeSheet();
+    if (act === "mute") tref(tid).set({muted:{[O.me]:!mut}}, {merge:true}).then(() => toast(mut ? "Upozornění zapnutá" : "Konverzace ztlumena")).catch(() => toast("Nepodařilo se uložit."));
+    else if (act === "pin"){
+      const fv = FV(); S.pinT = pin ? S.pinT.filter(x => x !== tid) : [...S.pinT, tid]; renderList();
+      O.db.collection("poznamky").doc(String(O.me)).set({chatPripnute: pin ? fv.arrayRemove(tid) : fv.arrayUnion(tid)}, {merge:true}).catch(() => toast("Nepodařilo se uložit."));
+    }
+  });
+  document.body.appendChild(s);
+}
 function openSheet(mid){
   const m = msgById(mid); if (!m || m.smazano) return;
   const t = thread(S.tid), ro = t && t.typ === "hlidka" && hState(t) === "archiv";
@@ -1198,13 +1233,17 @@ function bind(root){
   }, {passive:false}));
   // dlouhé podržení zprávy = nabídka (mobil), pravé tlačítko = nabídka (počítač)
   root.addEventListener("pointerdown", e => {
+    const rw = e.target.closest("#chList [data-cht]");
+    if (rw){ lpFired = false; lpXY = [e.clientX, e.clientY]; rw.classList.add("hold");
+      lpT = setTimeout(() => { lpFired = true; lpT = null; rw.classList.remove("hold"); if (navigator.vibrate) navigator.vibrate(12); openRowSheet(rw.dataset.cht); }, 480); return; }
     const m = e.target.closest(".ch-m[data-mid]"); if (!m || e.target.closest("button:not([data-chgal]),a")) return;
     lpFired = false; lpXY = [e.clientX, e.clientY];
     lpT = setTimeout(() => { lpFired = true; lpT = null; if (navigator.vibrate) navigator.vibrate(12); openSheet(m.dataset.mid); }, 480);
   });
   root.addEventListener("pointermove", e => { if (lpT && lpXY && Math.hypot(e.clientX - lpXY[0], e.clientY - lpXY[1]) > 10){ clearTimeout(lpT); lpT = null; } });
-  ["pointerup","pointercancel","pointerleave"].forEach(t => root.addEventListener(t, () => { if (lpT){ clearTimeout(lpT); lpT = null; } }));
-  root.addEventListener("contextmenu", e => { if (e.target.closest("textarea,input")) return; e.preventDefault(); const m = e.target.closest(".ch-m[data-mid]"); if (m && !lpFired) openSheet(m.dataset.mid); });
+  ["pointerup","pointercancel","pointerleave"].forEach(t => root.addEventListener(t, () => { if (lpT){ clearTimeout(lpT); lpT = null; } document.querySelectorAll("#chList .hold").forEach(x => x.classList.remove("hold")); }));
+  root.addEventListener("contextmenu", e => { if (e.target.closest("textarea,input")) return; e.preventDefault();
+    const rw = e.target.closest("#chList [data-cht]"); if (rw){ if (!lpFired) openRowSheet(rw.dataset.cht); return; } const m = e.target.closest(".ch-m[data-mid]"); if (m && !lpFired) openSheet(m.dataset.mid); });
   root.addEventListener("selectstart", e => { if (!e.target.closest || !e.target.closest("textarea,input")) e.preventDefault(); });
   document.addEventListener("keydown", e => {
     if (e.key === "Escape" && $("pkOv")){ pkClose(); return; }
