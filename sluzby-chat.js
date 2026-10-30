@@ -71,7 +71,7 @@ function visibleThreads(){
   if (S.vsichni) out.push(["vsichni", S.vsichni]);
   return out;
 }
-function badgeCount(){ return visibleThreads().reduce((s, [, t]) => s + (isMuted(t) ? 0 : unreadOf(t)), 0); }
+function badgeCount(){ return visibleThreads().reduce((s, [, t]) => s + (isMuted(t) ? 0 : unreadOf(t)), 0) + pkTurnCount(); }
 function titleOf(id, t){
   if (id === "vsichni") return "Zpráva všem";
   if (!t && id.startsWith("dm_")) return nameOf(id.split("_").slice(1).find(c => c !== String(O.me)));
@@ -317,6 +317,52 @@ const STYLE = `
 .ch-view{position:fixed;inset:0;z-index:75;background:#000;display:flex;align-items:center;justify-content:center;padding:20px;touch-action:none;overflow:hidden;overscroll-behavior:contain}
 .ch-view img{max-width:100%;max-height:100%;border-radius:6px;transform-origin:center center;will-change:transform;-webkit-user-drag:none}
 .ch-view .ch-vx,.ch-view .ch-vb,.ch-view .ch-vn{z-index:2}
+/* piškvorky */
+.ch-m.pk .ch-bub,.ch-m.pk.mine .ch-bub{background:var(--sheet,#fff);color:var(--ink,#1D2A4D);border:2px solid var(--ink,#1D2A4D);border-radius:16px;padding:10px 12px;width:min(270px,70vw)}
+.pk-card b{display:flex;align-items:center;gap:6px;font-size:15px;margin-bottom:6px}
+.pk-card small{display:block;color:var(--ink2,#5A6480);font-size:12.5px;line-height:1.35;margin:6px 0 8px}
+.pk-card small .hot{color:#2E9E5B;font-weight:700}
+.ch-root .pk-go,.pk-go{display:block;width:100%;border:0;border-radius:10px;background:var(--ink,#1D2A4D);color:var(--paper,#fff);font-weight:600;padding:9px}
+.pk-mini{display:grid;grid-template-columns:repeat(15,1fr);gap:1px;background:#C9CED8;border:1px solid #C9CED8;border-radius:6px;overflow:hidden}
+.pk-mini i{aspect-ratio:1;background:#fff;position:relative}
+.pk-mini i.X::after,.pk-mini i.O::after{content:"";position:absolute;inset:22%;border-radius:50%}
+.pk-mini i.X::after{inset:8%;border-radius:0;background:linear-gradient(45deg,transparent 40%,#1D2A4D 40% 60%,transparent 60%),linear-gradient(-45deg,transparent 40%,#1D2A4D 40% 60%,transparent 60%)}
+.pk-mini i.O::after{border:1.6px solid #D04848}
+.pk-mini i.l{background:#FFF3B0}.pk-mini i.w{background:#CDEFD8}
+.pk-ic{display:inline-flex;width:30px;height:30px;border-radius:50%;background:#F2D24A;border:1.5px solid #C9A90F;align-items:center;justify-content:center}
+.pk-box{background:var(--sheet,#FAFBF7);border:2px solid var(--ink,#1D2A4D);border-radius:14px;padding:8px 12px 12px;margin:0 0 6px}
+.pk-row{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;border:0;border-bottom:1px solid var(--line,#DDE1E7);background:transparent;padding:9px 2px;font-size:14px;text-align:left}
+.pk-row em{font-style:normal;font-weight:700;color:#2E9E5B}.pk-row small{color:var(--ink2,#5A6480);font-size:12.5px}
+.pk-btns{display:flex;gap:8px;margin-top:10px}
+.ch-root .pk-b,.pk-b{flex:1;border:1.5px solid var(--ink,#1D2A4D);border-radius:10px;background:var(--ink,#1D2A4D);color:var(--paper,#fff);font:inherit;font-weight:600;padding:10px 8px;cursor:pointer}
+.ch-root .pk-b.sec,.pk-b.sec{background:transparent;color:var(--ink,#1D2A4D)}
+.pk-b:disabled{opacity:.4;cursor:default}
+.ch-root .ch-ib.pk{background:#F2D24A;border-color:#C9A90F}
+.pk-ov{position:fixed;inset:0;z-index:72;background:var(--paper,#E6EAE4);color:var(--ink,#1D2A4D);overflow-y:auto;-webkit-overflow-scrolling:touch;font-family:var(--f-body,inherit)}
+.pk-ov,.pk-ov *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.pk-in{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 10px) 8px calc(env(safe-area-inset-bottom,0px) + 16px)}
+.pk-top{display:flex;align-items:center;gap:10px;padding:0 4px 8px}
+.pk-top b{flex:1;font-family:var(--f-cond,sans-serif);font-size:24px}
+.pk-n{color:var(--ink2,#5A6480);font-size:13px}
+.pk-back{width:44px;height:44px;border-radius:50%;border:2px solid currentColor;background:transparent;color:inherit;font-size:24px;line-height:1;padding:0 0 3px;cursor:pointer}
+.pk-pl{display:flex;justify-content:space-between;gap:8px;padding:0 4px}
+.pk-p{display:flex;align-items:center;gap:7px;font-weight:700;padding:6px 10px;border-radius:10px;border:2px solid transparent;font-size:15px}
+.pk-p.on{border-color:#2E9E5B;background:rgba(46,158,91,.13)}
+.pk-p .X,.pk-p .O{font-size:19px;font-weight:800}
+.pk-st{font-family:var(--f-cond,sans-serif);font-weight:600;font-size:24px;text-align:center;margin:6px 0 8px}
+.pk-st.win{color:#2E9E5B}
+.pk-board{display:grid;grid-template-columns:repeat(15,1fr);background:#fff;border:2px solid #1D2A4D;border-radius:8px;overflow:hidden;touch-action:manipulation}
+.pk-c{aspect-ratio:1;border:0;border-right:1px solid #DDE1E7;border-bottom:1px solid #DDE1E7;background:#fff;padding:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:clamp(13px,4.6vw,24px);line-height:1;cursor:default}
+.pk-board.can .pk-c:empty{cursor:pointer}
+.pk-c .X,.pk-ov .X{color:#1D2A4D}.pk-c .O,.pk-ov .O{color:#D04848}
+.pk-ov .pk-p .X{color:var(--ink,#1D2A4D)}
+.pk-c.last{background:#FFF3B0}.pk-c.win{background:#CDEFD8}
+.pk-c.sel{background:rgba(46,158,91,.22);box-shadow:inset 0 0 0 2px #2E9E5B}
+.pk-c .ghost{opacity:.45}
+.pk-cap{font-size:13px;color:var(--ink2,#5A6480);text-align:center;margin:8px 6px 0;line-height:1.5}
+.pk-l{border:0;background:transparent;color:inherit;font:inherit;padding:2px 3px;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.pk-l.on{font-weight:700;color:var(--ink,#1D2A4D);text-decoration:none}
+.pk-in .pk-btns{padding:0 4px;margin-top:12px}
 /* administrace */
 .ch-adm{margin-top:18px;padding:14px;border:1.5px solid var(--line,#DDE1E7);border-radius:12px;background:var(--sheet,#fff)}
 .ch-adm h3{font-family:var(--f-cond,sans-serif);font-size:20px;margin:0 0 6px}
@@ -332,7 +378,7 @@ const STYLE = `
 CH.init = function(opts){
   if (O) { CH.refresh(); return; }
   O = opts; S = {stage:[], newBelow:0, lastCount:null, set:undefined, threads:{}, vsichni:null, unsubs:[], tid:null, msgs:[], msgUnsub:null, msgFor:null, reply:null, edit:null,
-    search:"", searchOn:false, view:"list", archive:false, pick:false, pending:null, typingAt:0, err:"", open:false, firstScroll:true};
+    search:"", searchOn:false, view:"list", archive:false, pick:false, pickHra:false, games:{}, pkId:null, pkSel:null, pkAI:null, pending:null, typingAt:0, err:"", open:false, firstScroll:true};
   if (!$("chCss")){ const st = document.createElement("style"); st.id = "chCss"; st.textContent = STYLE; document.head.appendChild(st); }
   const root = document.createElement("div");
   root.className = "ch-root" + (O.desk ? " desk" : ""); root.id = "chRoot"; root.hidden = true;
@@ -433,6 +479,13 @@ function startLive(){
     const T = {}; s.docs.forEach(d => { T[d.id] = d.data({serverTimestamps:"estimate"}); });
     S.threads = T; afterThreads();
   }, e => { console.warn("chat: vlákna", e); }));
+  if (PK_ON()) S.liveUnsubs.push(O.db.collection("piskvorky").where("hraci", "array-contains", String(O.me)).onSnapshot(s => {
+    const G = {}; s.docs.forEach(d => { G[d.id] = d.data({serverTimestamps:"estimate"}); }); S.games = G;
+    updBadge();
+    if (S.open){ if (S.view === "list" || S.two) renderList(); if (S.tid) renderMsgs(false); }
+    if (S.pkId && S.pkId !== "ai") pkRender();
+    if (S.pending && S.pending.startsWith("hra:") && G[S.pending.slice(4)]){ const p = S.pending; S.pending = null; CH.openThread(p); }
+  }, e => { console.warn("chat: piškvorky", e); }));
   S.liveUnsubs.push(col.doc("vsichni").onSnapshot(s => {
     if (!s.exists){ S.vsichni = null; col.doc("vsichni").set({typ:"vsichni", pocet:0}, {merge:true}).catch(() => {}); }
     else S.vsichni = s.data({serverTimestamps:"estimate"});
@@ -449,7 +502,7 @@ function stopLive(){
 }
 function afterThreads(){
   updBadge();
-  if (S.pending && (thread(S.pending) || S.pending.startsWith("dm_"))){ const p = S.pending; S.pending = null; CH.openThread(p); return; }
+  if (S.pending && (thread(S.pending) || S.pending.startsWith("dm_") || (S.pending.startsWith("hra:") && S.games[S.pending.slice(4)]))){ const p = S.pending; S.pending = null; CH.openThread(p); return; }
   if (!S.open) return;
   if (S.tid) ensureMsgSub();
   renderList();
@@ -523,6 +576,7 @@ CH.close = function(){
 };
 CH.openThread = function(tid){
   if (!S) return;
+  if (tid && tid.startsWith("hra:")){ const id = tid.slice(4); if (!LIVE){ S.pending = tid; return; } const g = S.games[id]; CH.openThread(g && g.vlakno ? g.vlakno : "vsichni"); pkOpen(id); return; }
   if (!LIVE || (!thread(tid) && !tid.startsWith("dm_"))){ S.pending = tid; if (LIVE) CH.open(); return; }
   if (!S.open){ S.open = true; $("chRoot").hidden = false; layout(); if (S.fit) S.fit(); }
   if (S.tid !== tid){ S.reply = null; S.edit = null; S.search = ""; S.searchOn = false; S.firstScroll = true; S.err = ""; clearStage(); S.newBelow = 0; }
@@ -573,8 +627,13 @@ function hCardHTML(id, t){
 }
 function renderList(){
   const el = $("chList"); if (!el || !S.open) return;
-  const head = `<div class="ch-h"><h2>${S.archive ? "Archiv hlídek" : S.pick ? "Nová zpráva" : "Chat"}</h2>${S.archive || S.pick ? `<button type="button" class="ch-sec" data-chback-list style="margin:0;border:1.5px solid currentColor;border-radius:8px;padding:5px 10px;background:transparent;font-size:14px">‹ Zpět</button>` : ""}<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button></div>`;
+  const head = `<div class="ch-h"><h2>${S.archive ? "Archiv hlídek" : S.pickHra ? "Piškvorky – výzva" : S.pick ? "Nová zpráva" : "Chat"}</h2>${S.archive || S.pick || S.pickHra ? `<button type="button" class="ch-sec" data-chback-list style="margin:0;border:1.5px solid currentColor;border-radius:8px;padding:5px 10px;background:transparent;font-size:14px">‹ Zpět</button>` : ""}<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button></div>`;
   const test = S.set && !S.set.vsem ? `<p class="ch-test"><b>Testovací provoz</b> – chat zatím vidí jen ${testeri().map(c => esc(nameOf(c))).join(", ")}.</p>` : "";
+  if (S.pickHra){
+    const list = Object.entries(officers()).filter(([n, c]) => String(c) !== String(O.me) && (S.set.vsem || testeri().includes(String(c)))).sort((a, b) => a[0].localeCompare(b[0], "cs"));
+    el.innerHTML = head + `<p class="ch-empty">Vyber kolegu – dostane výzvu do soukromých zpráv a notifikaci.</p>` + (list.length ? `<div class="ch-pick">${list.map(([n, c]) => { const ex = pkGameWith(c); return `<button type="button" data-chpkdm="${esc(c)}">${avHTML(String(c), initials(n))}<span>${esc(n)}${ex ? " · rozehráno" : ""}</span></button>`; }).join("")}</div>` : `<p class="ch-empty">Zatím nikdo další nemá chat povolený.</p>`);
+    return;
+  }
   if (S.pick){
     const list = Object.entries(officers()).filter(([n, c]) => String(c) !== String(O.me) && (S.set.vsem || testeri().includes(String(c)))).sort((a, b) => a[0].localeCompare(b[0], "cs"));
     el.innerHTML = head + (list.length ? `<div class="ch-pick">${list.map(([n, c]) => `<button type="button" data-chdm="${esc(c)}">${avHTML(String(c), initials(n))}<span>${esc(n)}</span></button>`).join("")}</div>` : `<p class="ch-empty">Zatím nikdo další nemá chat povolený.</p>`);
@@ -598,6 +657,7 @@ function renderList(){
   el.innerHTML = head + test
     + `<div class="ch-sec">Hlídky</div>` + (act.length ? act.map(([id, t]) => hCardHTML(id, t)).join("") : `<p class="ch-empty">Teď nemáš žádnou hlídku. Vlákno se objeví den před službou.</p>`)
     + `<div class="ch-sec">Společné</div>` + rowHTML("vsichni", S.vsichni)
+    + (PK_ON() ? pkListHTML() : "")
     + `<div class="ch-sec">Soukromé zprávy <button type="button" data-chnew>+ Nová</button></div>`
     + (dms.length ? dms.map(([id, t]) => rowHTML(id, t)).join("") : `<p class="ch-empty">Zatím žádné. Napiš kolegovi přes „+ Nová“.</p>`)
     + `<button type="button" class="ch-arch" data-charch>Archiv hlídek${nArch ? ` (${nArch})` : ""}</button>`;
@@ -666,7 +726,7 @@ function renderHead(){
   h.className = "ch-th" + (t && t.typ === "hlidka" ? " " + (t.kind === "N" ? "N" : "D") : "");
   h.innerHTML = `<div class="ch-side l"><button type="button" class="ch-back" data-chback aria-label="Zpět na seznam chatů"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></div>
     <div class="ch-tb${hav ? " av" : ""}">${hav}<span><b>${esc(t && t.typ === "hlidka" && !S.two ? hTitle(t, true) : titleOf(tid, t))}</b>${sub === null ? `<small id="chPeer" class="${peerLine() === "online" ? "on" : ""}">${esc(peerLine())}</small>` : `<small>${esc(sub)}</small>`}</span></div>
-    <div class="ch-side r"><button type="button" class="ch-ib${S.searchOn ? " on" : ""}" data-chsearch aria-label="Hledat ve vlákně" title="Hledat"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
+    <div class="ch-side r">${PK_ON() && peer && tid !== "vsichni" ? `<button type="button" class="ch-ib pk" data-chpkdm="${esc(peer)}" aria-label="Piškvorky s ${esc(nameOf(peer))}" title="Piškvorky">${PK_ICO(26)}</button>` : ""}<button type="button" class="ch-ib${S.searchOn ? " on" : ""}" data-chsearch aria-label="Hledat ve vlákně" title="Hledat"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
     ${t ? `<button type="button" class="ch-ib${mut ? " on" : ""}" data-chmute aria-pressed="${mut}" aria-label="${mut ? "Zrušit ztlumení" : "Ztlumit upozornění"}" title="${mut ? "Ztlumeno – upozornění vypnutá" : "Ztlumit upozornění"}">${mut ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/><path d="M4 4l16 16"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>`}</button>` : ""}
     ${O.desk ? `<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button>` : ""}</div>${progHTML(t) ? `<div class="ch-thp">${progHTML(t)}</div>` : ""}`;
   const pb = $("chPinBox");
@@ -729,8 +789,9 @@ function renderMsgs(autoscroll, keepScroll){
       const show = imgs.slice(0, 4), more = imgs.length - show.length;
       pics = `<div class="ch-grid n${Math.min(imgs.length, 4)}">${show.map((x, i) => `<button type="button" data-chgal="${m.id}" data-i="${i}" aria-label="Fotka ${i + 1} z ${imgs.length}"><img src="${x.image}" alt="" loading="lazy">${i === 3 && more > 0 ? `<span class="more">+${more}</span>` : ""}</button>`).join("")}</div>`;
     }
-    const body = allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.preposlano ? `<span class="ch-fwd">${ic(ICO.fwd, 14)}Přeposláno od ${esc(m.preposlano.jmeno || "")}</span>` : ""}${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.text && !m.smazano ? linkify(m.text) : ""}`;
-    html += `<div class="ch-m${mine ? " mine" : ""}${hit ? " hit" : ""}" data-mid="${m.id}">${group && !mine && lastFrom !== m.od ? `<span class="ch-who">${esc(m.jmeno || nameOf(m.od))}</span>` : ""}
+    const isPk = !!(m.hra && !m.smazano);
+    const body = isPk ? pkCardHTML(m.hra, m) : allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.preposlano ? `<span class="ch-fwd">${ic(ICO.fwd, 14)}Přeposláno od ${esc(m.preposlano.jmeno || "")}</span>` : ""}${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.text && !m.smazano ? linkify(m.text) : ""}`;
+    html += `<div class="ch-m${mine ? " mine" : ""}${hit ? " hit" : ""}${isPk ? " pk" : ""}" data-mid="${m.id}">${group && !mine && lastFrom !== m.od ? `<span class="ch-who">${esc(m.jmeno || nameOf(m.od))}</span>` : ""}
       <div class="ch-bub">${body}<div class="ch-meta">${imgs.length > 1 ? `${imgs.length} ${imgs.length < 5 ? "fotky" : "fotek"} · ` : ""}${m.upraveno && !m.smazano ? "upraveno · " : ""}${hm(ms(lastM.at))}</div></div>${rx ? `<div class="ch-rx">${rx}</div>` : ""}${allDel ? "" : `<button type="button" class="ch-more" data-chmore="${m.id}" aria-label="Možnosti zprávy">⋯</button>`}</div>`;
     const stM = it.list.includes(lastMine) ? lastMine : (mine && it.list.some(x => x.id === S.infoMid) ? lastM : null);
     if (stM){ const sl = statusLine(t, stM, stM === lastMine); if (sl) html += `<div class="ch-seen">${esc(sl)}</div>`; }
@@ -1103,9 +1164,13 @@ function bind(root){
     const c = x => e.target.closest(x);
     if (c("[data-chclose]")){ CH.close(); return; }
     if (c("[data-chback]")){ backToList(); return; }
-    if (c("[data-chback-list]")){ S.archive = false; S.pick = false; renderList(); return; }
+    if (c("[data-chback-list]")){ S.archive = false; S.pick = false; S.pickHra = false; renderList(); return; }
     if (c("[data-charch]")){ S.archive = true; renderList(); $("chList").scrollTop = 0; return; }
     if (c("[data-chnew]")){ S.pick = true; renderList(); return; }
+    const pkd = c("[data-chpkdm]"); if (pkd){ S.pickHra = false; pkChallenge(pkd.dataset.chpkdm); return; }
+    const pkg = c("[data-chpk]"); if (pkg){ pkOpen(pkg.dataset.chpk); return; }
+    if (c("[data-chpkai]")){ pkOpenAI(); return; }
+    if (c("[data-chpkpick]")){ S.pickHra = true; renderList(); $("chList").scrollTop = 0; return; }
     const dm = c("[data-chdm]"); if (dm){ S.pick = false; CH.openThread(dmId(O.me, dm.dataset.chdm)); return; }
     const th = c("[data-cht]"); if (th){ CH.openThread(th.dataset.cht); return; }
     const sb = c("[data-chsend]"); if (sb){ if (sb.dataset.tt){ delete sb.dataset.tt; return; } send(); return; }
@@ -1142,6 +1207,7 @@ function bind(root){
   root.addEventListener("contextmenu", e => { if (e.target.closest("textarea,input")) return; e.preventDefault(); const m = e.target.closest(".ch-m[data-mid]"); if (m && !lpFired) openSheet(m.dataset.mid); });
   root.addEventListener("selectstart", e => { if (!e.target.closest || !e.target.closest("textarea,input")) e.preventDefault(); });
   document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && $("pkOv")){ pkClose(); return; }
     if (e.key !== "Escape" || !S || !S.open) return;
     if (document.querySelector(".ch-view")){ document.querySelector(".ch-view").remove(); return; }
     if (document.querySelector(".ch-sheet")){ closeSheet(); return; }
@@ -1211,6 +1277,271 @@ CH.adminHTML = function(){
     <div class="ch-fg">${[["Zpráva všem", "vsichni"], ...list].map(([n, c]) => { const k = String(c), has = S.fotky && S.fotky[k];
       return `<div>${has ? `<span class="ch-av img" data-chfp="${esc(k)}" role="button" style="background-image:url('${has}')"></span><button type="button" class="ch-fx" data-chfx="${esc(k)}" aria-label="Odebrat fotku">✕</button>` : `<span class="ch-av${k === "vsichni" ? " all" : ""}" data-chfp="${esc(k)}" role="button">${esc(k === "vsichni" ? "VŠ" : initials(n))}</span>`}${esc(n)}</div>`; }).join("")}</div></section>`;
 };
+
+/* ================= piškvorky =================
+   Hra s kolegou: piskvorky/{id}  hraci[č,č], x (kdo hraje ✕ a začíná), tah (kdo je na tahu), plocha (225 znaků . x o),
+                  pocet, posledni, stav hraje|konec, vitez, vyhra[], vzdal, jmena{č:jméno}, vlakno, vytvoreno, zmeneno
+   Výzva = zpráva v soukromém vlákně s polem hra:<id>; karta ve vlákně se kreslí z dokumentu hry.
+   Hra proti počítači běží jen v telefonu (localStorage). */
+// zatím jen pro správce (Juračka 1048) – pro všechny stačí vrátit true
+var PK_ON = () => !!O && String(O.me) === "1048";
+const PN = 15, PNN = PN * PN, PK_EMPTY = ".".repeat(PNN);
+const PK_ICO = (n, sw) => `<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M12 2.5v19M2.5 12h19" stroke="#1D2A4D" stroke-width="${sw ? 1.6 : 1.3}"/><path d="M4.6 4.6l3.8 3.8M8.4 4.6l-3.8 3.8" stroke="#1D2A4D" stroke-width="${sw ? 2.4 : 2.1}"/><circle cx="17.5" cy="17.5" r="2.3" stroke="#D04848" stroke-width="${sw ? 2.4 : 2.1}"/></svg>`;
+const PK_LVL = {1:"lehká", 2:"střední", 3:"těžká"};
+const pkCol = i => String.fromCharCode(65 + (i % PN)), pkRow = i => Math.floor(i / PN) + 1;
+const pkPos = i => `${pkCol(i)}${pkRow(i)}`;
+function pkWin(b, i, s){
+  const r = Math.floor(i / PN), c = i % PN;
+  for (const [dr, dc] of [[0,1],[1,0],[1,1],[1,-1]]){
+    const line = [i];
+    for (let k = 1; k < 5; k++){ const rr = r + dr * k, cc = c + dc * k; if (rr < 0 || rr >= PN || cc < 0 || cc >= PN || b[rr * PN + cc] !== s) break; line.push(rr * PN + cc); }
+    for (let k = 1; k < 5; k++){ const rr = r - dr * k, cc = c - dc * k; if (rr < 0 || rr >= PN || cc < 0 || cc >= PN || b[rr * PN + cc] !== s) break; line.unshift(rr * PN + cc); }
+    if (line.length >= 5) return line;
+  }
+  return null;
+}
+/* počítač: každé volné pole u kamenů se ohodnotí podle všech pětic, do kterých patří (útok i obrana) */
+const PK_W = [0, 1, 14, 160, 3000, 1e6];
+function pkVal(b, i, s){
+  const o = s === "x" ? "o" : "x", r = Math.floor(i / PN), c = i % PN; let sc = 0, fours = 0, threes = 0;
+  for (const [dr, dc] of [[0,1],[1,0],[1,1],[1,-1]]){
+    let best = 0;
+    for (let k = -4; k <= 0; k++){
+      let n = 1, ok = true;
+      for (let j = 0; j < 5; j++){
+        const rr = r + dr * (k + j), cc = c + dc * (k + j);
+        if (rr < 0 || rr >= PN || cc < 0 || cc >= PN){ ok = false; break; }
+        const v = b[rr * PN + cc];
+        if (v === o){ ok = false; break; }
+        if (v === s && (k + j) !== 0) n++;
+      }
+      if (ok){ sc += PK_W[n]; best = Math.max(best, n); }
+    }
+    if (best === 4) fours++; else if (best === 3) threes++;
+  }
+  if (fours >= 2 || (fours && threes)) sc += 5e4;   // dvojitá hrozba
+  else if (threes >= 2) sc += 8e3;
+  return sc;
+}
+function pkCands(b){
+  const out = [];
+  for (let i = 0; i < PNN; i++){
+    if (b[i] !== ".") continue;
+    const r = Math.floor(i / PN), c = i % PN; let near = false;
+    for (let dr = -2; dr <= 2 && !near; dr++) for (let dc = -2; dc <= 2; dc++){
+      const rr = r + dr, cc = c + dc; if (rr >= 0 && rr < PN && cc >= 0 && cc < PN && b[rr * PN + cc] !== "."){ near = true; break; }
+    }
+    if (near) out.push(i);
+  }
+  return out;
+}
+function pkAI(b, lvl){
+  const me = "o", op = "x", cand = pkCands(b);
+  if (!cand.length) return 7 * PN + 7;
+  const sc = cand.map(i => { const a = pkVal(b, i, me), d = pkVal(b, i, op);
+    return {i, a, d, v: lvl === 1 ? a + d * 0.6 : a * 1.08 + d}; }).sort((x, y) => y.v - x.v);
+  const win = sc.find(x => x.a >= 1e6); if (win) return win.i;
+  const block = sc.filter(x => x.d >= 1e6).sort((x, y) => y.a - x.a)[0];
+  if (block && lvl > 1) return block.i;
+  if (lvl === 1){ // lehká: občas nevidí nejlepší tah
+    const top = sc.slice(0, 5); if (block && Math.random() < 0.75) return block.i;
+    return top[Math.floor(Math.random() * Math.min(top.length, Math.random() < 0.5 ? 2 : 5))].i;
+  }
+  if (lvl === 3){ // těžká: u nejlepších tahů počítá i soupeřovu nejlepší odpověď
+    const arr = b.slice ? b.slice() : [...b];
+    let best = sc[0], bestV = -Infinity;
+    sc.slice(0, 9).forEach(x => {
+      arr[x.i] = me;
+      let rep = 0; pkCands(arr).forEach(j => { const v = pkVal(arr, j, op) + pkVal(arr, j, me) * 0.5; if (v > rep) rep = v; });
+      arr[x.i] = ".";
+      const v = x.v - rep * 0.7;
+      if (v > bestV){ bestV = v; best = x; }
+    });
+    return best.i;
+  }
+  const top = sc.filter(x => x.v >= sc[0].v * 0.97);
+  return top[Math.floor(Math.random() * top.length)].i;
+}
+/* stav her s kolegy */
+function pkMyTurn(g){ return g && g.stav === "hraje" && String(g.tah) === String(O.me); }
+function pkPeer(g){ return (g.hraci || []).map(String).find(c => c !== String(O.me)) || ""; }
+function pkSym(g, c){ return String(g.x) === String(c) ? "x" : "o"; }
+function pkTurnCount(){ if (!PK_ON()) return 0; return Object.values(S.games || {}).filter(pkMyTurn).length; }
+function pkActive(){ return Object.entries(S.games || {}).filter(([, g]) => g.stav === "hraje").sort((a, b) => (pkMyTurn(b[1]) - pkMyTurn(a[1])) || ms(b[1].zmeneno) - ms(a[1].zmeneno)); }
+function pkGameWith(peer){ return pkActive().find(([, g]) => pkPeer(g) === String(peer)); }
+function pkStatus(g){
+  const peer = surname(nameOf(pkPeer(g)));
+  if (g.stav === "konec"){
+    if (!g.vitez) return "Remíza – plocha je plná";
+    const me = String(g.vitez) === String(O.me);
+    if (g.vzdal) return me ? `${peer} to vzdal – vyhrál jsi` : "Vzdal jsi";
+    return me ? "Vyhrál jsi! 🏆" : `Vyhrál ${peer}`;
+  }
+  if (!g.pocet) return pkMyTurn(g) ? "Začínáš – jsi na tahu" : `Začíná ${peer}`;
+  return pkMyTurn(g) ? "Jsi na tahu" : `Na tahu je ${peer}`;
+}
+function pkMini(b, last, win){
+  let h = ""; for (let i = 0; i < PNN; i++){ const v = b[i]; h += `<i class="${v === "x" ? "X" : v === "o" ? "O" : ""}${i === last ? " l" : ""}${win && win.includes(i) ? " w" : ""}"></i>`; }
+  return `<div class="pk-mini">${h}</div>`;
+}
+function pkCardHTML(id, m){
+  const g = S.games && S.games[id];
+  if (!g) return `<div class="pk-card"><b>${PK_ICO(18)} Piškvorky</b><small>Hra se načítá nebo už není k dispozici.</small></div>`;
+  const xp = String(g.x), op = (g.hraci || []).map(String).find(c => c !== xp) || "";
+  const nm = c => surname(nameOf(c));
+  const title = g.stav === "konec" ? "Piškvorky – konec" : g.pocet ? `Piškvorky · tah ${g.pocet}` : "Piškvorky – výzva";
+  const by = String(m.od), to = (g.hraci || []).map(String).find(c => c !== by) || "";
+  const line = g.pocet ? `${nm(g.pocet % 2 ? xp : op)} táhl ${pkPos(g.posledni)} · ` : `${nm(by)} vs. ${nm(to)} · plocha 15×15, pět v řadě, začíná ${nm(xp)} (✕). `;
+  const hot = pkMyTurn(g);
+  return `<div class="pk-card"><b>${PK_ICO(18)} ${title}</b>${g.pocet ? pkMini(g.plocha, g.posledni, g.vyhra) : ""}
+    <small>${esc(line)}<span class="${hot ? "hot" : ""}">${esc(pkStatus(g))}</span></small>
+    <button type="button" class="pk-go" data-chpk="${esc(id)}">${g.stav === "konec" ? "Zobrazit hru" : hot ? (g.pocet ? "Pokračovat ve hře" : "Hrát") : "Otevřít hru"}</button></div>`;
+}
+function pkListHTML(){
+  const act = pkActive(), ai = pkAIload();
+  const rows = act.map(([id, g]) => `<button type="button" class="pk-row" data-chpk="${esc(id)}"><span>✕○ vs <b>${esc(shortName(nameOf(pkPeer(g))))}</b></span>${pkMyTurn(g) ? `<em>Jsi na tahu</em>` : `<small>na tahu je ${esc(surname(nameOf(pkPeer(g))))}</small>`}</button>`).join("")
+    + (ai && ai.stav === "hraje" && ai.pocet ? `<button type="button" class="pk-row" data-chpkai><span>🖥️ <b>Počítač</b> · ${PK_LVL[ai.lvl] || "střední"}</span><small>tah ${ai.pocet}</small></button>` : "");
+  return `<div class="ch-sec">Piškvorky <span class="pk-ic">${PK_ICO(22, 1)}</span></div><div class="pk-box">${rows || `<p class="ch-empty" style="margin:0 0 6px">Žádná rozehraná hra.</p>`}
+    <div class="pk-btns"><button type="button" class="pk-b" data-chpkai>Hrát proti počítači</button><button type="button" class="pk-b sec" data-chpkpick>Výzva…</button></div></div>`;
+}
+/* výzva a tahy */
+async function pkChallenge(peer){
+  peer = String(peer);
+  const ex = pkGameWith(peer); if (ex){ pkOpen(ex[0]); return; }
+  const tid = dmId(O.me, peer), ref = O.db.collection("piskvorky").doc(), fv = FV();
+  const g = {hraci:[String(O.me), peer], x:String(O.me), tah:String(O.me), plocha:PK_EMPTY, pocet:0, posledni:-1, stav:"hraje", vitez:null, vyhra:[],
+    jmena:{[String(O.me)]:meName(), [peer]:nameOf(peer)}, vlakno:tid, vytvoreno:fv.serverTimestamp(), zmeneno:fv.serverTimestamp()};
+  try {
+    await ref.set(g);
+    S.games = {...(S.games || {}), [ref.id]:{...g, vytvoreno:now(), zmeneno:now()}};
+    await writeMsg({text:"🎮 Vyzývám tě na piškvorky", hra:ref.id}, tid);
+    CH.openThread(tid); pkOpen(ref.id);
+  } catch (e){ toast(e.code === "permission-denied" ? "Hru nejde založit – chybí pravidla Firestore pro piškvorky." : "Výzvu se nepodařilo odeslat."); }
+}
+async function pkRematch(id){
+  const g = S.games[id]; if (!g) return;
+  const peer = pkPeer(g), tid = dmId(O.me, peer), ref = O.db.collection("piskvorky").doc(), fv = FV();
+  const x = String(g.x) === String(O.me) ? peer : String(O.me); // v odvetě začíná druhý hráč
+  const n = {hraci:[String(O.me), peer], x, tah:x, plocha:PK_EMPTY, pocet:0, posledni:-1, stav:"hraje", vitez:null, vyhra:[],
+    jmena:{[String(O.me)]:meName(), [peer]:nameOf(peer)}, vlakno:tid, odveta:id, vytvoreno:fv.serverTimestamp(), zmeneno:fv.serverTimestamp()};
+  try {
+    await ref.set(n); S.games = {...S.games, [ref.id]:{...n, vytvoreno:now(), zmeneno:now()}};
+    await writeMsg({text:"🎮 Odveta v piškvorkách!", hra:ref.id}, tid);
+    pkOpen(ref.id);
+  } catch (e){ toast("Odvetu se nepodařilo založit."); }
+}
+async function pkMove(id, i){
+  const ref = O.db.collection("piskvorky").doc(id), me = String(O.me);
+  S.pkBusy = true; pkRender();
+  try {
+    let res = null;
+    await O.db.runTransaction(async tx => {
+      const s = await tx.get(ref); const g = s.data();
+      if (!g || g.stav !== "hraje" || String(g.tah) !== me) throw new Error("tah");
+      const b = g.plocha.split(""); if (b[i] !== ".") throw new Error("obsazeno");
+      const sym = pkSym(g, me); b[i] = sym;
+      const w = pkWin(b, i, sym), full = !b.includes(".");
+      res = {plocha:b.join(""), posledni:i, pocet:(g.pocet || 0) + 1, tah:w || full ? null : pkPeer(g),
+        stav:w || full ? "konec" : "hraje", vitez:w ? me : null, vyhra:w || [], zmeneno:FV().serverTimestamp()};
+      tx.update(ref, res);
+    });
+    if (res) S.games[id] = {...S.games[id], ...res, zmeneno:now()};
+    S.pkSel = null;
+  } catch (e){ toast(e.message === "tah" ? "Teď nejsi na tahu." : e.message === "obsazeno" ? "Pole je obsazené." : "Tah se nepodařilo uložit."); }
+  S.pkBusy = false; pkRender(); updBadge(); if (S.open){ renderList(); if (S.tid) renderMsgs(false); }
+}
+async function pkResign(id){
+  const g = S.games[id]; if (!g || g.stav !== "hraje") return;
+  if (!confirm("Opravdu to vzdát?")) return;
+  const upd = {stav:"konec", tah:null, vitez:pkPeer(g), vzdal:String(O.me), zmeneno:FV().serverTimestamp()};
+  try { await O.db.collection("piskvorky").doc(id).update(upd); S.games[id] = {...g, ...upd}; pkRender(); updBadge(); } catch (e){ toast("Nepodařilo se uložit."); }
+}
+/* hra proti počítači – jen v tomto zařízení */
+function pkAIload(){ try { return JSON.parse(localStorage.getItem("pkAI") || "null"); } catch (e){ return null; } }
+function pkAIsave(g){ try { localStorage.setItem("pkAI", JSON.stringify(g)); } catch (e){} }
+function pkAInew(lvl){ const old = pkAIload() || {}; return {plocha:PK_EMPTY, pocet:0, posledni:-1, stav:"hraje", vitez:null, vyhra:[], lvl:lvl || old.lvl || 2, bil:old.bil || {v:0, p:0}, ty:old.ty === "x" ? "o" : "x"}; }
+function pkAIstep(g){ // počítač táhne (hraje „o“)
+  const b = g.plocha.split(""), i = pkAI(b, g.lvl); b[i] = "o";
+  const w = pkWin(b, i, "o");
+  Object.assign(g, {plocha:b.join(""), posledni:i, pocet:g.pocet + 1});
+  if (w){ g.stav = "konec"; g.vitez = "pc"; g.vyhra = w; g.bil.p++; }
+  else if (!b.includes(".")){ g.stav = "konec"; g.vitez = null; }
+}
+function pkAImove(i){
+  const g = S.pkAI; if (!g || g.stav !== "hraje" || g.plocha[i] !== "." || S.pkBusy) return;
+  const b = g.plocha.split(""); b[i] = "x";
+  const w = pkWin(b, i, "x");
+  Object.assign(g, {plocha:b.join(""), posledni:i, pocet:g.pocet + 1}); S.pkSel = null;
+  if (w){ g.stav = "konec"; g.vitez = "ty"; g.vyhra = w; g.bil.v++; pkAIsave(g); pkRender(); return; }
+  if (!b.includes(".")){ g.stav = "konec"; pkAIsave(g); pkRender(); return; }
+  S.pkBusy = true; pkAIsave(g); pkRender();
+  setTimeout(() => { pkAIstep(g); S.pkBusy = false; pkAIsave(g); pkRender(); }, 380);
+}
+/* hrací okno */
+function pkOpen(id){ S.pkId = id; S.pkSel = null; pkMount(); pkRender(); }
+function pkOpenAI(){
+  let g = pkAIload(); if (!g || g.stav !== "hraje") g = pkAInew(); // „ty“: x = začínáš ty, o = začíná počítač (střídá se)
+  S.pkAI = g; S.pkId = "ai"; S.pkSel = null;
+  if (g.pocet === 0 && g.ty === "o"){ pkAIstep(g); pkAIsave(g); }
+  pkMount(); pkRender();
+}
+function pkClose(){ const v = $("pkOv"); if (v) v.remove(); S.pkId = null; S.pkSel = null; }
+function pkMount(){
+  if ($("pkOv")) return;
+  const v = document.createElement("div"); v.className = "pk-ov" + (O.desk ? " desk" : ""); v.id = "pkOv";
+  v.setAttribute("role", "dialog"); v.setAttribute("aria-label", "Piškvorky");
+  document.body.appendChild(v);
+  v.addEventListener("click", e => {
+    const c = x => e.target.closest(x);
+    if (c("[data-pkx]")){ pkClose(); return; }
+    const cell = c("[data-pki]");
+    if (cell){ const i = +cell.dataset.pki, g = pkCur(); if (!g || !pkCanMove(g) || g.plocha[i] !== ".") return;
+      if (O.desk || S.pkSel === i){ pkDo(i); return; } // na počítači tah hned, na telefonu druhým klepnutím nebo tlačítkem
+      S.pkSel = i; pkRender(); return; }
+    if (c("[data-pkmove]")){ if (S.pkSel != null) pkDo(S.pkSel); return; }
+    if (c("[data-pkresign]")){ pkResign(S.pkId); return; }
+    if (c("[data-pkre]")){ pkRematch(S.pkId); return; }
+    if (c("[data-pkchat]")){ const g = S.games[S.pkId]; pkClose(); if (g) CH.openThread(g.vlakno || dmId(O.me, pkPeer(g))); return; }
+    const lv = c("[data-pklvl]"); if (lv){ const g = S.pkAI; if (g.pocet && g.stav === "hraje" && !confirm("Změnou obtížnosti začne nová hra. Pokračovat?")) return;
+      S.pkAI = pkAInew(+lv.dataset.pklvl); S.pkAI.ty = g.ty; if (S.pkAI.ty === "o") pkAIstep(S.pkAI); pkAIsave(S.pkAI); S.pkSel = null; pkRender(); return; }
+    if (c("[data-pknew]")){ const g = S.pkAI; if (g.stav === "hraje" && g.pocet > 1 && !confirm("Rozehraná hra se zahodí. Nová hra?")) return;
+      S.pkAI = pkAInew(g.lvl); if (g.stav === "hraje" && g.pocet > 1){ S.pkAI.bil.p++; } if (S.pkAI.ty === "o") pkAIstep(S.pkAI); pkAIsave(S.pkAI); S.pkSel = null; pkRender(); return; }
+  });
+}
+function pkCur(){ return S.pkId === "ai" ? S.pkAI : S.games && S.games[S.pkId]; }
+function pkCanMove(g){ return !S.pkBusy && g.stav === "hraje" && (S.pkId === "ai" ? true : pkMyTurn(g)); }
+function pkDo(i){ if (S.pkId === "ai") pkAImove(i); else pkMove(S.pkId, i); }
+function pkRender(){
+  const v = $("pkOv"); if (!v) return;
+  const ai = S.pkId === "ai", g = pkCur();
+  if (!g){ v.innerHTML = `<div class="pk-top"><button type="button" class="pk-back" data-pkx aria-label="Zavřít">‹</button><b>Piškvorky</b></div><p class="pk-st">Hra se načítá…</p>`; return; }
+  const me = String(O.me), peer = ai ? null : pkPeer(g);
+  const mySym = ai ? "x" : pkSym(g, me);
+  const turnMe = ai ? g.stav === "hraje" && !S.pkBusy : pkMyTurn(g);
+  const pl = (sym, name, on) => `<span class="pk-p${on ? " on" : ""}"><span class="${sym === "x" ? "X" : "O"}">${sym === "x" ? "✕" : "O"}</span>${esc(name)}</span>`;
+  const left = ai ? pl("x", "Ty", turnMe) : pl(mySym, `${surname(meName())} (ty)`, turnMe);
+  const right = ai ? pl("o", "🖥️ Počítač", g.stav === "hraje" && S.pkBusy) : pl(mySym === "x" ? "o" : "x", surname(nameOf(peer)), g.stav === "hraje" && !turnMe);
+  let st;
+  if (ai) st = g.stav === "konec" ? (g.vitez === "ty" ? "Vyhrál jsi! 🏆" : g.vitez === "pc" ? "Vyhrál počítač" : "Remíza") : S.pkBusy ? "Počítač přemýšlí…" : "Jsi na tahu";
+  else st = S.pkBusy ? "Ukládám tah…" : pkStatus(g);
+  const win = g.vyhra || [], can = pkCanMove(g);
+  let cells = "";
+  for (let i = 0; i < PNN; i++){
+    const x = g.plocha[i], sel = S.pkSel === i && x === ".";
+    cells += `<button type="button" class="pk-c${i === g.posledni ? " last" : ""}${win.includes(i) ? " win" : ""}${sel ? " sel" : ""}" data-pki="${i}" aria-label="${pkPos(i)}${x === "x" ? " křížek" : x === "o" ? " kolečko" : ""}"${!can || x !== "." ? " tabindex=\"-1\"" : ""}>${x === "x" ? `<span class="X">✕</span>` : x === "o" ? `<span class="O">O</span>` : sel ? `<span class="${mySym === "x" ? "X" : "O"} ghost">${mySym === "x" ? "✕" : "O"}</span>` : ""}</button>`;
+  }
+  const cap = ai ? `Obtížnost: ${[1,2,3].map(l => `<button type="button" class="pk-l${g.lvl === l ? " on" : ""}" data-pklvl="${l}">${PK_LVL[l]}</button>`).join(" · ")}<br>Bilance proti počítači ${g.bil.v} : ${g.bil.p}`
+    : g.stav === "hraje" ? (O.desk ? "Klepni na pole a tah se zahraje. Žlutě je poslední tah." : "Klepni na pole a potvrď <b>Táhnout</b> (nebo klepni na stejné pole ještě jednou). Žlutě je poslední tah.") : "";
+  const btns = ai ? `<button type="button" class="pk-b sec" data-pkx>Zpět</button>${g.stav === "hraje" && !O.desk ? `<button type="button" class="pk-b" data-pkmove ${S.pkSel == null || !can ? "disabled" : ""}>Táhnout</button>` : ""}<button type="button" class="pk-b${g.stav === "konec" ? "" : " sec"}" data-pknew>Nová hra</button>`
+    : g.stav === "hraje" ? `<button type="button" class="pk-b sec" data-pkresign>Vzdát</button><button type="button" class="pk-b sec" data-pkchat>Chat</button>${O.desk ? "" : `<button type="button" class="pk-b" data-pkmove ${S.pkSel == null || !can ? "disabled" : ""}>Táhnout</button>`}`
+    : `<button type="button" class="pk-b sec" data-pkchat>Chat</button><button type="button" class="pk-b" data-pkre>Odveta</button>`;
+  v.innerHTML = `<div class="pk-in"><div class="pk-top"><button type="button" class="pk-back" data-pkx aria-label="Zavřít hru">‹</button><b>${ai ? "Piškvorky · počítač" : "Piškvorky"}</b><span class="pk-n">tah ${g.pocet || 0}</span></div>
+    <div class="pk-pl">${left}${right}</div>
+    <p class="pk-st${(ai ? g.vitez === "ty" : String(g.vitez) === me) ? " win" : ""}">${esc(st)}</p>
+    <div class="pk-board${can ? " can" : ""}">${cells}</div>
+    <p class="pk-cap">${cap}</p>
+    <div class="pk-btns">${btns}</div></div>`;
+}
 
 window.SluzbyChat = CH;
 })();
