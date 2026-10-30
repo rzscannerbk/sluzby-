@@ -637,7 +637,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.07</span>
+      <span class="ver" id="verDiag">v5.08</span>
     </div>
   </div>
 </header>
@@ -753,7 +753,7 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.07"></script>
+<script src="sluzby-core.js?v=5.08"></script>
 <script src="sluzby-chat.js?v=4.66"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
@@ -1958,6 +1958,7 @@ function openVolPick(k){
   const d = dparse(k), c = dlpCode(k), cur = volDraft.has(k) ? "V" : MY_PRANI[k] || "";
   document.getElementById("volPickT").innerHTML = `${cap(DOW_FULL[new Date(d.y, d.m, d.d).getDay()])} ${d.d}. ${d.m+1}.<small>${c === "D" ? "D12 denní služba" : c === "N" ? "N12 noční služba" : "bez služby"} · ${cur ? "znovu klepni na označenou volbu a zrušíš ji" : "vyber, co chceš"}</small>`;
   document.querySelectorAll("#volPick [data-vp]").forEach(x => { if (x.dataset.vp !== "x") x.setAttribute("aria-pressed", x.dataset.vp === cur); });
+  document.querySelector('#volPick [data-vp="V"]').textContent = c === "D" || c === "N" ? "Dovolená" : "Volno"; // den se službou = dovolená
   document.getElementById("volPick").hidden = false;
   document.getElementById("volClose").style.display = "none"; // křížek by překrýval „Zavřít“
 }
