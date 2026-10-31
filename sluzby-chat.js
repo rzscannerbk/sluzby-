@@ -73,7 +73,7 @@ function visibleThreads(){
   if (S.vsichni) out.push(["vsichni", S.vsichni]);
   return out;
 }
-function badgeCount(){ return visibleThreads().reduce((s, [, t]) => s + (isMuted(t) ? 0 : unreadOf(t)), 0) + pkTurnCount(); }
+function badgeCount(){ return visibleThreads().reduce((s, [, t]) => s + (isMuted(t) ? 0 : unreadOf(t)), 0) + pkTurnCount() + (PK_ON() ? ldoTurnCount() : 0); }
 function titleOf(id, t){
   if (id === "vsichni") return "Zpráva všem";
   if (!t && id.startsWith("dm_")) return nameOf(id.split("_").slice(1).find(c => c !== String(O.me)));
@@ -390,6 +390,41 @@ const STYLE = `
 .pk-l{border:0;background:transparent;color:inherit;font:inherit;padding:2px 3px;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .pk-l.on{font-weight:700;color:var(--ink,#1D2A4D);text-decoration:none}
 .pk-in .pk-btns{padding:0 4px;margin-top:12px}
+/* hry – záložky a lodě */
+.hub-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 4px}
+.ch-root .hub-tabs button{border:1.5px solid var(--line,#DDE1E7);background:var(--sheet,#FAFBF7);border-radius:10px;padding:10px;font-weight:700;color:var(--ink,#1D2A4D)}
+.ch-root .hub-tabs button[aria-selected="true"]{background:var(--ink,#1D2A4D);color:var(--paper,#fff);border-color:var(--ink,#1D2A4D)}
+.ld-b{display:grid;grid-template-columns:16px 1fr;grid-template-rows:auto 1fr;gap:2px;max-width:440px;margin:0 auto;touch-action:manipulation}
+.ld-cols{display:grid;grid-template-columns:repeat(10,1fr);font-size:10.5px;color:var(--ink2,#5A6480);text-align:center;padding:0 2px}
+.ld-rows{display:grid;grid-template-rows:repeat(10,1fr);font-size:10.5px;color:var(--ink2,#5A6480);align-items:center;text-align:center;padding:2px 0}
+.ld-g{display:grid;grid-template-columns:repeat(10,1fr);border:2px solid var(--ink,#1D2A4D);border-radius:6px;overflow:hidden;background:#DCEBF7}
+.ld-c{aspect-ratio:1;border:0;border-right:1px solid #C9D9E8;border-bottom:1px solid #C9D9E8;background:#DCEBF7;padding:0;position:relative;cursor:pointer}
+
+.ld-c.s{background:#4D5B7C}.ld-c.s.sel{background:#2E9E5B}
+.ld-c.w{background:radial-gradient(circle,#7E93AE 0 16%,#DCEBF7 18%)}
+.ld-c.h{background:#F4C9C9}.ld-c.h::after,.ld-c.k::after{content:"✕";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:clamp(12px,3.6vw,18px);color:#D04848}
+.ld-c.k{background:#D04848}.ld-c.k::after{color:#fff}
+.ld-c.rev{background:repeating-linear-gradient(45deg,#4D5B7C55 0 3px,#DCEBF7 3px 6px)}
+.ld-c.sel:not(.s){background:rgba(46,158,91,.3);box-shadow:inset 0 0 0 2px #2E9E5B}
+.ld-c.last{box-shadow:inset 0 0 0 2px #E2C33A}
+.ld-fleet{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0 0}
+.pk-ov .ld-sh{display:flex;flex-direction:column;align-items:center;gap:4px;border:1.5px solid var(--line,#DDE1E7);background:var(--sheet,#FAFBF7);color:var(--ink,#1D2A4D);border-radius:10px;padding:6px 8px;cursor:pointer;font:inherit}
+.ld-sh small{font-size:10.5px;color:var(--ink2,#5A6480)}
+.pk-ov .ld-sh.on{border-color:#2E9E5B;box-shadow:0 0 0 2px rgba(46,158,91,.35)}
+.ld-sh.done:not(.on){opacity:.4}
+.ld-ico{display:grid;gap:2px}.ld-ico i{background:#4D5B7C;border-radius:2px}
+.ld-sh.on .ld-ico i{background:#2E9E5B}
+.ld-msg{min-height:20px;text-align:center;font-size:14px;margin:8px 6px 0;color:var(--ink,#1D2A4D)}
+.ld-leg{display:flex;gap:12px;justify-content:center;font-size:12px;color:var(--ink2,#5A6480);margin:6px 0 0;flex-wrap:wrap}
+.ld-leg span{display:flex;align-items:center;gap:4px}.ld-leg i{width:12px;height:12px;border-radius:2px;display:inline-block}
+.ld-leg i.w{background:radial-gradient(circle,#7E93AE 0 30%,#DCEBF7 34%)}.ld-leg i.h{background:#F4C9C9}.ld-leg i.k{background:#D04848}.ld-leg i.rev{background:repeating-linear-gradient(45deg,#4D5B7C88 0 2px,#DCEBF7 2px 4px)}
+.ld-me{display:flex;gap:12px;align-items:flex-start;margin:10px 6px 0;font-size:13.5px;line-height:1.5}
+.ld-me span{color:var(--ink2,#5A6480)}
+.ld-sm{display:grid;grid-template-columns:repeat(10,1fr);width:130px;flex:none;border:1.5px solid #1D2A4D;border-radius:5px;overflow:hidden;background:#fff}
+.ld-sm i{aspect-ratio:1;background:#DCEBF7;border-right:1px solid #C9D9E8;border-bottom:1px solid #C9D9E8;position:relative}
+.ld-sm i.s{background:#4D5B7C}.ld-sm i.w{background:radial-gradient(circle,#7E93AE 0 18%,#DCEBF7 22%)}
+.ld-sm i.h{background:#8E3B47}.ld-sm i.k{background:#D04848}.ld-sm i.last{box-shadow:inset 0 0 0 1.5px #E2C33A}
+.ld-sm.card{width:100%;max-width:190px}
 /* administrace */
 .ch-adm{margin-top:18px;padding:14px;border:1.5px solid var(--line,#DDE1E7);border-radius:12px;background:var(--sheet,#fff)}
 .ch-adm h3{font-family:var(--f-cond,sans-serif);font-size:20px;margin:0 0 6px}
@@ -513,6 +548,13 @@ function startLive(){
     if (S.pkId && S.pkId !== "ai") pkRender();
     if (S.pending && S.pending.startsWith("hra:") && G[S.pending.slice(4)]){ const p = S.pending; S.pending = null; CH.openThread(p); }
   }, e => { console.warn("chat: piškvorky", e); }));
+  if (PK_ON()) S.liveUnsubs.push(O.db.collection("lode").where("hraci", "array-contains", String(O.me)).onSnapshot(s => {
+    const G = {}; s.docs.forEach(d => { G[d.id] = d.data({serverTimestamps:"estimate"}); }); S.lodeG = G;
+    updBadge();
+    if (S.open){ if (S.view === "list" || S.two) renderList(); if (S.tid) renderMsgs(false); }
+    ldoOnUpdate();
+    if (S.pending && S.pending.startsWith("lode:") && G[S.pending.slice(5)]){ const p = S.pending; S.pending = null; CH.openThread(p); }
+  }, e => { console.warn("chat: lodě", e); }));
   S.liveUnsubs.push(O.db.collection("poznamky").doc(String(O.me)).onSnapshot(s => {
     S.pinT = ((s.exists && s.data().chatPripnute) || []).map(String);
     if (S.open && (S.view === "list" || S.two)) renderList();
@@ -533,7 +575,7 @@ function stopLive(){
 }
 function afterThreads(){
   updBadge();
-  if (S.pending && (thread(S.pending) || S.pending.startsWith("dm_") || (S.pending.startsWith("hra:") && S.games[S.pending.slice(4)]))){ const p = S.pending; S.pending = null; CH.openThread(p); return; }
+  if (S.pending && (thread(S.pending) || S.pending.startsWith("dm_") || (S.pending.startsWith("hra:") && S.games[S.pending.slice(4)]) || (S.pending.startsWith("lode:") && (S.lodeG || {})[S.pending.slice(5)]))){ const p = S.pending; S.pending = null; CH.openThread(p); return; }
   if (!S.open) return;
   if (S.tid) ensureMsgSub();
   renderList();
@@ -608,6 +650,7 @@ CH.close = function(){
 CH.openThread = function(tid){
   if (!S) return;
   if (tid && tid.startsWith("hra:")){ const id = tid.slice(4); if (!LIVE){ S.pending = tid; return; } const g = S.games[id]; CH.openThread(g && g.vlakno ? g.vlakno : "vsichni"); pkOpen(id); return; }
+  if (tid && tid.startsWith("lode:")){ const id = tid.slice(5); const g = (S.lodeG || {})[id]; if (!LIVE || !g){ S.pending = tid; return; } CH.openThread(g.vlakno || "vsichni"); ldoOpen(id); return; }
   if (!LIVE || (!thread(tid) && !tid.startsWith("dm_"))){ S.pending = tid; if (LIVE) CH.open(); return; }
   if (!S.open){ S.open = true; $("chRoot").hidden = false; layout(); if (S.fit) S.fit(); }
   if (S.tid !== tid){ S.reply = null; S.edit = null; S.search = ""; S.searchOn = false; S.firstScroll = true; S.err = ""; clearStage(); S.newBelow = 0; }
@@ -659,14 +702,18 @@ function hCardHTML(id, t){
 }
 function renderList(){
   const el = $("chList"); if (!el || !S.open) return;
-  const sub = S.archive || S.pick || S.pickHra || S.pkView, nT = pkTurnCount();
-  const pkBtn = PK_ON() && !sub ? `<button type="button" class="pk-hub" data-chpkhub aria-label="Piškvorky${nT ? ` – jsi na tahu (${nT})` : ""}" title="Piškvorky">${PK_ICO(30, 1)}${nT ? `<i>${nT}</i>` : ""}</button>` : "";
-  const head = `<div class="ch-h"><h2>${S.archive ? "Archiv hlídek" : S.pickHra ? "Piškvorky – výzva" : S.pkView ? "Piškvorky" : S.pick ? "Nová zpráva" : "Chat"}</h2>${pkBtn}${sub ? `<button type="button" class="ch-sec" data-chback-list style="margin:0;border:1.5px solid currentColor;border-radius:8px;padding:5px 10px;background:transparent;font-size:14px">‹ Zpět</button>` : ""}<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button></div>`;
+  const sub = S.archive || S.pick || S.pickHra || S.pkView, nT = pkTurnCount() + (PK_ON() ? ldoTurnCount() : 0);
+  const pkBtn = PK_ON() && !sub ? `<button type="button" class="pk-hub" data-chpkhub aria-label="Hry${nT ? ` – jsi na tahu (${nT})` : ""}" title="Hry – piškvorky a lodě">${PK_ICO(30, 1)}${nT ? `<i>${nT}</i>` : ""}</button>` : "";
+  const head = `<div class="ch-h"><h2>${S.archive ? "Archiv hlídek" : S.pickHra ? (S.pickHra === "ld" ? "Lodě – výzva" : "Piškvorky – výzva") : S.pkView ? "Hry" : S.pick ? "Nová zpráva" : "Chat"}</h2>${pkBtn}${sub ? `<button type="button" class="ch-sec" data-chback-list style="margin:0;border:1.5px solid currentColor;border-radius:8px;padding:5px 10px;background:transparent;font-size:14px">‹ Zpět</button>` : ""}<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button></div>`;
   const test = S.set && !S.set.vsem ? `<p class="ch-test"><b>Testovací provoz</b> – chat zatím vidí jen ${testeri().map(c => esc(nameOf(c))).join(", ")}.</p>` : "";
-  if (S.pkView && !S.pickHra){ el.innerHTML = head + pkHubHTML(); return; }
+  if (S.pkView && !S.pickHra){
+    const tab = S.hubTab || "pk";
+    el.innerHTML = head + `<div class="hub-tabs" role="tablist"><button type="button" role="tab" data-chtab="pk" aria-selected="${tab === "pk"}">✕○ Piškvorky</button><button type="button" role="tab" data-chtab="ld" aria-selected="${tab === "ld"}">⚓ Lodě</button></div>` + (tab === "ld" ? ldHubHTML() : pkHubHTML());
+    return;
+  }
   if (S.pickHra){
     const list = Object.entries(officers()).filter(([n, c]) => String(c) !== String(O.me) && (S.set.vsem || testeri().includes(String(c)))).sort((a, b) => a[0].localeCompare(b[0], "cs"));
-    el.innerHTML = head + `<p class="ch-empty">Vyber kolegu – dostane výzvu do soukromých zpráv a notifikaci.</p>` + (list.length ? `<div class="ch-pick">${list.map(([n, c]) => { const ex = pkGameWith(c); return `<button type="button" data-chpkdm="${esc(c)}">${avHTML(String(c), initials(n))}<span>${esc(n)}${ex ? " · rozehráno" : ""}</span></button>`; }).join("")}</div>` : `<p class="ch-empty">Zatím nikdo další nemá chat povolený.</p>`);
+    el.innerHTML = head + `<p class="ch-empty">Vyber kolegu – dostane výzvu do soukromých zpráv a notifikaci.</p>` + (list.length ? `<div class="ch-pick">${list.map(([n, c]) => { const ex = S.pickHra === "ld" ? ldoWith(c) : pkGameWith(c); return `<button type="button" ${S.pickHra === "ld" ? "data-chlddm" : "data-chpkdm"}="${esc(c)}">${avHTML(String(c), initials(n))}<span>${esc(n)}${ex ? " · rozehráno" : ""}</span></button>`; }).join("")}</div>` : `<p class="ch-empty">Zatím nikdo další nemá chat povolený.</p>`);
     return;
   }
   if (S.pick){
@@ -761,7 +808,7 @@ function renderHead(){
   h.className = "ch-th" + (t && t.typ === "hlidka" ? " " + (t.kind === "N" ? "N" : "D") : "");
   h.innerHTML = `<div class="ch-side l"><button type="button" class="ch-back" data-chback aria-label="Zpět na seznam chatů"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></div>
     <div class="ch-tb${hav ? " av" : ""}">${hav}<span><b>${esc(t && t.typ === "hlidka" && !S.two ? hTitle(t, true) : titleOf(tid, t))}</b>${sub === null ? `<small id="chPeer" class="${peerLine() === "online" ? "on" : ""}">${esc(peerLine())}</small>` : `<small>${esc(sub)}</small>`}</span></div>
-    <div class="ch-side r">${PK_ON() && peer && tid !== "vsichni" ? `<button type="button" class="ch-ib pk" data-chpkdm="${esc(peer)}" aria-label="Piškvorky s ${esc(nameOf(peer))}" title="Piškvorky">${PK_ICO(26)}</button>` : ""}<button type="button" class="ch-ib${S.searchOn ? " on" : ""}" data-chsearch aria-label="Hledat ve vlákně" title="Hledat"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
+    <div class="ch-side r">${PK_ON() && peer && tid !== "vsichni" ? `<button type="button" class="ch-ib pk" data-chgames="${esc(peer)}" aria-label="Hry s ${esc(nameOf(peer))}" title="Hry – piškvorky a lodě">${PK_ICO(26)}</button>` : ""}<button type="button" class="ch-ib${S.searchOn ? " on" : ""}" data-chsearch aria-label="Hledat ve vlákně" title="Hledat"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
     ${O.desk ? `<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button>` : ""}</div>${progHTML(t) ? `<div class="ch-thp">${progHTML(t)}</div>` : ""}`;
   const pb = $("chPinBox");
   if (pb) pb.innerHTML = t && t.pinned ? `<div class="ch-pin">${ic(ICO.pin, 18)}<button type="button" data-chgo="${esc(t.pinned.id)}"><b>${esc(surname(t.pinned.jmeno || ""))}:</b> ${esc(t.pinned.text || "fotka")}</button><button type="button" class="ch-unpin" data-chunpin aria-label="Odepnout">✕</button></div>` : "";
@@ -823,8 +870,8 @@ function renderMsgs(autoscroll, keepScroll){
       const show = imgs.slice(0, 4), more = imgs.length - show.length;
       pics = `<div class="ch-grid n${Math.min(imgs.length, 4)}">${show.map((x, i) => `<button type="button" data-chgal="${m.id}" data-i="${i}" aria-label="Fotka ${i + 1} z ${imgs.length}"><img src="${x.image}" alt="" loading="lazy">${i === 3 && more > 0 ? `<span class="more">+${more}</span>` : ""}</button>`).join("")}</div>`;
     }
-    const isPk = !!(m.hra && !m.smazano);
-    const body = isPk ? pkCardHTML(m.hra, m) : allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.preposlano ? `<span class="ch-fwd">${ic(ICO.fwd, 14)}Přeposláno od ${esc(m.preposlano.jmeno || "")}</span>` : ""}${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.text && !m.smazano ? linkify(m.text) : ""}`;
+    const isPk = !!((m.hra || m.lode) && !m.smazano);
+    const body = isPk ? (m.lode ? ldoCardHTML(m.lode, m) : pkCardHTML(m.hra, m)) : allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.preposlano ? `<span class="ch-fwd">${ic(ICO.fwd, 14)}Přeposláno od ${esc(m.preposlano.jmeno || "")}</span>` : ""}${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.text && !m.smazano ? linkify(m.text) : ""}`;
     html += `<div class="ch-m${mine ? " mine" : ""}${hit ? " hit" : ""}${isPk ? " pk" : ""}" data-mid="${m.id}">${group && !mine && lastFrom !== m.od ? `<span class="ch-who">${esc(m.jmeno || nameOf(m.od))}</span>` : ""}
       <div class="ch-bub">${body}<div class="ch-meta">${imgs.length > 1 ? `${imgs.length} ${imgs.length < 5 ? "fotky" : "fotek"} · ` : ""}${m.upraveno && !m.smazano ? "upraveno · " : ""}${hm(ms(lastM.at))}</div></div>${rx ? `<div class="ch-rx">${rx}</div>` : ""}${allDel ? "" : `<button type="button" class="ch-more" data-chmore="${m.id}" aria-label="Možnosti zprávy">⋯</button>`}</div>`;
     const stM = it.list.includes(lastMine) ? lastMine : (mine && it.list.some(x => x.id === S.infoMid) ? lastM : null);
@@ -1221,6 +1268,12 @@ function bind(root){
     if (c("[data-chback]")){ backToList(); return; }
     if (c("[data-chback-list]")){ if (S.pickHra && S.pkView){ S.pickHra = false; renderList(); return; } S.archive = false; S.pick = false; S.pickHra = false; S.pkView = false; renderList(); return; }
     if (c("[data-chpkhub]")){ S.pkView = true; renderList(); $("chList").scrollTop = 0; return; }
+    const tb = c("[data-chtab]"); if (tb){ S.hubTab = tb.dataset.chtab; renderList(); return; }
+    if (c("[data-chldai]")){ ldOpen(); return; }
+    const ldo = c("[data-chldo]"); if (ldo){ ldoOpen(ldo.dataset.chldo); return; }
+    const ldd = c("[data-chlddm]"); if (ldd){ S.pickHra = false; ldoChallenge(ldd.dataset.chlddm); return; }
+    if (c("[data-chldpick]")){ S.pickHra = "ld"; S.pkView = true; renderList(); $("chList").scrollTop = 0; return; }
+    const gms = c("[data-chgames]"); if (gms){ openGameSheet(gms.dataset.chgames); return; }
     if (c("[data-charch]")){ S.archive = true; renderList(); $("chList").scrollTop = 0; return; }
     if (c("[data-chnew]")){ S.pick = true; renderList(); return; }
     const pkd = c("[data-chpkdm]"); if (pkd){ S.pickHra = false; pkChallenge(pkd.dataset.chpkdm); return; }
@@ -1268,6 +1321,7 @@ function bind(root){
   root.addEventListener("selectstart", e => { if (!e.target.closest || !e.target.closest("textarea,input")) e.preventDefault(); });
   document.addEventListener("keydown", e => {
     if (e.key === "Escape" && $("pkOv")){ pkClose(); return; }
+    if (e.key === "Escape" && $("ldOv")){ ldClose(); return; }
     if (e.key !== "Escape" || !S || !S.open) return;
     if (document.querySelector(".ch-view")){ document.querySelector(".ch-view").remove(); return; }
     if (document.querySelector(".ch-sheet")){ closeSheet(); return; }
@@ -1637,6 +1691,468 @@ function pkRender(){
     <div class="pk-board${can ? " can" : ""}">${cells}</div>
     <p class="pk-cap">${cap}</p>
     <div class="pk-btns">${btns}</div></div>`;
+}
+
+/* ================= lodě (proti počítači) =================
+   Plocha 10×10, flotila 5 lodí (21 polí), lodě se nesmí dotýkat ani rohem. Kdo trefí, střílí znovu.
+   Stav hry je jen v tomto zařízení (localStorage „ldAI“). Výstřely: . neznámé, w voda, h zásah, s potopená loď. */
+const LN = 10, LNN = 100, LCOL = "ABCDEFGHIJ";
+const LD_SHIPS = [
+  {id:"L", nazev:"Letadlová loď", cells:[[1,0],[1,1],[1,2],[1,3],[1,4],[0,1],[0,3]]},
+  {id:"T", nazev:"Bitevní loď", cells:[[1,0],[1,1],[1,2],[0,1]]},
+  {id:"K", nazev:"Křižník", cells:[[0,0],[0,1],[0,2],[0,3]]},
+  {id:"C", nazev:"Ponorka", cells:[[0,0],[0,1],[1,0],[1,1]]},
+  {id:"Č", nazev:"Člun", cells:[[0,0],[0,1]]}
+];
+const ldPos = i => `${LCOL[i % LN]}${Math.floor(i / LN) + 1}`;
+function ldNorm(cells){ const r0 = Math.min(...cells.map(c => c[0])), c0 = Math.min(...cells.map(c => c[1])); return cells.map(([r, c]) => [r - r0, c - c0]).sort((a, b) => a[0] - b[0] || a[1] - b[1]); }
+// všechny 4 otočení tvaru (bez duplicit)
+function ldRots(cells){
+  const out = []; let cur = ldNorm(cells);
+  for (let k = 0; k < 4; k++){ const key = JSON.stringify(cur); if (!out.some(x => JSON.stringify(x) === key)) out.push(cur); cur = ldNorm(cur.map(([r, c]) => [c, -r])); }
+  return out;
+}
+const LD_ROTS = Object.fromEntries(LD_SHIPS.map(s => [s.id, ldRots(s.cells)]));
+function ldCellsAt(shape, at){ // at = index levého horního rohu
+  const r0 = Math.floor(at / LN), c0 = at % LN, out = [];
+  for (const [r, c] of shape){ const rr = r0 + r, cc = c0 + c; if (rr < 0 || rr >= LN || cc < 0 || cc >= LN) return null; out.push(rr * LN + cc); }
+  return out;
+}
+function ldNear(i){ const r = Math.floor(i / LN), c = i % LN, o = [];
+  for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++){ const rr = r + dr, cc = c + dc; if ((dr || dc) && rr >= 0 && rr < LN && cc >= 0 && cc < LN) o.push(rr * LN + cc); }
+  return o; }
+// může loď stát na těchto polích? (v ploše, nepřekrývá a nedotýká se jiných lodí)
+function ldFree(fleet, cells, skipId){
+  const taken = new Set(); fleet.forEach(s => { if (s.id !== skipId && s.cells) s.cells.forEach(i => taken.add(i)); });
+  return cells.every(i => !taken.has(i) && ldNear(i).every(j => !taken.has(j)));
+}
+function ldRandomFleet(){
+  for (let attempt = 0; attempt < 200; attempt++){
+    const fleet = []; let ok = true;
+    for (const s of LD_SHIPS){
+      let placed = false;
+      for (let t = 0; t < 400 && !placed; t++){
+        const rot = Math.floor(Math.random() * LD_ROTS[s.id].length), cells = ldCellsAt(LD_ROTS[s.id][rot], Math.floor(Math.random() * LNN));
+        if (cells && ldFree(fleet, cells)){ fleet.push({id:s.id, rot, cells}); placed = true; }
+      }
+      if (!placed){ ok = false; break; }
+    }
+    if (ok) return fleet;
+  }
+  return null;
+}
+/* výstřel na flotilu: vrátí {res:"w"|"h"|"s", ship} a zapíše do řetězce výstřelů (včetně vody kolem potopené lodi) */
+function ldFire(shots, fleet, i){
+  const a = shots.split(""), ship = fleet.find(s => s.cells.includes(i));
+  if (!ship){ a[i] = "w"; return {shots:a.join(""), res:"w"}; }
+  a[i] = "h";
+  if (ship.cells.every(j => a[j] === "h" || a[j] === "s")){
+    ship.cells.forEach(j => { a[j] = "s"; ldNear(j).forEach(k => { if (a[k] === ".") a[k] = "w"; }); });
+    return {shots:a.join(""), res:"s", ship};
+  }
+  return {shots:a.join(""), res:"h", ship};
+}
+const ldAllSunk = (shots, fleet) => fleet.every(s => s.cells.every(i => shots[i] === "s"));
+/* počítač: lehká = náhodně; střední = po zásahu dobíjí okolí, jinak šachovnice; těžká = hustota možných poloh zbývajících lodí */
+function ldAIshot(shots, lvl, sunkIds){
+  const unk = []; for (let i = 0; i < LNN; i++) if (shots[i] === ".") unk.push(i);
+  const hits = []; for (let i = 0; i < LNN; i++) if (shots[i] === "h") hits.push(i);
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  if (lvl === 1) return pick(unk);
+  if (lvl === 2){
+    if (hits.length){
+      const nb = new Set(); hits.forEach(h => { const r = Math.floor(h / LN), c = h % LN;
+        [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr, dc]) => { const rr = r + dr, cc = c + dc; if (rr >= 0 && rr < LN && cc >= 0 && cc < LN && shots[rr * LN + cc] === ".") nb.add(rr * LN + cc); }); });
+      if (nb.size) return pick([...nb]);
+    }
+    const par = unk.filter(i => (Math.floor(i / LN) + i % LN) % 2 === 0);
+    return pick(par.length ? par : unk);
+  }
+  const score = new Array(LNN).fill(0), left = LD_SHIPS.filter(s => !sunkIds.includes(s.id));
+  for (const s of left) for (const shape of LD_ROTS[s.id]) for (let at = 0; at < LNN; at++){
+    const cells = ldCellsAt(shape, at); if (!cells) continue;
+    let bad = false, nh = 0;
+    for (const i of cells){ const v = shots[i]; if (v === "w" || v === "s"){ bad = true; break; } if (v === "h") nh++; }
+    if (bad) continue;
+    const w = nh ? 1 + nh * 40 : 1;
+    for (const i of cells) if (shots[i] === ".") score[i] += w;
+  }
+  let best = -1, cand = [];
+  unk.forEach(i => { if (score[i] > best){ best = score[i]; cand = [i]; } else if (score[i] === best) cand.push(i); });
+  return pick(cand.length ? cand : unk);
+}
+/* stav */
+function ldLoad(){ try { return JSON.parse(localStorage.getItem("ldAI") || "null"); } catch (e){ return null; } }
+function ldSave(g){ if (g && g.online){ ldoLocalSave(g.online, {my:g.my, sel:g.sel, rot:g.rot}); return; } try { localStorage.setItem("ldAI", JSON.stringify(g)); } catch (e){} }
+function ldNew(lvl){
+  const o = ldLoad() || {};
+  return {faze:"rozmisteni", lvl:lvl || o.lvl || 2, my:[], pc:[], myShots:".".repeat(LNN), pcShots:".".repeat(LNN), tah:"ty",
+    zacina:o.zacina === "ty" ? "pc" : "ty", n:0, zas:0, last:-1, pcLast:-1, vitez:null, sel:"L", rot:{},
+    bl:o.bl || {}, hist:o.hist || []};
+}
+function ldRec(g, r){
+  const L = g.bl[g.lvl] = g.bl[g.lvl] || {v:0, p:0, s:0, z:0};
+  if (r === "v") L.v++; else L.p++;
+  L.s += g.n; L.z += g.zas;
+  g.hist.unshift({at:Date.now(), lvl:g.lvl, r, n:g.n, z:g.zas}); g.hist = g.hist.slice(0, 40);
+}
+const ldSunkIds = (shots, fleet) => fleet.filter(s => s.cells.every(i => shots[i] === "s")).map(s => s.id);
+/* okno hry */
+function ldOpen(){
+  let g = ldLoad(); if (!g || g.faze === "konec" || !g.faze) g = ldNew();
+  S.ld = g; S.ldSel = null; S.ldMsg = "";
+  if (!$("ldOv")){
+    const v = document.createElement("div"); v.className = "pk-ov ld" + (O.desk ? " desk" : ""); v.id = "ldOv";
+    v.setAttribute("role", "dialog"); v.setAttribute("aria-label", "Lodě");
+    document.body.appendChild(v); v.addEventListener("click", ldClick);
+  }
+  ldRender();
+  if (g.faze === "hra" && g.tah === "pc" && !S.ldBusy) ldPcTurn(); // hra zavřená během tahu počítače
+}
+function ldClose(){ const v = $("ldOv"); if (v) v.remove(); S.ld = null; S.ldoBusy = false; clearTimeout(S.ldoT); if (S.open && S.view === "list") renderList(); }
+function ldClick(e){
+  const c = x => e.target.closest(x), g = S.ld; if (!g) return;
+  if (c("[data-ldx]")){ ldClose(); return; }
+  if (g.online){
+    const og = (S.lodeG || {})[g.online];
+    if (c("[data-ldchat]")){ const t = og && og.vlakno; ldClose(); if (t) CH.openThread(t); return; }
+    if (g.faze === "online"){
+      const cell = c("[data-lde]");
+      if (cell){ const i = +cell.dataset.lde, sh = ((og && og.strely) || {})[ldoMe()] || ".".repeat(LNN); if (!ldoMyTurn(og) || S.ldoBusy || sh[i] !== ".") return;
+        if (O.desk || S.ldSel === i){ ldoShoot(i); return; } S.ldSel = i; ldRender(); return; }
+      if (c("[data-ldfire]")){ if (S.ldSel != null) ldoShoot(S.ldSel); return; }
+      if (c("[data-ldgiveup]")){ ldoGiveUp(); return; }
+      if (c("[data-ldre]") && og){ const p = ldoOpp(og); ldClose(); ldoChallenge(p, g.online); return; }
+      return;
+    }
+  }
+  if (g.faze === "rozmisteni"){
+    const sh = c("[data-ldship]"); if (sh){ g.sel = sh.dataset.ldship; S.ldMsg = ""; ldSave(g); ldRender(); return; }
+    if (c("[data-ldrot]")){ ldRotate(); return; }
+    if (c("[data-ldrnd]")){ const f = ldRandomFleet(); if (f){ g.my = f; g.sel = null; S.ldMsg = ""; ldSave(g); ldRender(); } return; }
+    if (c("[data-ldclr]")){ g.my = []; g.sel = "L"; S.ldMsg = ""; ldSave(g); ldRender(); return; }
+    if (c("[data-ldgo]")){ if (g.online) ldoReady(); else ldStart(); return; }
+    const cell = c("[data-ldm]"); if (cell){ ldPlace(+cell.dataset.ldm); return; }
+    const lv = c("[data-ldlvl]"); if (lv){ g.lvl = +lv.dataset.ldlvl; ldSave(g); ldRender(); return; }
+    return;
+  }
+  if (g.faze === "hra"){
+    const cell = c("[data-lde]");
+    if (cell){ const i = +cell.dataset.lde; if (g.tah !== "ty" || S.ldBusy || g.myShots[i] !== ".") return;
+      if (O.desk || S.ldSel === i){ ldShoot(i); return; } S.ldSel = i; ldRender(); return; }
+    if (c("[data-ldfire]")){ if (S.ldSel != null) ldShoot(S.ldSel); return; }
+    if (c("[data-ldgiveup]")){ ldGiveUp(); return; }
+    return;
+  }
+  if (c("[data-ldnew]")){ S.ld = ldNew(g.lvl); S.ld.bl = g.bl; S.ld.hist = g.hist; S.ld.zacina = g.zacina === "ty" ? "pc" : "ty"; ldSave(S.ld); S.ldSel = null; ldRender(); }
+}
+function ldRotate(){
+  const g = S.ld, id = g.sel; if (!id) return;
+  const n = LD_ROTS[id].length, cur = (g.rot[id] || 0), nx = (cur + 1) % n; g.rot[id] = nx;
+  const placed = g.my.find(s => s.id === id);
+  if (placed){ // otočit položenou loď na místě, když se vejde
+    const m = Math.min(...placed.cells), col = m % LN - LD_ROTS[id][nx][0][1];
+    const cells = col >= 0 ? ldCellsAt(LD_ROTS[id][nx], m - LD_ROTS[id][nx][0][1]) : null;
+    const cells2 = cells && ldFree(g.my, cells, id) ? cells : null;
+    if (cells2){ placed.cells = cells2; placed.rot = nx; S.ldMsg = ""; } else S.ldMsg = "Otočená se sem nevejde – klepni na jiné místo a položí se otočená.";
+  }
+  ldSave(g); ldRender();
+}
+function ldPlace(i){
+  const g = S.ld;
+  const hit = g.my.find(s => s.cells.includes(i));
+  if (hit && hit.id !== g.sel){ g.sel = hit.id; S.ldMsg = `Vybraná ${LD_SHIPS.find(s => s.id === hit.id).nazev.toLowerCase()} – klepni, kam ji přesunout, nebo ji otoč.`; ldRender(); return; }
+  const id = g.sel; if (!id){ S.ldMsg = "Nejdřív vyber loď dole pod plochou."; ldRender(); return; }
+  const shape = LD_ROTS[id][g.rot[id] || 0];
+  // klepnuté pole = první buňka tvaru (u lodí, které nezačínají v levém rohu, posunout)
+  const at = i - shape[0][1];
+  const cells = i % LN - shape[0][1] >= 0 ? ldCellsAt(shape, at) : null;
+  if (!cells){ S.ldMsg = "Loď by přesahovala okraj plochy."; ldRender(); return; }
+  if (!ldFree(g.my, cells, id)){ S.ldMsg = "Lodě se nesmí dotýkat ani rohem."; ldRender(); return; }
+  g.my = g.my.filter(s => s.id !== id).concat({id, rot:g.rot[id] || 0, cells});
+  const next = LD_SHIPS.find(s => !g.my.some(m => m.id === s.id));
+  g.sel = next ? next.id : null; S.ldMsg = ""; ldSave(g); ldRender();
+}
+function ldStart(){
+  const g = S.ld; if (g.my.length !== LD_SHIPS.length) return;
+  g.pc = ldRandomFleet(); if (!g.pc) return; g.faze = "hra"; g.tah = g.zacina; g.n = 0; g.zas = 0;
+  ldSave(g); ldRender();
+  if (g.tah === "pc") ldPcTurn();
+}
+function ldShoot(i){
+  const g = S.ld, r = ldFire(g.myShots, g.pc, i);
+  g.myShots = r.shots; g.n++; g.last = i; S.ldSel = null;
+  if (r.res !== "w") g.zas++;
+  S.ldMsg = r.res === "w" ? `${ldPos(i)} – voda.` : r.res === "s" ? `${ldPos(i)} – potopeno! (${r.ship.id === "L" ? "letadlová loď" : LD_SHIPS.find(s => s.id === r.ship.id).nazev.toLowerCase()}) Střílíš znovu.` : `${ldPos(i)} – zásah! Střílíš znovu.`;
+  if (ldAllSunk(g.myShots, g.pc)){ g.faze = "konec"; g.vitez = "ty"; ldRec(g, "v"); S.ldMsg = ""; ldSave(g); ldRender(); return; }
+  if (r.res === "w"){ g.tah = "pc"; ldSave(g); ldRender(); ldPcTurn(); return; }
+  ldSave(g); ldRender();
+}
+function ldPcTurn(){
+  const g = S.ld; S.ldBusy = true; ldRender();
+  const step = () => {
+    if (S.ld !== g || g.faze !== "hra"){ S.ldBusy = false; return; }
+    const i = ldAIshot(g.pcShots, g.lvl, ldSunkIds(g.pcShots, g.my)), r = ldFire(g.pcShots, g.my, i);
+    g.pcShots = r.shots; g.pcLast = i;
+    S.ldMsg = `Počítač střílel ${ldPos(i)} – ${r.res === "w" ? "voda" : r.res === "s" ? "potopil ti loď" : "zásah"}.`;
+    if (ldAllSunk(g.pcShots, g.my)){ g.faze = "konec"; g.vitez = "pc"; ldRec(g, "p"); S.ldBusy = false; ldSave(g); ldRender(); return; }
+    if (r.res === "w"){ g.tah = "ty"; S.ldBusy = false; ldSave(g); ldRender(); return; }
+    ldSave(g); ldRender(); setTimeout(step, 650);
+  };
+  setTimeout(step, 600);
+}
+function ldGiveUp(){
+  const g = S.ld; if (!g || g.faze !== "hra") return;
+  if (!S.ldGiveUpAsk){ S.ldGiveUpAsk = true; S.ldMsg = "Opravdu to vzdát? Klepni na Vzdát ještě jednou."; ldRender(); setTimeout(() => { S.ldGiveUpAsk = false; }, 4000); return; }
+  S.ldGiveUpAsk = false; g.faze = "konec"; g.vitez = "pc"; g.vzdano = true; ldRec(g, "p"); S.ldMsg = ""; ldSave(g); ldRender();
+}
+function ldShipIcon(id, cls){
+  const sh = LD_ROTS[id][0], w = Math.max(...sh.map(c => c[1])) + 1, h = Math.max(...sh.map(c => c[0])) + 1;
+  return `<span class="ld-ico ${cls || ""}" style="grid-template-columns:repeat(${w},9px);grid-template-rows:repeat(${h},9px)">${sh.map(([r, c]) => `<i style="grid-row:${r + 1};grid-column:${c + 1}"></i>`).join("")}</span>`;
+}
+function ldBoard(fn, attr){
+  let h = "";
+  for (let i = 0; i < LNN; i++){ const x = fn(i); h += `<button type="button" class="ld-c ${x.c || ""}" ${attr}="${i}" aria-label="${ldPos(i)}${x.l ? " " + x.l : ""}"${x.off ? ' tabindex="-1"' : ""}></button>`; }
+  return `<div class="ld-b"><span></span><div class="ld-cols">${[...LCOL].map(c => `<span>${c}</span>`).join("")}</div><div class="ld-rows">${[...Array(LN)].map((_, r) => `<span>${r + 1}</span>`).join("")}</div><div class="ld-g">${h}</div></div>`;
+}
+function ldSmall(fleet, shots, last){
+  const own = new Set(); fleet.forEach(s => s.cells.forEach(i => own.add(i)));
+  let h = ""; for (let i = 0; i < LNN; i++){ const v = shots[i], sh = own.has(i);
+    h += `<i class="${sh ? "s" : ""}${v === "w" ? " w" : v === "h" ? " h" : v === "s" ? " k" : ""}${i === last ? " last" : ""}"></i>`; }
+  return `<div class="ld-sm">${h}</div>`;
+}
+function ldRender(){
+  const v = $("ldOv"), g = S.ld; if (!v || !g) return;
+  if (g.online && g.faze !== "rozmisteni"){ ldoRender(v); return; }
+  const top = (t, n) => `<div class="pk-top"><button type="button" class="pk-back" data-ldx aria-label="Zavřít hru">‹</button><b>${t}</b><span class="pk-n">${n || ""}</span></div>`;
+  const lvls = [1, 2, 3].map(l => `<button type="button" class="pk-l${g.lvl === l ? " on" : ""}" data-ldlvl="${l}">${PK_LVL[l]}</button>`).join(" · ");
+  if (g.faze === "rozmisteni"){
+    const own = {}; g.my.forEach(s => s.cells.forEach(i => { own[i] = s.id; }));
+    const done = g.my.length === LD_SHIPS.length;
+    v.innerHTML = `<div class="pk-in">${top(g.online ? "Lodě – rozmísti flotilu" : "Rozmísti lodě")}
+      <p class="pk-cap" style="margin:0 6px 10px">Vyber loď dole, klepni na pole, kde má začít (její levý horní díl). <b>Otočit</b> ji natočí. Lodě se nesmí dotýkat ani rohem. Položenou loď přesuneš klepnutím na ni.</p>
+      ${ldBoard(i => ({c:own[i] ? `s${own[i] === g.sel ? " sel" : ""}` : "", l:own[i] ? "loď" : ""}), "data-ldm")}
+      <div class="ld-fleet">${LD_SHIPS.map(s => `<button type="button" class="ld-sh${g.sel === s.id ? " on" : ""}${g.my.some(m => m.id === s.id) ? " done" : ""}" data-ldship="${s.id}" aria-label="${s.nazev}">${ldShipIcon(s.id)}<small>${s.nazev}</small></button>`).join("")}</div>
+      <p class="ld-msg">${esc(S.ldMsg || (done ? "Flotila je rozmístěná. Můžeš začít." : g.sel ? `Pokládáš: ${LD_SHIPS.find(s => s.id === g.sel).nazev.toLowerCase()}` : ""))}</p>
+      <div class="pk-btns"><button type="button" class="pk-b sec" data-ldrnd>🎲 Náhodně</button><button type="button" class="pk-b sec" data-ldrot ${g.sel ? "" : "disabled"}>↻ Otočit</button><button type="button" class="pk-b" data-ldgo ${done ? "" : "disabled"}>Hotovo</button></div>
+      <p class="pk-cap">${g.online ? ldoPlaceCap(g.online) : `Obtížnost počítače: ${lvls}<br>${g.zacina === "pc" ? "Tuto hru začíná počítač." : "Tuto hru začínáš ty."}`}</p></div>`;
+    return;
+  }
+  const end = g.faze === "konec", pcOwn = new Set(); g.pc.forEach(s => s.cells.forEach(i => pcOwn.add(i)));
+  const can = !end && g.tah === "ty" && !S.ldBusy;
+  const sunkPc = ldSunkIds(g.myShots, g.pc).length, sunkMy = ldSunkIds(g.pcShots, g.my).length;
+  const hitsOnMe = [...g.pcShots].filter(x => x === "h" || x === "s").length;
+  const st = end ? (g.vitez === "ty" ? "Vyhrál jsi! 🏆" : g.vzdano ? "Vzdal jsi" : "Vyhrál počítač") : S.ldBusy || g.tah === "pc" ? "Střílí počítač…" : "Jsi na tahu – střílej";
+  v.innerHTML = `<div class="pk-in">${top("Lodě · počítač", `výstřel ${g.n}`)}
+    <div class="pk-pl"><span class="pk-p${can ? " on" : ""}">⚓ Ty</span><span class="pk-p${!end && !can ? " on" : ""}">🖥️ Počítač · ${PK_LVL[g.lvl]}</span></div>
+    <p class="pk-st${end && g.vitez === "ty" ? " win" : ""}">${st}</p>
+    ${ldBoard(i => { const x = g.myShots[i]; let c = x === "w" ? "w" : x === "h" ? "h" : x === "s" ? "k" : "";
+      if (end && x === "." && pcOwn.has(i)) c = "rev"; if (i === g.last) c += " last"; if (S.ldSel === i && x === ".") c += " sel";
+      return {c, off:!can || x !== ".", l:x === "w" ? "voda" : x === "h" ? "zásah" : x === "s" ? "potopená" : ""}; }, "data-lde")}
+    <div class="ld-leg"><span><i class="w"></i>voda</span><span><i class="h"></i>zásah</span><span><i class="k"></i>potopená</span>${end ? `<span><i class="rev"></i>nenalezená</span>` : ""}</div>
+    <p class="ld-msg">${esc(S.ldMsg || "")}</p>
+    <div class="ld-me">${ldSmall(g.my, g.pcShots, g.pcLast)}<div><b>Tvoje flotila</b><br>Zásahy počítače: ${hitsOnMe}<br>Potopeno: ${sunkMy} z 5<br><span>Počítači zbývá: ${5 - sunkPc} ${5 - sunkPc === 1 ? "loď" : 5 - sunkPc >= 2 && 5 - sunkPc <= 4 ? "lodě" : "lodí"}</span><br><span>Přesnost: ${g.n ? Math.round(g.zas / g.n * 100) : 0} %</span></div></div>
+    <div class="pk-btns">${end ? `<button type="button" class="pk-b sec" data-ldx>Zpět</button><button type="button" class="pk-b" data-ldnew>Nová hra</button>`
+      : `<button type="button" class="pk-b sec" data-ldgiveup>Vzdát</button>${O.desk ? "" : `<button type="button" class="pk-b" data-ldfire ${S.ldSel == null || !can ? "disabled" : ""}>${S.ldSel != null ? `Pal na ${ldPos(S.ldSel)}` : "Pal"}</button>`}`}</div></div>`;
+}
+/* záložka Lodě v přehledu her */
+function ldHubHTML(){
+  const g = ldLoad() || {}, bl = g.bl || {}, hist = g.hist || [];
+  const run = g.faze && g.faze !== "konec";
+  const levels = [1, 2, 3].filter(l => bl[l] && (bl[l].v + bl[l].p));
+  const acc = x => x.s ? Math.round(x.z / x.s * 100) + " %" : "–";
+  return `<div class="ch-sec">Rozehrané hry</div><div class="pk-box">${ldoHubRows()}${run ? `<button type="button" class="pk-row" data-chldai><span>🖥️ <b>Počítač</b> · ${PK_LVL[g.lvl] || ""}</span><small>${g.faze === "rozmisteni" ? "rozmisťuješ lodě" : `výstřel ${g.n}`}</small></button>` : ldoActive().length ? "" : `<p class="ch-empty" style="margin:0 0 6px">Žádná rozehraná hra.</p>`}
+      <div class="pk-btns"><button type="button" class="pk-b" data-chldai>${run ? "Počítač – pokračovat" : "Hrát proti počítači"}</button><button type="button" class="pk-b sec" data-chldpick>Výzva…</button></div></div>${ldoHubExtra()}
+    <div class="ch-sec">Statistiky – proti počítači</div>${levels.length ? `<div class="pk-stat">${levels.map(l => `<div class="pk-sr"><span>🖥️ ${PK_LVL[l]}</span><span><b class="pk-sv">${bl[l].v}</b> : <b class="pk-sp">${bl[l].p}</b> <small>· přesnost ${acc(bl[l])}</small></span></div>`).join("")}</div>` : `<p class="ch-empty">Zatím žádná dohraná hra.</p>`}
+    <div class="ch-sec">Odehrané hry</div>${hist.length || ldoDone().length ? `<div class="pk-hist">${[...ldoDone().map(([id, x]) => ({at:ms(x.zmeneno), html:ldoHistRow(id, x)})), ...hist.slice(0, 30).map(h => ({at:h.at, html:`<div class="pk-h"><span><b>🖥️ Počítač · ${PK_LVL[h.lvl] || ""}</b><small>${pkDate(h.at)} · ${h.n} výstřelů · přesnost ${h.n ? Math.round(h.z / h.n * 100) : 0} %</small></span><i class="r-${h.r}">${h.r === "v" ? "Výhra" : "Prohra"}</i></div>`}))].sort((a, b) => b.at - a.at).slice(0, 40).map(x => x.html).join("")}</div>` : `<p class="ch-empty">Zatím žádné.</p>`}`;
+}
+
+/* ================= lodě s kolegou =================
+   Stav hry je v lode/{id} (vidí oba), vlastní flotila v lodeFlotily/{id}_{č} (vidí jen majitel) a kopie v telefonu.
+   Výstřel = zápis vystrel{od,i}; zásah/vodu vyhodnotí server a zapíše do strely, tah, potopene. */
+const ldoMe = () => String(O.me);
+const ldoOpp = g => (g.hraci || []).map(String).find(c => c !== ldoMe()) || "";
+const ldoMyTurn = g => g && g.faze === "hra" && String(g.tah) === ldoMe();
+const ldoNeedsPlace = g => g && g.faze === "rozmisteni" && !(g.pripraven || {})[ldoMe()];
+function ldoTurnCount(){ return Object.values(S.lodeG || {}).filter(g => ldoMyTurn(g) || ldoNeedsPlace(g)).length; }
+function ldoActive(){ return Object.entries(S.lodeG || {}).filter(([, g]) => g.faze !== "konec").sort((a, b) => ((ldoMyTurn(b[1]) || ldoNeedsPlace(b[1])) - (ldoMyTurn(a[1]) || ldoNeedsPlace(a[1]))) || ms(b[1].zmeneno) - ms(a[1].zmeneno)); }
+function ldoWith(peer){ return ldoActive().find(([, g]) => ldoOpp(g) === String(peer)); }
+function ldoLocal(id){ try { return JSON.parse(localStorage.getItem("ldo_" + id) || "null"); } catch (e){ return null; } }
+function ldoLocalSave(id, v){ try { localStorage.setItem("ldo_" + id, JSON.stringify(v)); } catch (e){} }
+function ldoStatus(g){
+  const p = surname(nameOf(ldoOpp(g)));
+  if (g.faze === "konec"){
+    if (g.vzdal) return String(g.vzdal) === ldoMe() ? "Vzdal jsi" : `${p} to vzdal – vyhrál jsi`;
+    return String(g.vitez) === ldoMe() ? "Vyhrál jsi! 🏆" : `Vyhrál ${p}`;
+  }
+  if (g.faze === "rozmisteni") return ldoNeedsPlace(g) ? "Rozmísti lodě" : `Čeká se, až ${p} rozmístí lodě`;
+  return ldoMyTurn(g) ? "Jsi na tahu – střílej" : `Střílí ${p}`;
+}
+/* výzva a odveta */
+async function ldoChallenge(peer, odveta){
+  peer = String(peer);
+  const ex = ldoWith(peer); if (ex){ ldoOpen(ex[0]); return; } // s jedním kolegou vždy jen jedna rozehraná hra
+  const tid = dmId(O.me, peer), ref = O.db.collection("lode").doc(), fv = FV();
+  const g = {hraci:[ldoMe(), peer], jmena:{[ldoMe()]:meName(), [peer]:nameOf(peer)}, faze:"rozmisteni", pripraven:{}, zacina:odveta ? peer : ldoMe(),
+    tah:null, strely:{}, n:{}, zas:{}, posledni:{}, potopene:{}, vitez:null, vlakno:tid, ...(odveta ? {odveta} : {}), vytvoreno:fv.serverTimestamp(), zmeneno:fv.serverTimestamp()};
+  try {
+    await ref.set(g);
+    S.lodeG = {...(S.lodeG || {}), [ref.id]:{...g, vytvoreno:now(), zmeneno:now()}};
+    await writeMsg({text:odveta ? "⚓ Odveta v lodích!" : "⚓ Vyzývám tě na lodě", lode:ref.id}, tid);
+    if (!odveta) CH.openThread(tid);
+    ldoOpen(ref.id);
+  } catch (e){ toast(e.code === "permission-denied" ? "Hru nejde založit – chybí pravidla Firestore pro lodě." : "Výzvu se nepodařilo odeslat."); }
+}
+/* okno hry s kolegou – rozmístění používá stejné ovládání jako hra proti počítači (S.ld s polem online) */
+function ldoOpen(id){
+  const g = S.lodeG && S.lodeG[id]; if (!g){ toast("Hra se načítá…"); return; }
+  const loc = ldoLocal(id) || {};
+  S.ld = {online:id, faze:ldoNeedsPlace(g) ? "rozmisteni" : "online", my:loc.my || [], sel:loc.my && loc.my.length === LD_SHIPS.length ? null : (loc.sel || "L"), rot:loc.rot || {}, lvl:2};
+  S.ldSel = null; S.ldMsg = ""; S.ldoBusy = false;
+  if (!$("ldOv")){
+    const v = document.createElement("div"); v.className = "pk-ov ld" + (O.desk ? " desk" : ""); v.id = "ldOv";
+    v.setAttribute("role", "dialog"); v.setAttribute("aria-label", "Lodě");
+    document.body.appendChild(v); v.addEventListener("click", ldClick);
+  }
+  if (!ldoNeedsPlace(g)) ldoLoadFleet(id);
+  ldRender();
+}
+// vlastní flotila: z telefonu, jinak ze serveru (jiné zařízení)
+function ldoLoadFleet(id){
+  const loc = ldoLocal(id); if (loc && loc.my && loc.my.length === LD_SHIPS.length && loc.hotovo){ S.ld.my = loc.my; return; }
+  O.db.collection("lodeFlotily").doc(`${id}_${ldoMe()}`).get().then(s => {
+    if (s.exists && S.ld && S.ld.online === id){ S.ld.my = s.data().flotila || []; ldoLocalSave(id, {my:S.ld.my, hotovo:true}); ldRender(); }
+  }).catch(() => {});
+}
+async function ldoReady(){
+  const id = S.ld.online, my = S.ld.my.map(s => ({id:s.id, cells:s.cells}));
+  if (my.length !== LD_SHIPS.length) return;
+  S.ldMsg = "Ukládám flotilu…"; ldRender();
+  try {
+    await O.db.collection("lodeFlotily").doc(`${id}_${ldoMe()}`).set({hra:id, cislo:ldoMe(), flotila:my, at:FV().serverTimestamp()});
+    await O.db.collection("lode").doc(id).update({["pripraven." + ldoMe()]:true, zmeneno:FV().serverTimestamp()});
+    ldoLocalSave(id, {my, hotovo:true});
+    const g = S.lodeG[id]; if (g){ g.pripraven = {...(g.pripraven || {}), [ldoMe()]:true}; }
+    S.ld.faze = "online"; S.ldMsg = "";
+  } catch (e){ S.ldMsg = e.code === "permission-denied" ? "Flotilu nejde uložit – chybí pravidla Firestore pro lodě." : "Flotilu se nepodařilo uložit, zkus to znovu."; }
+  ldRender();
+}
+async function ldoShoot(i){
+  const id = S.ld.online, g = S.lodeG[id]; if (!ldoMyTurn(g) || S.ldoBusy) return;
+  const shots = (g.strely || {})[ldoMe()] || ".".repeat(LNN); if (shots[i] !== ".") return;
+  S.ldoBusy = true; S.ldoShot = i; S.ldSel = null; S.ldMsg = `Pálíš na ${ldPos(i)}…`; ldRender();
+  try { await O.db.collection("lode").doc(id).update({vystrel:{od:ldoMe(), i, at:Date.now()}, zmeneno:FV().serverTimestamp()}); }
+  catch (e){ S.ldoBusy = false; S.ldMsg = "Výstřel se nepodařilo odeslat."; ldRender(); return; }
+  clearTimeout(S.ldoT); S.ldoT = setTimeout(() => { if (S.ldoBusy){ S.ldoBusy = false; S.ldMsg = "Server zatím neodpověděl – zkus to za chvíli znovu."; ldRender(); } }, 20000);
+}
+async function ldoGiveUp(){
+  const id = S.ld.online, g = S.lodeG[id]; if (!g || g.faze === "konec") return;
+  if (!S.ldGiveUpAsk){ S.ldGiveUpAsk = true; S.ldMsg = "Opravdu to vzdát? Klepni na Vzdát ještě jednou."; ldRender(); setTimeout(() => { S.ldGiveUpAsk = false; }, 4000); return; }
+  S.ldGiveUpAsk = false;
+  try { await O.db.collection("lode").doc(id).update({faze:"konec", vitez:ldoOpp(g), vzdal:ldoMe(), tah:null, zmeneno:FV().serverTimestamp()}); }
+  catch (e){ toast("Nepodařilo se uložit."); }
+}
+// po změně stavu hry ze serveru
+function ldoOnUpdate(){
+  const L = S.ld; if (!L || !L.online) return;
+  const g = S.lodeG[L.online]; if (!g) return;
+  if (S.ldoBusy && !g.vystrel){
+    S.ldoBusy = false; clearTimeout(S.ldoT);
+    const i = S.ldoShot, v = ((g.strely || {})[ldoMe()] || "")[i];
+    S.ldMsg = v === "w" ? `${ldPos(i)} – voda.` : v === "s" ? `${ldPos(i)} – potopeno! Střílíš znovu.` : v === "h" ? `${ldPos(i)} – zásah! Střílíš znovu.` : "";
+    if (g.faze === "konec") S.ldMsg = "";
+  } else if (!S.ldoBusy){
+    const op = ldoOpp(g), j = (g.posledni || {})[op];
+    if (j != null && g.faze === "hra"){ const v = ((g.strely || {})[op] || "")[j]; S.ldMsg = `${surname(nameOf(op))} střílel ${ldPos(j)} – ${v === "w" ? "voda" : v === "s" ? "potopil ti loď" : "zásah"}.`; }
+  }
+  if (L.faze === "rozmisteni" && !ldoNeedsPlace(g)) L.faze = "online";
+  if (L.faze === "online" && (!L.my || L.my.length !== LD_SHIPS.length)) ldoLoadFleet(L.online);
+  ldRender();
+}
+function ldoRender(v){
+  const id = S.ld.online, g = S.lodeG[id];
+  if (!g){ v.innerHTML = `<div class="pk-in"><div class="pk-top"><button type="button" class="pk-back" data-ldx aria-label="Zavřít">‹</button><b>Lodě</b></div><p class="pk-st">Hra se načítá…</p></div>`; return; }
+  const me = ldoMe(), op = ldoOpp(g), opN = surname(nameOf(op));
+  const mine = (g.strely || {})[me] || ".".repeat(LNN), theirs = (g.strely || {})[op] || ".".repeat(LNN);
+  const end = g.faze === "konec", can = ldoMyTurn(g) && !S.ldoBusy;
+  const rev = new Set(); if (end && g.odhaleno && g.odhaleno[op]) g.odhaleno[op].forEach(s => s.cells.forEach(i => rev.add(i)));
+  const sunkOpp = ((g.potopene || {})[me] || []).length, sunkMe = ((g.potopene || {})[op] || []).length;
+  const n = (g.n || {})[me] || 0, z = (g.zas || {})[me] || 0;
+  const waiting = g.faze === "rozmisteni";
+  const top = `<div class="pk-top"><button type="button" class="pk-back" data-ldx aria-label="Zavřít hru">‹</button><b>Lodě</b><span class="pk-n">${waiting ? "" : `výstřel ${n}`}</span></div>`;
+  const pl = `<div class="pk-pl"><span class="pk-p${can ? " on" : ""}">⚓ ${esc(surname(meName()))} (ty)</span><span class="pk-p${!end && !waiting && !ldoMyTurn(g) ? " on" : ""}">${esc(opN)}</span></div>`;
+  const st = S.ldoBusy ? "Vyhodnocuji výstřel…" : ldoStatus(g);
+  const win = end && String(g.vitez) === me;
+  const myBoard = S.ld.my && S.ld.my.length ? ldSmall(S.ld.my, theirs, (g.posledni || {})[op]) : `<div class="ld-sm"></div>`;
+  if (waiting){
+    v.innerHTML = `<div class="pk-in">${top}${pl}<p class="pk-st">${esc(st)}</p>
+      <p class="pk-cap">Tvoje flotila je připravená. Až ${esc(opN)} rozmístí lodě, hra začne a přijde ti upozornění.</p>
+      <div class="ld-me" style="justify-content:center">${myBoard}</div>
+      <div class="pk-btns"><button type="button" class="pk-b sec" data-ldchat>Chat</button><button type="button" class="pk-b sec" data-ldx>Zavřít</button></div></div>`;
+    return;
+  }
+  v.innerHTML = `<div class="pk-in">${top}${pl}
+    <p class="pk-st${win ? " win" : ""}">${esc(st)}</p>
+    ${ldBoard(i => { const x = mine[i]; let c = x === "w" ? "w" : x === "h" ? "h" : x === "s" ? "k" : "";
+      if (end && x === "." && rev.has(i)) c = "rev"; if (i === (g.posledni || {})[me]) c += " last";
+      if ((S.ldSel === i || (S.ldoBusy && S.ldoShot === i)) && x === ".") c += " sel";
+      return {c, off:!can || x !== ".", l:x === "w" ? "voda" : x === "h" ? "zásah" : x === "s" ? "potopená" : ""}; }, "data-lde")}
+    <div class="ld-leg"><span><i class="w"></i>voda</span><span><i class="h"></i>zásah</span><span><i class="k"></i>potopená</span>${end ? `<span><i class="rev"></i>nenalezená</span>` : ""}</div>
+    <p class="ld-msg">${esc(S.ldMsg || "")}</p>
+    <div class="ld-me">${myBoard}<div><b>Tvoje flotila</b><br>Zásahy soupeře: ${[...theirs].filter(x => x === "h" || x === "s").length}<br>Potopeno: ${sunkMe} z 5<br><span>Soupeři zbývá: ${5 - sunkOpp} ${5 - sunkOpp === 1 ? "loď" : 5 - sunkOpp >= 2 && 5 - sunkOpp <= 4 ? "lodě" : "lodí"}</span><br><span>Přesnost: ${n ? Math.round(z / n * 100) : 0} %</span></div></div>
+    <div class="pk-btns">${end ? `<button type="button" class="pk-b sec" data-ldchat>Chat</button><button type="button" class="pk-b" data-ldre>Odveta</button>`
+      : `<button type="button" class="pk-b sec" data-ldgiveup>Vzdát</button><button type="button" class="pk-b sec" data-ldchat>Chat</button>${O.desk ? "" : `<button type="button" class="pk-b" data-ldfire ${S.ldSel == null || !can ? "disabled" : ""}>${S.ldSel != null ? `Pal na ${ldPos(S.ldSel)}` : "Pal"}</button>`}`}</div></div>`;
+}
+function ldoPlaceCap(id){
+  const g = (S.lodeG || {})[id]; if (!g) return "";
+  const op = ldoOpp(g), opN = surname(nameOf(op)), rdy = !!(g.pripraven || {})[op];
+  return `Hra proti: <b>${esc(nameOf(op))}</b> – ${rdy ? "soupeř už má lodě rozmístěné" : "soupeř ještě rozmisťuje"}.<br>${String(g.zacina) === ldoMe() ? "Střílet začínáš ty." : `Střílet začíná ${esc(opN)}.`} Po potvrzení už lodě přesunout nejde.`;
+}
+const ldoRes = g => String(g.vitez) === ldoMe() ? "v" : "p";
+function ldoHistRow(id, g){
+  const me = ldoMe(), n = (g.n || {})[me] || 0, z = (g.zas || {})[me] || 0, r = ldoRes(g);
+  return `<button type="button" class="pk-h" data-chldo="${esc(id)}"><span><b>⚓ ${esc(shortName(nameOf(ldoOpp(g))))}</b><small>${pkDate(ms(g.zmeneno))} · ${n} výstřelů · přesnost ${n ? Math.round(z / n * 100) : 0} %${g.vzdal ? " · vzdáno" : ""}</small></span><i class="r-${r}">${r === "v" ? "Výhra" : "Prohra"}</i></button>`;
+}
+function ldoHubExtra(){
+  const per = {};
+  ldoDone().forEach(([, g]) => { const op = ldoOpp(g), x = per[op] = per[op] || {v:0, p:0, s:0, z:0}; x[ldoRes(g)]++; x.s += (g.n || {})[ldoMe()] || 0; x.z += (g.zas || {})[ldoMe()] || 0; });
+  const rows = Object.entries(per).sort((a, b) => (b[1].v + b[1].p) - (a[1].v + a[1].p));
+  if (!rows.length) return "";
+  return `<div class="ch-sec">Statistiky – proti kolegům</div><div class="pk-stat">${rows.map(([c, x]) => `<div class="pk-sr"><span>⚓ ${esc(shortName(nameOf(c)))}</span><span><b class="pk-sv">${x.v}</b> : <b class="pk-sp">${x.p}</b> <small>· přesnost ${x.s ? Math.round(x.z / x.s * 100) + " %" : "–"}</small></span></div>`).join("")}</div>`;
+}
+/* karta hry ve vlákně */
+function ldoCardHTML(id, m){
+  const g = S.lodeG && S.lodeG[id];
+  if (!g) return `<div class="pk-card"><b>⚓ Lodě</b><small>Hra se načítá nebo už není k dispozici.</small></div>`;
+  const me = ldoMe(), mine = (g.strely || {})[me] || ".".repeat(LNN), n = (g.n || {})[me] || 0;
+  const title = g.faze === "konec" ? "Lodě – konec" : g.faze === "rozmisteni" ? "Lodě – výzva" : `Lodě · výstřel ${n}`;
+  const by = String(m.od), to = (g.hraci || []).map(String).find(c => c !== by) || "";
+  const hot = ldoMyTurn(g) || ldoNeedsPlace(g);
+  let mini = ""; if (g.faze !== "rozmisteni"){ for (let i = 0; i < LNN; i++){ const x = mine[i]; mini += `<i class="${x === "w" ? "w" : x === "h" ? "h" : x === "s" ? "k" : ""}"></i>`; } mini = `<div class="ld-sm card">${mini}</div>`; }
+  const line = g.faze === "rozmisteni" ? `${surname(nameOf(by))} vs. ${surname(nameOf(to))} · plocha 10×10, 5 lodí (21 polí). ` : "";
+  return `<div class="pk-card"><b>⚓ ${title}</b>${mini}<small>${esc(line)}<span class="${hot ? "hot" : ""}">${esc(ldoStatus(g))}</span></small>
+    <button type="button" class="pk-go" data-chldo="${esc(id)}">${g.faze === "konec" ? "Zobrazit hru" : ldoNeedsPlace(g) ? "Rozmístit lodě" : ldoMyTurn(g) ? "Střílet" : "Otevřít hru"}</button></div>`;
+}
+/* záložka Lodě – hry s kolegy */
+function ldoHubRows(){
+  return ldoActive().map(([id, g]) => `<button type="button" class="pk-row" data-chldo="${esc(id)}"><span>⚓ vs <b>${esc(shortName(nameOf(ldoOpp(g))))}</b></span>${ldoMyTurn(g) ? `<em>Jsi na tahu</em>` : ldoNeedsPlace(g) ? `<em>Rozmísti lodě</em>` : `<small>${g.faze === "rozmisteni" ? "soupeř rozmisťuje" : `střílí ${esc(surname(nameOf(ldoOpp(g))))}`}</small>`}</button>`).join("");
+}
+function ldoDone(){ return Object.entries(S.lodeG || {}).filter(([, g]) => g.faze === "konec").sort((a, b) => ms(b[1].zmeneno) - ms(a[1].zmeneno)); }
+// výběr hry v soukromém vlákně (ikona v hlavičce)
+function openGameSheet(peer){
+  closeSheet();
+  const s = document.createElement("div"); s.className = "ch-sheet";
+  const pk = pkGameWith(peer), ld = ldoWith(peer);
+  s.innerHTML = `<div role="dialog" aria-label="Hry"><h3>Hra s ${esc(nameOf(peer))}</h3>
+    <button type="button" class="ch-act" data-chg="pk"><span style="font-size:20px;width:22px;text-align:center">✕</span><span>Piškvorky<small>${pk ? "rozehraná hra – otevřít" : "plocha 15×15, pět v řadě"}</small></span></button>
+    <button type="button" class="ch-act" data-chg="ld"><span style="font-size:20px;width:22px;text-align:center">⚓</span><span>Lodě<small>${ld ? "rozehraná hra – otevřít" : "plocha 10×10, 5 lodí"}</small></span></button>
+    <button type="button" class="ch-act" data-chg="x">${ic(ICO.close)}Zavřít</button></div>`;
+  s.addEventListener("click", e => {
+    if (e.target === s){ closeSheet(); return; }
+    const a = e.target.closest("[data-chg]"); if (!a) return; closeSheet();
+    if (a.dataset.chg === "pk") pkChallenge(peer); else if (a.dataset.chg === "ld") ldoChallenge(peer);
+  });
+  document.body.appendChild(s);
 }
 
 window.SluzbyChat = CH;
