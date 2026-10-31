@@ -509,7 +509,17 @@ function applyAllowed(){
 /* naposledy online: každý si zapisuje chatOnline/{své číslo} (jen čas) – při otevřené stránce každou minutu */
 function beat(){
   if (!LIVE) return;
-  O.db.collection("chatOnline").doc(String(O.me)).set({at:FV().serverTimestamp()}).catch(() => {});
+  O.db.collection("chatOnline").doc(String(O.me)).set({at:FV().serverTimestamp()}, {merge:true}).catch(() => {});
+}
+/* otevřená hra – server podle toho neposílá notifikaci o tahu tomu, kdo má hru právě na obrazovce (hlášení každých 15 s) */
+function hraBeat(force){
+  if (!LIVE || !S) return;
+  const k = document.visibilityState !== "visible" ? null
+    : S.pkId && S.pkId !== "ai" && $("pkOv") ? "pisk:" + S.pkId
+    : S.ld && S.ld.online && $("ldOv") ? "lode:" + S.ld.online : null;
+  if (!force && k === S.hraKey && (!k || Date.now() - (S.hraKeyAt || 0) < 12e3)) return;
+  S.hraKey = k; S.hraKeyAt = Date.now();
+  O.db.collection("chatOnline").doc(String(O.me)).set({hra:k, hraAt:FV().serverTimestamp()}, {merge:true}).catch(() => {});
 }
 function peerLine(){
   const at = S.peerAt; if (!at) return "Soukromá zpráva";
@@ -535,6 +545,7 @@ function startLive(){
   LIVE = true;
   clearInterval(S.progT); S.progT = setInterval(tickProg, 30e3);
   beat(); clearInterval(S.beatT); S.beatT = setInterval(() => { if (document.visibilityState === "visible") beat(); }, 60e3);
+  clearInterval(S.hraT); S.hraT = setInterval(() => hraBeat(), 15e3);
   const col = O.db.collection("chaty");
   S.liveUnsubs = [];
   S.liveUnsubs.push(col.where("clenove", "array-contains", String(O.me)).onSnapshot(s => {
@@ -568,7 +579,7 @@ function startLive(){
 function stopLive(){
   LIVE = false;
   (S.liveUnsubs || []).forEach(u => { try { u(); } catch(e){} });
-  S.liveUnsubs = []; S.threads = {}; S.vsichni = null; clearInterval(S.beatT);
+  S.liveUnsubs = []; S.threads = {}; S.vsichni = null; clearInterval(S.beatT); clearInterval(S.hraT);
   if (S.peerUnsub){ S.peerUnsub(); S.peerUnsub = null; S.peerFor = null; }
   if (S.msgUnsub){ S.msgUnsub(); S.msgUnsub = null; S.msgFor = null; }
   CH.close(); updBadge();
@@ -1329,7 +1340,8 @@ function bind(root){
     if (S.view === "thread" && !S.two){ backToList(); return; }
     CH.close();
   });
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") markSeen(); beat(); });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") markSeen(); beat(); hraBeat(); });
+  window.addEventListener("pagehide", () => { if (S && S.hraKey){ S.hraKey = undefined; hraBeat(true); } });
   // administrace (HTML vkládá stránka, kliky se chytají tady)
   document.addEventListener("change", e => {
     const t = e.target.closest("[data-chadm-t]"); if (!t || !O || !O.isAdmin) return;
@@ -1627,14 +1639,14 @@ function pkAImove(i){
   setTimeout(() => { pkAIstep(g); S.pkBusy = false; pkAIsave(g); pkRender(); }, 380);
 }
 /* hrací okno */
-function pkOpen(id){ S.pkId = id; S.pkSel = null; pkMount(); pkRender(); }
+function pkOpen(id){ S.pkId = id; S.pkSel = null; pkMount(); pkRender(); hraBeat(); }
 function pkOpenAI(){
   let g = pkAIload(); if (!g || g.stav !== "hraje") g = pkAInew(); // „ty“: x = začínáš ty, o = začíná počítač (střídá se)
   S.pkAI = g; S.pkId = "ai"; S.pkSel = null;
   if (g.pocet === 0 && g.ty === "o"){ pkAIstep(g); pkAIsave(g); }
   pkMount(); pkRender();
 }
-function pkClose(){ const v = $("pkOv"); if (v) v.remove(); S.pkId = null; S.pkSel = null; if (S.open && S.view === "list") renderList(); }
+function pkClose(){ const v = $("pkOv"); if (v) v.remove(); S.pkId = null; S.pkSel = null; hraBeat(); if (S.open && S.view === "list") renderList(); }
 function pkMount(){
   if ($("pkOv")) return;
   const v = document.createElement("div"); v.className = "pk-ov" + (O.desk ? " desk" : ""); v.id = "pkOv";
@@ -1809,7 +1821,7 @@ function ldOpen(){
   ldRender();
   if (g.faze === "hra" && g.tah === "pc" && !S.ldBusy) ldPcTurn(); // hra zavřená během tahu počítače
 }
-function ldClose(){ const v = $("ldOv"); if (v) v.remove(); S.ld = null; S.ldoBusy = false; clearTimeout(S.ldoT); if (S.open && S.view === "list") renderList(); }
+function ldClose(){ const v = $("ldOv"); if (v) v.remove(); S.ld = null; S.ldoBusy = false; clearTimeout(S.ldoT); hraBeat(); if (S.open && S.view === "list") renderList(); }
 function ldClick(e){
   const c = x => e.target.closest(x), g = S.ld; if (!g) return;
   if (c("[data-ldx]")){ ldClose(); return; }
@@ -2015,7 +2027,7 @@ function ldoOpen(id){
     document.body.appendChild(v); v.addEventListener("click", ldClick);
   }
   if (!ldoNeedsPlace(g)) ldoLoadFleet(id);
-  ldRender();
+  ldRender(); hraBeat();
 }
 // vlastní flotila: z telefonu, jinak ze serveru (jiné zařízení)
 function ldoLoadFleet(id){
