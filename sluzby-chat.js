@@ -1410,7 +1410,7 @@ CH.adminHTML = function(){
    Výzva = zpráva v soukromém vlákně s polem hra:<id>; karta ve vlákně se kreslí z dokumentu hry.
    Hra proti počítači běží jen v telefonu (localStorage). */
 // zatím jen pro správce (Juračka 1048) – pro všechny stačí vrátit true
-var PK_ON = () => !!O && String(O.me) === "1048";
+var PK_ON = () => !!O; // hry vidí každý, kdo má povolený chat
 const PN = 15, PNN = PN * PN, PK_EMPTY = ".".repeat(PNN);
 const PK_ICO = (n, sw) => `<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke-linecap="round" aria-hidden="true"><path d="M12 2.5v19M2.5 12h19" stroke="#1D2A4D" stroke-width="${sw ? 1.6 : 1.3}"/><path d="M4.6 4.6l3.8 3.8M8.4 4.6l-3.8 3.8" stroke="#1D2A4D" stroke-width="${sw ? 2.4 : 2.1}"/><circle cx="17.5" cy="17.5" r="2.3" stroke="#D04848" stroke-width="${sw ? 2.4 : 2.1}"/></svg>`;
 const PK_LVL = {1:"lehká", 2:"střední", 3:"těžká"};
