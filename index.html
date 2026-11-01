@@ -370,11 +370,13 @@ button.cal-day{cursor:pointer}
 .cal-day.vsaved:not(.vsel){box-shadow:inset 0 0 0 3px #E07C7C}
 .cal-day.vsaved:not(.vsel)::after{content:"V";position:absolute;top:4px;right:6px;font-family:var(--f-body);font-size:10px;font-weight:700;color:#E07C7C}
 .vol-sum .btns{margin-top:10px}
-.vol-types{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0 0}
+.vol-types{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0 0}
 .vol-types button{font:inherit;font-size:15px;font-weight:700;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:12px;padding:9px 2px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.1}
 .vol-types button small{font-size:11px;font-weight:400;color:var(--ink2)}
 .vol-types button[aria-pressed="true"]{border-color:#D04848;background:#D04848;color:#fff;box-shadow:0 3px 10px rgba(208,72,72,.35)}
 .vol-types button[aria-pressed="true"] small{color:#FFE1E1}
+.vol-types .vt-x[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--paper);box-shadow:0 3px 10px rgba(0,0,0,.25)}
+.vol-types .vt-x[aria-pressed="true"] small{color:inherit;opacity:.8}
 #volGrid.picking{touch-action:none}
 #volGrid.picking .cal-day{cursor:crosshair}
 .cal-day.vdrag{box-shadow:0 0 0 3px #D04848;z-index:1;transform:scale(1.04)}
@@ -648,7 +650,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.23</span>
+      <span class="ver" id="verDiag">v5.24</span>
     </div>
   </div>
 </header>
@@ -665,10 +667,12 @@ button.cal-day{cursor:pointer}
     <div class="cal-sum" id="volSum"></div>
     <div class="cal-grid" id="volGrid"></div>
     <div class="vol-types" id="volTypes" role="group" aria-label="Druh požadavku">
-      <button type="button" data-vt="V" aria-pressed="false">Dovolená<small>/ volno</small></button>
+      <button type="button" data-vt="V" aria-pressed="false">Dovolená<small>za službu</small></button>
+      <button type="button" data-vt="F" aria-pressed="false">Volno<small>den bez služby</small></button>
       <button type="button" data-vt="Z" aria-pressed="false">ZdV<small>zdravotní</small></button>
       <button type="button" data-vt="D" aria-pressed="false">Ne den<small>noc můžu</small></button>
       <button type="button" data-vt="N" aria-pressed="false">Ne noc<small>den můžu</small></button>
+      <button type="button" data-vt="X" class="vt-x" aria-pressed="false">✕ Smazat<small>zrušit požadavek</small></button>
     </div>
     <p class="note-hint" id="volHint"></p>
     <div class="vol-list" id="volList"></div>
@@ -760,8 +764,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.23"></script>
-<script src="sluzby-chat.js?v=5.23"></script>
+<script src="sluzby-core.js?v=5.24"></script>
+<script src="sluzby-chat.js?v=5.24"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1812,7 +1816,7 @@ const vol = document.getElementById("vol");
 let volY = 0, volM = 0, volSaving = false;
 // požadavky do plánu: „ne den“ (nechci denní, noční můžu) / „ne noc“ (nechci noční, denní můžu) / zdravotní volno – {"YYYY-MM-DD": "D" | "N" | "Z"}
 let MY_PRANI = {};
-const NE_LBL = {D:"ne den", N:"ne noc", Z:"ZdV"};
+const NE_LBL = {D:"ne den", N:"ne noc", Z:"ZdV", F:"volno"};
 const dlpHas = (y, m) => !!dlpOf(SELF, y, m);
 const dlpCode = k => { const x = dparse(k), r = dlpOf(SELF, x.y, x.m) || ""; return r[x.d-1] || "."; };
 function volStats(dny){
@@ -1841,8 +1845,10 @@ function stepVol(dir){
 /* požadavky dne: V = dovolená/volno (ukládá se do volnoPlany kvůli roční dovolené), Z/D/N = prani */
 let volMode = null, volDrag = null, volHintWarn = false;
 function volVset(){ const V = new Set(); MY_VOLP.forEach(e => e.dny.forEach(k => V.add(k))); return V; }
-function volTypeOf(k, V){ return (V || volVset()).has(k) ? "V" : MY_PRANI[k] || null; }
-const volTag = (t, k) => t === "V" ? (dlpCode(k) === "." ? "volno" : "dovolená") : NE_LBL[t];
+// dovolená na dni bez služby (starší záznamy) se bere jako volno
+function volTypeOf(k, V){ return (V || volVset()).has(k) ? (dlpCode(k) === "." ? "F" : "V") : MY_PRANI[k] || null; }
+const volTag = t => t === "V" ? "dovolená" : NE_LBL[t];
+const VT_LBL = {V:"dovolená", F:"volno", Z:"ZdV", D:"ne den", N:"ne noc"};
 function fillVol(){
   if (!SELF) return;
   const y = volY, m = volM, row = dlpOf(SELF, y, m) || "";
@@ -1861,7 +1867,7 @@ function fillVol(){
     const cls = c === "D" ? "k-d" : c === "N" ? "k-n" : (wd === 0 || wd === 6 ? "we" : "");
     const lbl = c === "D" ? "D12" : c === "N" ? "N12" : "";
     const t = volTypeOf(k, V), dg = drag && drag.has(k);
-    html += `<button type="button" class="cal-day ${cls}${t ? " has-ne" : ""}${dg ? " vdrag" + (volDrag.rem ? " vrem" : "") : ""}" data-vk="${k}" aria-label="${d}. ${m+1}.${lbl ? " " + lbl : ""}${t ? ", " + volTag(t, k) : ""}">${d}${lbl ? `<small>${lbl}</small>` : ""}${t ? `<span class="vne${t === "V" ? " v" : ""}">${volTag(t, k)}</span>` : ""}</button>`;
+    html += `<button type="button" class="cal-day ${cls}${t ? " has-ne" : ""}${dg ? " vdrag" + (volDrag.rem ? " vrem" : "") : ""}" data-vk="${k}" aria-label="${d}. ${m+1}.${lbl ? " " + lbl : ""}${t ? ", " + volTag(t, k) : ""}">${d}${lbl ? `<small>${lbl}</small>` : ""}${t ? `<span class="vne${t === "V" || t === "F" ? " v" : ""}">${volTag(t, k)}</span>` : ""}</button>`;
   }
   const g = document.getElementById("volGrid");
   g.innerHTML = html; g.classList.toggle("picking", !!volMode);
@@ -1869,15 +1875,17 @@ function fillVol(){
   document.querySelectorAll("#volTypes [data-vt]").forEach(b => b.setAttribute("aria-pressed", b.dataset.vt === volMode));
   const h = document.getElementById("volHint");
   h.classList.toggle("warn", volHintWarn && !volMode);
-  h.textContent = volMode
-    ? `Klepni na dny, nebo táhni prstem od–do. Klepnutím na den „${volMode === "V" ? "dovolená / volno" : NE_LBL[volMode]}“ ho zrušíš. Druh můžeš kdykoli přepnout tlačítky. Vše se ukládá hned.`
+  h.textContent = volMode === "X"
+    ? "Klepni na dny, nebo táhni prstem od–do – požadavky na nich se smažou."
+    : volMode
+    ? `Klepni na dny, nebo táhni prstem od–do. Klepnutím na den „${VT_LBL[volMode]}“ ho zase zrušíš. Druh můžeš kdykoli přepnout tlačítky. Vše se ukládá hned.`
     : volHintWarn ? "Nejdřív vyber tlačítkem nad tímto textem, co chceš zadat."
-    : "Vyber druh tlačítkem (zčervená) a pak klepni na dny v kalendáři nebo táhni prstem od–do. Vše se ukládá hned.";
+    : "Vyber druh tlačítkem (zčervená) a pak klepni na dny v kalendáři nebo táhni prstem od–do. Mazat můžeš tlačítkem ✕ Smazat. Vše se ukládá hned.";
   // shrnutí měsíce + sdílení, roční dovolená
-  const ym = `${y}-${String(m + 1).padStart(2, "0")}`, x = reqMonthData(ym), any = x.vd.length + x.Z.length + x.D.length + x.N.length;
+  const ym = `${y}-${String(m + 1).padStart(2, "0")}`, x = reqMonthData(ym), any = x.vd.length + x.F.length + x.Z.length + x.D.length + x.N.length;
   const volRows = volGroups(x.vd).map(g => `<p><b>${g.label.replace(/ \d{4}$/, "")}:</b> ${volLine(volStats(g.dny))}</p>`).join("");
-  const box = any ? `<div class="vol-ne"><h3>Požadavky – ${ymName(ym)}</h3>${volRows}${x.Z.length ? `<p><b>ZdV:</b> ${praniDays(x.Z)}</p>` : ""}${x.D.length ? `<p><b>Ne den:</b> ${praniDays(x.D)}</p>` : ""}${x.N.length ? `<p><b>Ne noc:</b> ${praniDays(x.N)}</p>` : ""}
-      <button type="button" class="vol-share" data-pshare="${ym}" aria-label="Sdílet požadavky na ${ymName(ym)}">${SHARE_SVG}</button></div>`
+  const box = any ? `<div class="vol-ne"><h3>Požadavky – ${ymName(ym)}</h3>${volRows}${x.F.length ? `<p><b>Volno:</b> ${praniDays(x.F)}</p>` : ""}${x.Z.length ? `<p><b>ZdV:</b> ${praniDays(x.Z)}</p>` : ""}${x.D.length ? `<p><b>Ne den:</b> ${praniDays(x.D)}</p>` : ""}${x.N.length ? `<p><b>Ne noc:</b> ${praniDays(x.N)}</p>` : ""}
+      <button type="button" class="vol-share" data-pshare="${ym}" aria-label="Sdílet požadavky na ${ymName(ym)}">${SHARE_SVG}</button></div><button type="button" class="link-btn" data-vclr="${ym}" style="margin-top:8px">Smazat všechny požadavky na ${MONTHS[m].toLowerCase()}</button>`
     : `<p class="note-hint" style="margin-top:14px">Na ${MONTHS[m].toLowerCase()} zatím nemáš žádné požadavky.</p>`;
   const yr = [...V].filter(k => k.startsWith(y + "-")), t = volStats(yr), sl = t.d + t.n;
   const others = reqMonths().filter(q => q !== ym);
@@ -1897,7 +1905,7 @@ function reqMonths(){
 }
 function reqMonthData(ym){
   const vd = []; MY_VOLP.forEach(e => e.dny.forEach(k => { if (k.startsWith(ym)) vd.push(k); }));
-  return {vd:vd.sort(), D:praniKeys("D", ym), N:praniKeys("N", ym), Z:praniKeys("Z", ym)};
+  return {vd:vd.sort(), F:praniKeys("F", ym), D:praniKeys("D", ym), N:praniKeys("N", ym), Z:praniKeys("Z", ym)};
 }
 const ymName = ym => { const [y, m] = ym.split("-").map(Number); return `${MONTHS[m-1]} ${y}`; };
 // text ke sdílení – jen čísla dnů (vždy jeden měsíc), souvislé dny jako rozsah, podle dnů od 1. dál
@@ -1906,6 +1914,7 @@ function praniText(ym){
   const rng = g => { const a = dparse(g[0]).d, b = dparse(g[g.length - 1]).d; return a === b ? `${a}.` : `${a}.–${b}.`; };
   const rows = [];
   volGroups(x.vd).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} ${g.dny.some(k => dlpCode(k) !== ".") ? "dovolená" : "volno"}`]));
+  volGroups(x.F).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} volno`]));
   volGroups(x.Z).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} ZdV`]));
   volGroups(x.D).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} ne den`]));
   volGroups(x.N).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} ne noc`]));
@@ -1941,7 +1950,7 @@ volGrid.addEventListener("pointerdown", e => {
   if (!volMode){ volHintWarn = true; fillVol(); return; }
   e.preventDefault();
   const k = b.dataset.vk;
-  volDrag = {start:k, end:k, keys:[k], rem:volTypeOf(k) === volMode, id:e.pointerId};
+  volDrag = {start:k, end:k, keys:[k], rem:volMode === "X" || volTypeOf(k) === volMode, id:e.pointerId};
   try { volGrid.setPointerCapture(e.pointerId); } catch (err){}
   fillVol();
 });
@@ -1984,6 +1993,8 @@ async function shareText(text){
 }
 document.getElementById("volList").addEventListener("click", e => {
   const ps = e.target.closest("button[data-pshare]"); if (ps){ shareText(praniText(ps.dataset.pshare)); return; }
+  const cl = e.target.closest("button[data-vclr]"); if (cl){ const ym = cl.dataset.vclr, ks = [...new Set([...volVset(), ...Object.keys(MY_PRANI)])].filter(k => k.startsWith(ym));
+    if (ks.length && confirm(`Smazat všechny požadavky na ${ymName(ym)}?`)) volApply(ks, null); return; }
   const go = e.target.closest("button[data-vgo]"); if (go){ const [y, m] = go.dataset.vgo.split("-").map(Number); if (dlpHas(y, m - 1)){ volY = y; volM = m - 1; fillVol(); vol.scrollTop = 0; } return; }
   const sh = e.target.closest("button[data-vshare]"); if (sh){ volShare(sh.dataset.vshare); return; }
 });
