@@ -370,6 +370,16 @@ button.cal-day{cursor:pointer}
 .cal-day.vsaved:not(.vsel){box-shadow:inset 0 0 0 3px #E07C7C}
 .cal-day.vsaved:not(.vsel)::after{content:"V";position:absolute;top:4px;right:6px;font-family:var(--f-body);font-size:10px;font-weight:700;color:#E07C7C}
 .vol-sum .btns{margin-top:10px}
+.vol-types{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0 0}
+.vol-types button{font:inherit;font-size:15px;font-weight:700;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:12px;padding:9px 2px 8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.1}
+.vol-types button small{font-size:11px;font-weight:400;color:var(--ink2)}
+.vol-types button[aria-pressed="true"]{border-color:#D04848;background:#D04848;color:#fff;box-shadow:0 3px 10px rgba(208,72,72,.35)}
+.vol-types button[aria-pressed="true"] small{color:#FFE1E1}
+#volGrid.picking{touch-action:none}
+#volGrid.picking .cal-day{cursor:crosshair}
+.cal-day.vdrag{box-shadow:0 0 0 3px #D04848;z-index:1;transform:scale(1.04)}
+.cal-day.vdrag.vrem{box-shadow:0 0 0 3px var(--ink2);opacity:.55}
+#volHint.warn{color:#D04848;font-weight:600}
 .vol-pick{position:fixed;left:12px;right:12px;bottom:calc(var(--fsab) + 12px);z-index:35;background:var(--sheet);color:var(--ink);border:1.5px solid var(--ink);border-radius:16px;padding:14px;box-shadow:0 12px 34px rgba(0,0,0,.4)}
 .vol-pick[hidden]{display:none}
 .vp-t{margin:0 0 10px;font-family:var(--f-cond);font-weight:600;font-size:20px}
@@ -381,6 +391,7 @@ button.cal-day{cursor:pointer}
 .vp-opts button[aria-pressed="true"] small{color:#FFE1E1}
 .cal-day .vne{position:absolute;left:3px;right:3px;bottom:3px;border-radius:5px;background:#D04848;color:#fff;font-family:var(--f-body);font-size:9.5px;font-weight:700;line-height:1;padding:2px 0;text-align:center}
 .cal-day.has-ne small{display:none}
+.cal-day .vne.v{background:#E07C7C;font-size:8.5px;letter-spacing:-.2px;left:1px;right:1px}
 .cal-day.has-ne{justify-content:flex-start;padding-top:8px;outline:2px dashed #D04848;outline-offset:-2px}
 .vol-ne{margin-top:18px;padding:10px 12px;border-radius:8px;background:rgba(224,124,124,.12);border-left:4px solid #D04848;font-size:15px;line-height:1.45;position:relative;padding-right:58px}
 .vol-ne h3{font-size:13px;font-weight:600;color:var(--ink2);margin:0 0 4px}
@@ -637,7 +648,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.22</span>
+      <span class="ver" id="verDiag">v5.23</span>
     </div>
   </div>
 </header>
@@ -653,19 +664,14 @@ button.cal-day{cursor:pointer}
     </div>
     <div class="cal-sum" id="volSum"></div>
     <div class="cal-grid" id="volGrid"></div>
-    <p class="note-hint" id="volHint">Služby podle dlouhodobého plánu. Klepni na den a vyber Volno, ZdV, Ne den nebo Ne noc. Volno potvrď tlačítkem Uložit, ostatní požadavky se ukládají hned. Uložené volno upravíš klepnutím na něj v seznamu dole.</p>
-    <div class="vol-sum" id="volRes" hidden></div>
-    <div class="vol-list" id="volList"></div>
-  </div>
-  <div class="vol-pick" id="volPick" role="dialog" aria-labelledby="volPickT" hidden>
-    <p class="vp-t" id="volPickT"></p>
-    <div class="vp-opts">
-      <button type="button" data-vp="V">Volno</button>
-      <button type="button" data-vp="Z">ZdV<small>zdravotní volno</small></button>
-      <button type="button" data-vp="D">Ne den<small>noční můžu</small></button>
-      <button type="button" data-vp="N">Ne noc<small>denní můžu</small></button>
+    <div class="vol-types" id="volTypes" role="group" aria-label="Druh požadavku">
+      <button type="button" data-vt="V" aria-pressed="false">Dovolená<small>/ volno</small></button>
+      <button type="button" data-vt="Z" aria-pressed="false">ZdV<small>zdravotní</small></button>
+      <button type="button" data-vt="D" aria-pressed="false">Ne den<small>noc můžu</small></button>
+      <button type="button" data-vt="N" aria-pressed="false">Ne noc<small>den můžu</small></button>
     </div>
-    <button type="button" class="btn sec" data-vp="x" style="width:100%;margin-top:10px">Zavřít</button>
+    <p class="note-hint" id="volHint"></p>
+    <div class="vol-list" id="volList"></div>
   </div>
 </div>
 <div class="mplan" id="mplan" role="dialog" aria-modal="true" aria-labelledby="mpTitle" hidden>
@@ -754,8 +760,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.22"></script>
-<script src="sluzby-chat.js?v=5.22"></script>
+<script src="sluzby-core.js?v=5.23"></script>
+<script src="sluzby-chat.js?v=5.23"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1804,7 +1810,6 @@ document.getElementById("absPick").addEventListener("click", e => {
 // dlouhodobý plán 2026: měsíce oddělené „|“, znak = den (D denní D12, N noční N12, . volno)
 const vol = document.getElementById("vol");
 let volY = 0, volM = 0, volSaving = false;
-let volDraft = new Set(), volEditId = null; // rozpracovaný výběr dnů „YYYY-MM-DD“
 // požadavky do plánu: „ne den“ (nechci denní, noční můžu) / „ne noc“ (nechci noční, denní můžu) / zdravotní volno – {"YYYY-MM-DD": "D" | "N" | "Z"}
 let MY_PRANI = {};
 const NE_LBL = {D:"ne den", N:"ne noc", Z:"ZdV"};
@@ -1822,25 +1827,27 @@ function openVol(){
     const ys = Object.keys(DLP).map(Number).sort();
     if (y > ys[ys.length - 1]){ y = ys[ys.length - 1]; m = 11; } else if (y < ys[0]){ y = ys[0]; m = 0; }
   }
-  volY = y; volM = m; volDraft = new Set(); volEditId = null; closeVolPick();
+  volY = y; volM = m; volMode = null; volHintWarn = false;
   fillVol(); vol.hidden = false; vol.scrollTop = 0;
   document.getElementById("volClose").focus();
 }
-function closeVol(){
-  if (volDraft.size && !confirm("Rozpracované volno není uložené. Zavřít bez uložení?")) return;
-  volDraft = new Set(); volEditId = null; closeVolPick(); vol.hidden = true;
-}
+function closeVol(){ volMode = null; volDrag = null; vol.hidden = true; }
 function stepVol(dir){
   let y = volY, m = volM + dir;
   if (m < 0){ m = 11; y--; } if (m > 11){ m = 0; y++; }
   if (!dlpHas(y, m)) return;
   volY = y; volM = m; fillVol();
 }
+/* požadavky dne: V = dovolená/volno (ukládá se do volnoPlany kvůli roční dovolené), Z/D/N = prani */
+let volMode = null, volDrag = null, volHintWarn = false;
+function volVset(){ const V = new Set(); MY_VOLP.forEach(e => e.dny.forEach(k => V.add(k))); return V; }
+function volTypeOf(k, V){ return (V || volVset()).has(k) ? "V" : MY_PRANI[k] || null; }
+const volTag = (t, k) => t === "V" ? (dlpCode(k) === "." ? "volno" : "dovolená") : NE_LBL[t];
 function fillVol(){
   if (!SELF) return;
   const y = volY, m = volM, row = dlpOf(SELF, y, m) || "";
   const n = new Date(y, m + 1, 0).getDate(), offset = (new Date(y, m, 1).getDay() + 6) % 7;
-  const saved = new Map(); MY_VOLP.forEach(e => { if (e.id !== volEditId) e.dny.forEach(k => saved.set(k, e.id)); });
+  const V = volVset(), drag = volDrag && volDrag.keys ? new Set(volDrag.keys) : null;
   document.getElementById("volWho").textContent = `${SELF} · dlouhodobý plán ${y}`;
   document.getElementById("volMonth").textContent = `${capM(m)} ${y}`;
   document.getElementById("volPrev").disabled = !dlpHas(m ? y : y - 1, m ? m - 1 : 11);
@@ -1853,36 +1860,35 @@ function fillVol(){
     if (c === "D") cD++; if (c === "N") cN++;
     const cls = c === "D" ? "k-d" : c === "N" ? "k-n" : (wd === 0 || wd === 6 ? "we" : "");
     const lbl = c === "D" ? "D12" : c === "N" ? "N12" : "";
-    const on = volDraft.has(k), sv = saved.has(k), ne = !on && !sv ? MY_PRANI[k] : null;
-    html += `<button type="button" class="cal-day ${cls}${on ? " vsel" : ""}${sv ? " vsaved" : ""}${ne ? " has-ne" : ""}" data-vk="${k}" aria-pressed="${on}" aria-label="${d}. ${m+1}.${lbl ? " " + lbl : ""}${on ? ", vybráno" : sv ? ", naplánované volno" : ne ? ", " + NE_LBL[ne] : ""}">${d}${lbl ? `<small>${lbl}</small>` : ""}${ne ? `<span class="vne">${NE_LBL[ne]}</span>` : ""}</button>`;
+    const t = volTypeOf(k, V), dg = drag && drag.has(k);
+    html += `<button type="button" class="cal-day ${cls}${t ? " has-ne" : ""}${dg ? " vdrag" + (volDrag.rem ? " vrem" : "") : ""}" data-vk="${k}" aria-label="${d}. ${m+1}.${lbl ? " " + lbl : ""}${t ? ", " + volTag(t, k) : ""}">${d}${lbl ? `<small>${lbl}</small>` : ""}${t ? `<span class="vne${t === "V" ? " v" : ""}">${volTag(t, k)}</span>` : ""}</button>`;
   }
-  document.getElementById("volGrid").innerHTML = html;
+  const g = document.getElementById("volGrid");
+  g.innerHTML = html; g.classList.toggle("picking", !!volMode);
   document.getElementById("volSum").innerHTML = `<span><i class="k-d"></i>Denní <b>${cD}</b></span><span><i class="k-n"></i>Noční <b>${cN}</b></span><span>Hodin <b>${fmtH((cD + cN) * DLP_H)}</b></span>`;
-  // rozpracovaný výběr
-  const res = document.getElementById("volRes"), st = volStats([...volDraft]);
-  res.hidden = !volDraft.size && !volEditId;
-  if (!res.hidden) res.innerHTML = `<p><b>${volEditId ? "Úprava volna" : "Nové volno"}:</b> ${volDraft.size ? volRanges([...volDraft]) : "žádný den"}</p>
-    ${volGroups([...volDraft]).length > 1 ? volGroups([...volDraft]).map(g => `<p>${g.label}: ${volLine(volStats(g.dny))}</p>`).join("") : ""}
-    <p>${volDraft.size ? (volGroups([...volDraft]).length > 1 ? "Celkem: " + volLine(st).charAt(0).toLowerCase() + volLine(st).slice(1) : volLine(st)) : ""}</p>
-    <div class="btns"><button type="button" class="btn" id="volSave" ${volDraft.size ? "" : "disabled"}>Uložit</button>${volEditId ? `<button type="button" class="btn sec btn-danger" id="volDel">Smazat</button>` : ""}<button type="button" class="btn sec" id="volCancel">Zrušit</button></div>`;
-  // uložená volna
-  const list = [...MY_VOLP].sort((a, b) => (a.dny[0] < b.dny[0] ? -1 : 1));
-  const byY = {};
-  list.forEach(e => e.dny.forEach(k => { const y = k.slice(0, 4); (byY[y] = byY[y] || []).push(k); }));
-  const items = list.map(e => { const x = volStats(e.dny);
-    const gs = volGroups(e.dny);
-    const rows = gs.map(g => `<span class="vg"><b>${g.label}</b>${volLine(volStats(g.dny))}</span>`).join("");
-    const sum = gs.length > 1 ? `<span class="vg-sum">Celkem: ${volLine(x).charAt(0).toLowerCase() + volLine(x).slice(1)}</span>` : "";
-    return `<div class="vol-row"><button type="button" class="vol-item${e.id === volEditId ? " edit" : ""}" data-vid="${e.id}">${rows}${sum}<small>Klepni pro úpravu</small></button></div>`; }).join("");
-  const pr = praniHTML();
-  document.getElementById("volList").innerHTML = (pr || "") + (list.length
-    ? `<h3 style="margin-top:18px">Naplánované volno</h3>${items}${Object.keys(byY).sort().map(y => { const t = volStats(byY[y]), sl = t.d + t.n;
-        return `<div class="vol-tot"><b>Celkem za kalendářní rok ${y}:</b><span>Dovolená ${sl} (denní ${t.d}, noční ${t.n})</span><span>${fmtH(t.h)} hodin vyčerpáno</span></div>`; }).join("")}` : "");
+  document.querySelectorAll("#volTypes [data-vt]").forEach(b => b.setAttribute("aria-pressed", b.dataset.vt === volMode));
+  const h = document.getElementById("volHint");
+  h.classList.toggle("warn", volHintWarn && !volMode);
+  h.textContent = volMode
+    ? `Klepni na dny, nebo táhni prstem od–do. Klepnutím na den „${volMode === "V" ? "dovolená / volno" : NE_LBL[volMode]}“ ho zrušíš. Druh můžeš kdykoli přepnout tlačítky. Vše se ukládá hned.`
+    : volHintWarn ? "Nejdřív vyber tlačítkem nad tímto textem, co chceš zadat."
+    : "Vyber druh tlačítkem (zčervená) a pak klepni na dny v kalendáři nebo táhni prstem od–do. Vše se ukládá hned.";
+  // shrnutí měsíce + sdílení, roční dovolená
+  const ym = `${y}-${String(m + 1).padStart(2, "0")}`, x = reqMonthData(ym), any = x.vd.length + x.Z.length + x.D.length + x.N.length;
+  const volRows = volGroups(x.vd).map(g => `<p><b>${g.label.replace(/ \d{4}$/, "")}:</b> ${volLine(volStats(g.dny))}</p>`).join("");
+  const box = any ? `<div class="vol-ne"><h3>Požadavky – ${ymName(ym)}</h3>${volRows}${x.Z.length ? `<p><b>ZdV:</b> ${praniDays(x.Z)}</p>` : ""}${x.D.length ? `<p><b>Ne den:</b> ${praniDays(x.D)}</p>` : ""}${x.N.length ? `<p><b>Ne noc:</b> ${praniDays(x.N)}</p>` : ""}
+      <button type="button" class="vol-share" data-pshare="${ym}" aria-label="Sdílet požadavky na ${ymName(ym)}">${SHARE_SVG}</button></div>`
+    : `<p class="note-hint" style="margin-top:14px">Na ${MONTHS[m].toLowerCase()} zatím nemáš žádné požadavky.</p>`;
+  const yr = [...V].filter(k => k.startsWith(y + "-")), t = volStats(yr), sl = t.d + t.n;
+  const others = reqMonths().filter(q => q !== ym);
+  document.getElementById("volList").innerHTML = box
+    + (yr.length ? `<div class="vol-tot"><b>Celkem za kalendářní rok ${y}:</b><span>Dovolená ${sl} (denní ${t.d}, noční ${t.n})</span><span>${fmtH(t.h)} hodin vyčerpáno</span></div>` : "")
+    + (others.length ? `<p class="note-hint" style="margin-top:12px">Požadavky máš i na: ${others.map(q => `<button type="button" class="link-btn" data-vgo="${q}">${ymName(q)}</button>`).join(", ")}</p>` : "");
 }
 const praniKeys = (typ, ym) => Object.keys(MY_PRANI).filter(k => MY_PRANI[k] === typ && (!ym || k.startsWith(ym))).sort();
 const praniDays = ks => ks.map(k => { const d = dparse(k); return `${DOW[new Date(d.y, d.m, d.d).getDay()]} ${d.d}. ${d.m+1}.`; }).join(", ");
 const SHARE_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>`;
-// měsíce, ve kterých je nějaké volno nebo přání („YYYY-MM“)
+// měsíce, ve kterých je nějaké volno nebo požadavek („YYYY-MM“)
 function reqMonths(){
   const set = new Set();
   MY_VOLP.forEach(e => e.dny.forEach(k => set.add(k.slice(0, 7))));
@@ -1894,14 +1900,7 @@ function reqMonthData(ym){
   return {vd:vd.sort(), D:praniKeys("D", ym), N:praniKeys("N", ym), Z:praniKeys("Z", ym)};
 }
 const ymName = ym => { const [y, m] = ym.split("-").map(Number); return `${MONTHS[m-1]} ${y}`; };
-// jeden blok pro sdílení na celý měsíc: volno + ne den + ne noc
-function praniHTML(){
-  return reqMonths().map(ym => { const x = reqMonthData(ym);
-    const vol = volGroups(x.vd).map(g => `<p><b>Volno ${g.label.replace(/ \d{4}$/, "")}:</b> ${volLine(volStats(g.dny))}</p>`).join("");
-    return `<div class="vol-ne"><h3>Požadavky – ${ymName(ym)}</h3>${vol}${x.Z.length ? `<p><b>ZdV:</b> ${praniDays(x.Z)}</p>` : ""}${x.D.length ? `<p><b>Ne den:</b> ${praniDays(x.D)}</p>` : ""}${x.N.length ? `<p><b>Ne noc:</b> ${praniDays(x.N)}</p>` : ""}
-      <button type="button" class="vol-share" data-pshare="${ym}" aria-label="Sdílet požadavky na ${ymName(ym)}">${SHARE_SVG}</button></div>`; }).join("");
-}
-// text ke sdílení – jen čísla dnů (vždy jeden měsíc), souvislé dny jako rozsah
+// text ke sdílení – jen čísla dnů (vždy jeden měsíc), souvislé dny jako rozsah, podle dnů od 1. dál
 function praniText(ym){
   const x = reqMonthData(ym), lines = [`Požadavky do plánu služeb – ${ymName(ym)}`, SELF, ""];
   const rng = g => { const a = dparse(g[0]).d, b = dparse(g[g.length - 1]).d; return a === b ? `${a}.` : `${a}.–${b}.`; };
@@ -1910,84 +1909,56 @@ function praniText(ym){
   volGroups(x.Z).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} ZdV`]));
   volGroups(x.D).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} ne den`]));
   volGroups(x.N).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} ne noc`]));
-  rows.sort((p, q) => p[0] < q[0] ? -1 : 1).forEach(r => lines.push(r[1])); // podle dnů od 1. dál
+  rows.sort((p, q) => p[0] < q[0] ? -1 : 1).forEach(r => lines.push(r[1]));
   return lines.join("\n");
 }
-async function praniSet(k, nove){
-  if (!SELF_NO) return;
-  const FV = firebase.firestore.FieldValue;
-  const prev = {...MY_PRANI};
-  if (nove) MY_PRANI = {...MY_PRANI, [k]:nove}; else { MY_PRANI = {...MY_PRANI}; delete MY_PRANI[k]; }
-  fillVol();
-  try { await db.collection("poznamky").doc(SELF_NO).set({prani:{[k]: nove || FV.delete()}, upraveno:FV.serverTimestamp()}, {merge:true}); }
-  catch (err){ MY_PRANI = prev; fillVol(); alert("Požadavek se nepodařilo uložit."); }
+// uložit požadavky dnů hned – jedním zápisem; volno se drží jako jeden záznam na měsíc
+async function volApply(keys, typ){
+  if (!SELF_NO || !keys.length) return;
+  const FV = firebase.firestore.FieldValue, V = volVset(), pr = {...MY_PRANI}, pw = {};
+  keys.forEach(k => {
+    if (typ === "V") V.add(k); else V.delete(k);
+    const nv = typ && typ !== "V" ? typ : null;
+    if ((pr[k] || null) !== nv){ if (nv) pr[k] = nv; else delete pr[k]; pw[k] = nv || FV.delete(); }
+  });
+  const ms = new Set(keys.map(k => k.slice(0, 7)));
+  const list = MY_VOLP.map(e => ({...e, dny:e.dny.filter(k => !ms.has(k.slice(0, 7)))})).filter(e => e.dny.length);
+  ms.forEach(q => { const d = [...V].filter(k => k.startsWith(q)).sort(); if (d.length) list.push({id:q, dny:d}); });
+  const prev = [MY_VOLP, MY_PRANI]; MY_VOLP = list; MY_PRANI = pr; fillVol();
+  try { await db.collection("poznamky").doc(SELF_NO).set({volnoPlany:list, prani:pw, volno:FV.delete(), upraveno:FV.serverTimestamp()}, {merge:true}); }
+  catch (err){ [MY_VOLP, MY_PRANI] = prev; fillVol(); alert("Požadavky se nepodařilo uložit."); }
 }
-async function volWrite(list){
-  const FV = firebase.firestore.FieldValue;
-  await db.collection("poznamky").doc(SELF_NO).set({volnoPlany:list, volno:FV.delete(), upraveno:FV.serverTimestamp()}, {merge:true});
-}
-async function volSaveDraft(del){
-  if (volSaving || !SELF_NO) return;
-  let list = MY_VOLP.filter(e => e.id !== volEditId);
-  if (!del){
-    if (!volDraft.size) return;
-    list.push({id:volEditId || Date.now().toString(36), dny:[...volDraft].sort()});
-  } else if (!confirm("Smazat toto naplánované volno?")) return;
-  volSaving = true;
-  const clash = del ? [] : [...volDraft].filter(k => MY_PRANI[k]);
-  if (clash.length){ const FV = firebase.firestore.FieldValue;
-    db.collection("poznamky").doc(SELF_NO).set({prani:Object.fromEntries(clash.map(k => [k, FV.delete()]))}, {merge:true}).catch(() => {}); }
-  try { await volWrite(list); MY_VOLP = list; volDraft = new Set(); volEditId = null; fillVol(); }
-  catch (err){ alert("Volno se nepodařilo uložit."); }
-  volSaving = false;
-}
-function volEdit(id){
-  if (volDraft.size && volEditId !== id && !confirm("Rozpracovaný výběr se zahodí. Pokračovat?")) return;
-  const e = MY_VOLP.find(x => x.id === id); if (!e) return;
-  volEditId = id; volDraft = new Set(e.dny);
-  const f = dparse(e.dny.slice().sort()[0]); if (dlpHas(f.y, f.m)){ volY = f.y; volM = f.m; }
-  fillVol(); vol.scrollTop = 0;
-}
-document.getElementById("volGrid").addEventListener("click", e => {
-  const b = e.target.closest("button[data-vk]"); if (!b) return;
+document.getElementById("volTypes").addEventListener("click", e => {
+  const b = e.target.closest("[data-vt]"); if (!b) return;
+  volMode = volMode === b.dataset.vt ? null : b.dataset.vt; volHintWarn = false; fillVol();
+});
+// výběr dnů: klepnutí = přepnout den, tažení = rozsah od–do (podle prvního dne se přidává, nebo maže)
+const volKeyAt = (x, y) => { const el = document.elementFromPoint(x, y), b = el && el.closest("#volGrid button[data-vk]"); return b ? b.dataset.vk : null; };
+function volRange(a, b){ if (a > b) [a, b] = [b, a]; const o = [], s = dparse(a), z = dparse(b); for (let d = s.d; d <= z.d; d++) o.push(dkey(s.y, s.m, d)); return o; }
+const volGrid = document.getElementById("volGrid");
+volGrid.addEventListener("pointerdown", e => {
+  const b = e.target.closest("button[data-vk]"); if (!b || e.button > 0) return;
+  if (!volMode){ volHintWarn = true; fillVol(); return; }
+  e.preventDefault();
   const k = b.dataset.vk;
-  const owner = MY_VOLP.find(x => x.id !== volEditId && x.dny.includes(k));
-  if (owner){ // den patří jinému uloženému volnu → otevřít ho k úpravě
-    if (!volDraft.size) volEdit(owner.id); else alert("Tento den už je v jiném naplánovaném volnu.");
-    return;
-  }
-  openVolPick(k);
+  volDrag = {start:k, end:k, keys:[k], rem:volTypeOf(k) === volMode, id:e.pointerId};
+  try { volGrid.setPointerCapture(e.pointerId); } catch (err){}
+  fillVol();
 });
-let volPickKey = null;
-function openVolPick(k){
-  volPickKey = k;
-  const d = dparse(k), c = dlpCode(k), cur = volDraft.has(k) ? "V" : MY_PRANI[k] || "";
-  document.getElementById("volPickT").innerHTML = `${cap(DOW_FULL[new Date(d.y, d.m, d.d).getDay()])} ${d.d}. ${d.m+1}.<small>${c === "D" ? "D12 denní služba" : c === "N" ? "N12 noční služba" : "bez služby"} · ${cur ? "znovu klepni na označenou volbu a zrušíš ji" : "vyber, co chceš"}</small>`;
-  document.querySelectorAll("#volPick [data-vp]").forEach(x => { if (x.dataset.vp !== "x") x.setAttribute("aria-pressed", x.dataset.vp === cur); });
-  document.querySelector('#volPick [data-vp="V"]').textContent = c === "D" || c === "N" ? "Dovolená" : "Volno"; // den se službou = dovolená
-  document.getElementById("volPick").hidden = false;
-  document.getElementById("volClose").style.display = "none"; // křížek by překrýval „Zavřít“
+volGrid.addEventListener("pointermove", e => {
+  if (!volDrag || e.pointerId !== volDrag.id) return;
+  const k = volKeyAt(e.clientX, e.clientY); if (!k || k === volDrag.end) return;
+  volDrag.end = k; volDrag.keys = volRange(volDrag.start, k); fillVol();
+});
+function volDragEnd(e, cancel){
+  if (!volDrag || (e && e.pointerId !== volDrag.id)) return;
+  const d = volDrag; volDrag = null;
+  if (cancel){ fillVol(); return; }
+  volApply(d.keys, d.rem ? null : volMode);
 }
-function closeVolPick(){ document.getElementById("volPick").hidden = true; document.getElementById("volClose").style.display = ""; volPickKey = null; }
-document.getElementById("volPick").addEventListener("click", e => {
-  const b = e.target.closest("[data-vp]"); if (!b) return;
-  const k = volPickKey, v = b.dataset.vp; closeVolPick();
-  if (!k || v === "x") return;
-  const was = b.getAttribute("aria-pressed") === "true";
-  if (v === "V"){
-    if (was) volDraft.delete(k);
-    else { volDraft.add(k); if (MY_PRANI[k]) praniSet(k, null); }
-    fillVol(); return;
-  }
-  if (volDraft.has(k)) volDraft.delete(k);
-  praniSet(k, was ? null : v);
-});
-document.getElementById("volRes").addEventListener("click", e => {
-  const t = e.target.closest("button"); if (!t) return;
-  if (t.id === "volSave") volSaveDraft(false);
-  else if (t.id === "volDel") volSaveDraft(true);
-  else if (t.id === "volCancel"){ volDraft = new Set(); volEditId = null; fillVol(); }
-});
+volGrid.addEventListener("pointerup", e => volDragEnd(e));
+volGrid.addEventListener("pointercancel", e => volDragEnd(e, true));
+volGrid.addEventListener("click", e => e.preventDefault());
 function volText(e){
   // text pro sdílení – podoba se doladí
   const x = volStats(e.dny), lines = [`Plánované volno – ${SELF}`];
@@ -2013,8 +1984,8 @@ async function shareText(text){
 }
 document.getElementById("volList").addEventListener("click", e => {
   const ps = e.target.closest("button[data-pshare]"); if (ps){ shareText(praniText(ps.dataset.pshare)); return; }
+  const go = e.target.closest("button[data-vgo]"); if (go){ const [y, m] = go.dataset.vgo.split("-").map(Number); if (dlpHas(y, m - 1)){ volY = y; volM = m - 1; fillVol(); vol.scrollTop = 0; } return; }
   const sh = e.target.closest("button[data-vshare]"); if (sh){ volShare(sh.dataset.vshare); return; }
-  const t = e.target.closest("button[data-vid]"); if (t) volEdit(t.dataset.vid);
 });
 document.getElementById("volPrev").addEventListener("click", () => stepVol(-1));
 document.getElementById("volNext").addEventListener("click", () => stepVol(1));
