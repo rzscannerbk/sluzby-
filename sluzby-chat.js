@@ -73,7 +73,7 @@ function visibleThreads(){
   if (S.vsichni) out.push(["vsichni", S.vsichni]);
   return out;
 }
-function badgeCount(){ return visibleThreads().reduce((s, [, t]) => s + (isMuted(t) ? 0 : unreadOf(t)), 0) + pkTurnCount() + (PK_ON() ? ldoTurnCount() : 0); }
+function badgeCount(){ return visibleThreads().reduce((s, [, t]) => s + (isMuted(t) ? 0 : unreadOf(t)), 0) + pkTurnCount() + (PK_ON() ? ldoTurnCount() + hgTurnCount("px") + hgTurnCount("sh") : 0); }
 function titleOf(id, t){
   if (id === "vsichni") return "Zpráva všem";
   if (!t && id.startsWith("dm_")) return nameOf(id.split("_").slice(1).find(c => c !== String(O.me)));
@@ -425,6 +425,46 @@ const STYLE = `
 .ld-sm i.s{background:#4D5B7C}.ld-sm i.w{background:radial-gradient(circle,#7E93AE 0 18%,#DCEBF7 22%)}
 .ld-sm i.h{background:#8E3B47}.ld-sm i.k{background:#D04848}.ld-sm i.last{box-shadow:inset 0 0 0 1.5px #E2C33A}
 .ld-sm.card{width:100%;max-width:190px}
+.hub-tabs.n4{grid-template-columns:repeat(4,1fr)}
+.hub-tabs.n4 button{padding:7px 2px;font-size:12.5px;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.1}
+.hub-tabs.n4 button span{font-size:18px;line-height:1;font-family:"DejaVu Sans","Segoe UI Symbol",sans-serif}
+.px-g{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:4px 6px;max-width:440px;margin:0 auto}
+.px-c{aspect-ratio:1/1.12;border-radius:10px;border:0;padding:0;display:flex;align-items:center;justify-content:center;font-size:clamp(22px,7.4vw,32px);position:relative;cursor:default;color:inherit}
+.px-g.can .px-c.b{cursor:pointer}
+.px-c.b{background:linear-gradient(135deg,#1D2A4D,#34477A);box-shadow:inset 0 0 0 3px rgba(242,210,74,.2)}
+.px-c.b::after{content:"★";color:#F2D24A;opacity:.75;font-size:20px}
+.px-c.b.w{opacity:.6}
+.px-c.f{background:#fff;box-shadow:0 0 0 3px #F2D24A,0 4px 10px rgba(0,0,0,.18);transform:scale(1.04);z-index:1}
+.px-c.m{background:#fff;opacity:.5}
+.px-c.m.me{box-shadow:inset 0 0 0 2.5px #2E9E5B}
+.px-c.m.op{box-shadow:inset 0 0 0 2.5px #D04848}
+.px-sc{display:flex;justify-content:center;align-items:center;gap:14px;font-family:var(--f-cond,sans-serif);font-weight:700;font-size:30px;margin:2px 0 4px}
+.px-sc small{font-size:13px;font-family:var(--f-body,sans-serif);font-weight:600;color:var(--ink2,#5A6480);display:block;text-align:center}
+.px-sc .me{color:#2E9E5B}.px-sc .op{color:#D04848}.px-sc .px-dv{color:#9AA3B5}
+.px-sc div{text-align:center}
+.sh-b{display:grid;grid-template-columns:16px 1fr;grid-template-rows:repeat(8,auto) auto;margin:0 auto;max-width:480px;padding:0 6px}
+.sh-b .lb{grid-column:1;font-size:11px;color:var(--ink2,#5A6480);display:flex;align-items:center;justify-content:center}
+.sh-g{grid-column:2;grid-row:1/9;display:grid;grid-template-columns:repeat(8,1fr);border:2px solid #1D2A4D;border-radius:4px;overflow:hidden}
+.sh-c{aspect-ratio:1;border:0;padding:0;display:flex;align-items:center;justify-content:center;font-size:clamp(26px,8.4vw,44px);line-height:1;position:relative;font-family:"DejaVu Sans","Segoe UI Symbol","Noto Sans Symbols 2",sans-serif;cursor:pointer}
+.sh-c.l{background:#EEF1E6}.sh-c.d{background:#8DA27A}
+.sh-c.last{box-shadow:inset 0 0 0 100px rgba(242,210,74,.45)}
+.sh-c.sel{box-shadow:inset 0 0 0 3px #2E9E5B,inset 0 0 0 100px rgba(46,158,91,.25)}
+.sh-c.pend{box-shadow:inset 0 0 0 3px #2E9E5B,inset 0 0 0 100px rgba(46,158,91,.4)}
+.sh-c.dot::after{content:"";width:28%;height:28%;border-radius:50%;background:rgba(29,42,77,.35);position:absolute}
+.sh-c.cap::after{content:"";position:absolute;inset:3px;border-radius:50%;border:3.5px solid rgba(208,72,72,.7)}
+.sh-c.chk{background:radial-gradient(circle,#F07A7A 0 45%,#D04848 75%)}
+.sh-c .w,.sh-cap .w,.sh-pro .w{color:#fff;-webkit-text-stroke:1.3px #1D2A4D;text-shadow:0 1px 1px rgba(0,0,0,.25)}
+.sh-c .k,.sh-cap .k,.sh-pro .k{color:#1D2A4D}
+.sh-cols{grid-column:2;grid-row:9;display:grid;grid-template-columns:repeat(8,1fr);font-size:11px;color:var(--ink2,#5A6480);text-align:center;margin-top:2px}
+.sh-cap{display:flex;flex-wrap:wrap;gap:1px;font-size:19px;min-height:24px;padding:0 10px 0 28px;font-family:"DejaVu Sans","Segoe UI Symbol",sans-serif;align-items:center;max-width:480px;margin:0 auto}
+.sh-k{font-family:"DejaVu Sans","Segoe UI Symbol",sans-serif;font-size:18px}
+.sh-mv{font-size:13px;color:var(--ink2,#5A6480);padding:6px 12px;line-height:1.6;max-width:480px;margin:0 auto}
+.sh-mv span{white-space:nowrap}
+.sh-pro{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);max-width:460px;margin:0 auto;background:var(--sheet,#FAFBF7);border:1.5px solid #1D2A4D;border-radius:16px;padding:14px;box-shadow:0 12px 34px rgba(0,0,0,.4);z-index:80}
+.sh-pro h3{margin:0 0 10px;font-size:18px}
+.sh-pro div{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sh-pro div button{font-size:40px;border:1.5px solid var(--line,#DDE1E7);border-radius:12px;background:#fff;padding:6px 0;font-family:"DejaVu Sans","Segoe UI Symbol",sans-serif;display:flex;flex-direction:column;align-items:center;cursor:pointer}
+.sh-pro div button small{font-size:11px;font-family:var(--f-body,sans-serif);color:#5A6480}
 /* administrace */
 .ch-adm{margin-top:18px;padding:14px;border:1.5px solid var(--line,#DDE1E7);border-radius:12px;background:var(--sheet,#fff)}
 .ch-adm h3{font-family:var(--f-cond,sans-serif);font-size:20px;margin:0 0 6px}
@@ -516,7 +556,9 @@ function hraBeat(force){
   if (!LIVE || !S) return;
   const k = document.visibilityState !== "visible" ? null
     : S.pkId && S.pkId !== "ai" && $("pkOv") ? "pisk:" + S.pkId
-    : S.ld && S.ld.online && $("ldOv") ? "lode:" + S.ld.online : null;
+    : S.ld && S.ld.online && $("ldOv") ? "lode:" + S.ld.online
+    : S.px && S.px.online && $("pxOv") ? "pex:" + S.px.online
+    : S.sh && S.sh.online && $("shOv") ? "sach:" + S.sh.online : null;
   if (!force && k === S.hraKey && (!k || Date.now() - (S.hraKeyAt || 0) < 12e3)) return;
   S.hraKey = k; S.hraKeyAt = Date.now();
   O.db.collection("chatOnline").doc(String(O.me)).set({hra:k, hraAt:FV().serverTimestamp()}, {merge:true}).catch(() => {});
@@ -566,6 +608,13 @@ function startLive(){
     ldoOnUpdate();
     if (S.pending && S.pending.startsWith("lode:") && G[S.pending.slice(5)]){ const p = S.pending; S.pending = null; CH.openThread(p); }
   }, e => { console.warn("chat: lodě", e); }));
+  if (PK_ON()) ["px", "sh"].forEach(k => S.liveUnsubs.push(O.db.collection(HG[k].col).where("hraci", "array-contains", String(O.me)).onSnapshot(s => {
+    const G = {}; s.docs.forEach(d => { G[d.id] = d.data({serverTimestamps:"estimate"}); }); S[HG[k].key] = G;
+    updBadge();
+    if (S.open){ if (S.view === "list" || S.two) renderList(); if (S.tid) renderMsgs(false); }
+    if (k === "px") pxOnUpdate(); else if (S.sh && S.sh.online){ S.shBusy = false; shRender(); }
+    const pf = HG[k].pref; if (S.pending && S.pending.startsWith(pf) && G[S.pending.slice(pf.length)]){ const p = S.pending; S.pending = null; CH.openThread(p); }
+  }, e => { console.warn("chat: " + HG[k].col, e); })));
   S.liveUnsubs.push(O.db.collection("poznamky").doc(String(O.me)).onSnapshot(s => {
     S.pinT = ((s.exists && s.data().chatPripnute) || []).map(String);
     if (S.open && (S.view === "list" || S.two)) renderList();
@@ -586,7 +635,7 @@ function stopLive(){
 }
 function afterThreads(){
   updBadge();
-  if (S.pending && (thread(S.pending) || S.pending.startsWith("dm_") || (S.pending.startsWith("hra:") && S.games[S.pending.slice(4)]) || (S.pending.startsWith("lode:") && (S.lodeG || {})[S.pending.slice(5)]))){ const p = S.pending; S.pending = null; CH.openThread(p); return; }
+  if (S.pending && (thread(S.pending) || S.pending.startsWith("dm_") || (S.pending.startsWith("hra:") && S.games[S.pending.slice(4)]) || (S.pending.startsWith("lode:") && (S.lodeG || {})[S.pending.slice(5)]) || (S.pending.startsWith("pex:") && (S.pexG || {})[S.pending.slice(4)]) || (S.pending.startsWith("sach:") && (S.sachG || {})[S.pending.slice(5)]))){ const p = S.pending; S.pending = null; CH.openThread(p); return; }
   if (!S.open) return;
   if (S.tid) ensureMsgSub();
   renderList();
@@ -661,6 +710,7 @@ CH.close = function(){
 CH.openThread = function(tid){
   if (!S) return;
   if (tid && tid.startsWith("hra:")){ const id = tid.slice(4); if (!LIVE){ S.pending = tid; return; } const g = S.games[id]; CH.openThread(g && g.vlakno ? g.vlakno : "vsichni"); pkOpen(id); return; }
+  for (const k of ["px", "sh"]){ const pf = HG[k].pref; if (tid && tid.startsWith(pf)){ const id = tid.slice(pf.length), g = hgGames(k)[id]; if (!LIVE || !g){ S.pending = tid; return; } CH.openThread(g.vlakno || "vsichni"); (k === "px" ? pxOpen : shOpen)(id); return; } }
   if (tid && tid.startsWith("lode:")){ const id = tid.slice(5); const g = (S.lodeG || {})[id]; if (!LIVE || !g){ S.pending = tid; return; } CH.openThread(g.vlakno || "vsichni"); ldoOpen(id); return; }
   if (!LIVE || (!thread(tid) && !tid.startsWith("dm_"))){ S.pending = tid; if (LIVE) CH.open(); return; }
   if (!S.open){ S.open = true; $("chRoot").hidden = false; layout(); if (S.fit) S.fit(); }
@@ -713,18 +763,18 @@ function hCardHTML(id, t){
 }
 function renderList(){
   const el = $("chList"); if (!el || !S.open) return;
-  const sub = S.archive || S.pick || S.pickHra || S.pkView, nT = pkTurnCount() + (PK_ON() ? ldoTurnCount() : 0);
-  const pkBtn = PK_ON() && !sub ? `<button type="button" class="pk-hub" data-chpkhub aria-label="Hry${nT ? ` – jsi na tahu (${nT})` : ""}" title="Hry – piškvorky a lodě">${PK_ICO(30, 1)}${nT ? `<i>${nT}</i>` : ""}</button>` : "";
-  const head = `<div class="ch-h"><h2>${S.archive ? "Archiv hlídek" : S.pickHra ? (S.pickHra === "ld" ? "Lodě – výzva" : "Piškvorky – výzva") : S.pkView ? "Hry" : S.pick ? "Nová zpráva" : "Chat"}</h2>${pkBtn}${sub ? `<button type="button" class="ch-sec" data-chback-list style="margin:0;border:1.5px solid currentColor;border-radius:8px;padding:5px 10px;background:transparent;font-size:14px">‹ Zpět</button>` : ""}<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button></div>`;
+  const sub = S.archive || S.pick || S.pickHra || S.pkView, nT = pkTurnCount() + (PK_ON() ? ldoTurnCount() + hgTurnCount("px") + hgTurnCount("sh") : 0);
+  const pkBtn = PK_ON() && !sub ? `<button type="button" class="pk-hub" data-chpkhub aria-label="Hry${nT ? ` – jsi na tahu (${nT})` : ""}" title="Hry – piškvorky, lodě, pexeso, šachy">${PK_ICO(30, 1)}${nT ? `<i>${nT}</i>` : ""}</button>` : "";
+  const head = `<div class="ch-h"><h2>${S.archive ? "Archiv hlídek" : S.pickHra ? ({ld:"Lodě", px:"Pexeso", sh:"Šachy"}[S.pickHra] || "Piškvorky") + " – výzva" : S.pkView ? "Hry" : S.pick ? "Nová zpráva" : "Chat"}</h2>${pkBtn}${sub ? `<button type="button" class="ch-sec" data-chback-list style="margin:0;border:1.5px solid currentColor;border-radius:8px;padding:5px 10px;background:transparent;font-size:14px">‹ Zpět</button>` : ""}<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button></div>`;
   const test = S.set && !S.set.vsem ? `<p class="ch-test"><b>Testovací provoz</b> – chat zatím vidí jen ${testeri().map(c => esc(nameOf(c))).join(", ")}.</p>` : "";
   if (S.pkView && !S.pickHra){
     const tab = S.hubTab || "pk";
-    el.innerHTML = head + `<div class="hub-tabs" role="tablist"><button type="button" role="tab" data-chtab="pk" aria-selected="${tab === "pk"}">✕○ Piškvorky</button><button type="button" role="tab" data-chtab="ld" aria-selected="${tab === "ld"}">⚓ Lodě</button></div>` + (tab === "ld" ? ldHubHTML() : pkHubHTML());
+    el.innerHTML = head + `<div class="hub-tabs n4" role="tablist">${[["pk", "✕○", "Piškvorky"], ["ld", "⚓", "Lodě"], ["px", "🃏", "Pexeso"], ["sh", "♞", "Šachy"]].map(([k, i, n]) => `<button type="button" role="tab" data-chtab="${k}" aria-selected="${tab === k}"><span>${i}</span>${n}</button>`).join("")}</div>` + (tab === "ld" ? ldHubHTML() : tab === "px" ? pxHubHTML() : tab === "sh" ? shHubHTML() : pkHubHTML());
     return;
   }
   if (S.pickHra){
     const list = Object.entries(officers()).filter(([n, c]) => String(c) !== String(O.me) && (S.set.vsem || testeri().includes(String(c)))).sort((a, b) => a[0].localeCompare(b[0], "cs"));
-    el.innerHTML = head + `<p class="ch-empty">Vyber kolegu – dostane výzvu do soukromých zpráv a notifikaci.</p>` + (list.length ? `<div class="ch-pick">${list.map(([n, c]) => { const ex = S.pickHra === "ld" ? ldoWith(c) : pkGameWith(c); return `<button type="button" ${S.pickHra === "ld" ? "data-chlddm" : "data-chpkdm"}="${esc(c)}">${avHTML(String(c), initials(n))}<span>${esc(n)}${ex ? " · rozehráno" : ""}</span></button>`; }).join("")}</div>` : `<p class="ch-empty">Zatím nikdo další nemá chat povolený.</p>`);
+    el.innerHTML = head + `<p class="ch-empty">Vyber kolegu – dostane výzvu do soukromých zpráv a notifikaci.</p>` + (list.length ? `<div class="ch-pick">${list.map(([n, c]) => { const t = S.pickHra, ex = t === "ld" ? ldoWith(c) : t === "px" || t === "sh" ? hgWith(t, c) : pkGameWith(c); return `<button type="button" ${t === "ld" ? "data-chlddm" : t === "px" || t === "sh" ? `data-chgdm="${t}" data-c` : "data-chpkdm"}="${esc(c)}">${avHTML(String(c), initials(n))}<span>${esc(n)}${ex ? " · rozehráno" : ""}</span></button>`; }).join("")}</div>` : `<p class="ch-empty">Zatím nikdo další nemá chat povolený.</p>`);
     return;
   }
   if (S.pick){
@@ -819,7 +869,7 @@ function renderHead(){
   h.className = "ch-th" + (t && t.typ === "hlidka" ? " " + (t.kind === "N" ? "N" : "D") : "");
   h.innerHTML = `<div class="ch-side l"><button type="button" class="ch-back" data-chback aria-label="Zpět na seznam chatů"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></div>
     <div class="ch-tb${hav ? " av" : ""}">${hav}<span><b>${esc(t && t.typ === "hlidka" && !S.two ? hTitle(t, true) : titleOf(tid, t))}</b>${sub === null ? `<small id="chPeer" class="${peerLine() === "online" ? "on" : ""}">${esc(peerLine())}</small>` : `<small>${esc(sub)}</small>`}</span></div>
-    <div class="ch-side r">${PK_ON() && peer && tid !== "vsichni" ? `<button type="button" class="ch-ib pk" data-chgames="${esc(peer)}" aria-label="Hry s ${esc(nameOf(peer))}" title="Hry – piškvorky a lodě">${PK_ICO(26)}</button>` : ""}<button type="button" class="ch-ib${S.searchOn ? " on" : ""}" data-chsearch aria-label="Hledat ve vlákně" title="Hledat"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
+    <div class="ch-side r">${PK_ON() && peer && tid !== "vsichni" ? `<button type="button" class="ch-ib pk" data-chgames="${esc(peer)}" aria-label="Hry s ${esc(nameOf(peer))}" title="Hry – piškvorky, lodě, pexeso, šachy">${PK_ICO(26)}</button>` : ""}<button type="button" class="ch-ib${S.searchOn ? " on" : ""}" data-chsearch aria-label="Hledat ve vlákně" title="Hledat"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></button>
     ${O.desk ? `<button type="button" class="ch-x" data-chclose aria-label="Zavřít chat">✕</button>` : ""}</div>${progHTML(t) ? `<div class="ch-thp">${progHTML(t)}</div>` : ""}`;
   const pb = $("chPinBox");
   if (pb) pb.innerHTML = t && t.pinned ? `<div class="ch-pin">${ic(ICO.pin, 18)}<button type="button" data-chgo="${esc(t.pinned.id)}"><b>${esc(surname(t.pinned.jmeno || ""))}:</b> ${esc(t.pinned.text || "fotka")}</button><button type="button" class="ch-unpin" data-chunpin aria-label="Odepnout">✕</button></div>` : "";
@@ -881,8 +931,8 @@ function renderMsgs(autoscroll, keepScroll){
       const show = imgs.slice(0, 4), more = imgs.length - show.length;
       pics = `<div class="ch-grid n${Math.min(imgs.length, 4)}">${show.map((x, i) => `<button type="button" data-chgal="${m.id}" data-i="${i}" aria-label="Fotka ${i + 1} z ${imgs.length}"><img src="${x.image}" alt="" loading="lazy">${i === 3 && more > 0 ? `<span class="more">+${more}</span>` : ""}</button>`).join("")}</div>`;
     }
-    const isPk = !!((m.hra || m.lode) && !m.smazano);
-    const body = isPk ? (m.lode ? ldoCardHTML(m.lode, m) : pkCardHTML(m.hra, m)) : allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.preposlano ? `<span class="ch-fwd">${ic(ICO.fwd, 14)}Přeposláno od ${esc(m.preposlano.jmeno || "")}</span>` : ""}${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.text && !m.smazano ? linkify(m.text) : ""}`;
+    const isPk = !!((m.hra || m.lode || m.pexeso || m.sachy) && !m.smazano);
+    const body = isPk ? (m.lode ? ldoCardHTML(m.lode, m) : m.pexeso ? pxCardHTML(m.pexeso, m) : m.sachy ? shCardHTML(m.sachy, m) : pkCardHTML(m.hra, m)) : allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.preposlano ? `<span class="ch-fwd">${ic(ICO.fwd, 14)}Přeposláno od ${esc(m.preposlano.jmeno || "")}</span>` : ""}${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.text && !m.smazano ? linkify(m.text) : ""}`;
     html += `<div class="ch-m${mine ? " mine" : ""}${hit ? " hit" : ""}${isPk ? " pk" : ""}" data-mid="${m.id}">${group && !mine && lastFrom !== m.od ? `<span class="ch-who">${esc(m.jmeno || nameOf(m.od))}</span>` : ""}
       <div class="ch-bub">${body}<div class="ch-meta">${imgs.length > 1 ? `${imgs.length} ${imgs.length < 5 ? "fotky" : "fotek"} · ` : ""}${m.upraveno && !m.smazano ? "upraveno · " : ""}${hm(ms(lastM.at))}</div></div>${rx ? `<div class="ch-rx">${rx}</div>` : ""}${allDel ? "" : `<button type="button" class="ch-more" data-chmore="${m.id}" aria-label="Možnosti zprávy">⋯</button>`}</div>`;
     const stM = it.list.includes(lastMine) ? lastMine : (mine && it.list.some(x => x.id === S.infoMid) ? lastM : null);
@@ -1285,6 +1335,11 @@ function bind(root){
     const ldd = c("[data-chlddm]"); if (ldd){ S.pickHra = false; ldoChallenge(ldd.dataset.chlddm); return; }
     if (c("[data-chldpick]")){ S.pickHra = "ld"; S.pkView = true; renderList(); $("chList").scrollTop = 0; return; }
     const gms = c("[data-chgames]"); if (gms){ openGameSheet(gms.dataset.chgames); return; }
+    const hgo = c("[data-chhg]"); if (hgo){ const [k, id] = hgo.dataset.chhg.split(":"); (k === "px" ? pxOpen : shOpen)(id); return; }
+    const gdm = c("[data-chgdm]"); if (gdm){ S.pickHra = false; hgChallenge(gdm.dataset.chgdm, gdm.dataset.c); return; }
+    const gpk = c("[data-chgpick]"); if (gpk){ S.pickHra = gpk.dataset.chgpick; S.pkView = true; renderList(); $("chList").scrollTop = 0; return; }
+    if (c("[data-chpxai]")){ pxOpenAI(); return; }
+    if (c("[data-chshai]")){ shOpenAI(); return; }
     if (c("[data-charch]")){ S.archive = true; renderList(); $("chList").scrollTop = 0; return; }
     if (c("[data-chnew]")){ S.pick = true; renderList(); return; }
     const pkd = c("[data-chpkdm]"); if (pkd){ S.pickHra = false; pkChallenge(pkd.dataset.chpkdm); return; }
@@ -1333,6 +1388,8 @@ function bind(root){
   document.addEventListener("keydown", e => {
     if (e.key === "Escape" && $("pkOv")){ pkClose(); return; }
     if (e.key === "Escape" && $("ldOv")){ ldClose(); return; }
+    if (e.key === "Escape" && $("pxOv")){ pxClose(); return; }
+    if (e.key === "Escape" && $("shOv")){ if (S.shPromo){ S.shPromo = null; shRender(); return; } shClose(); return; }
     if (e.key !== "Escape" || !S || !S.open) return;
     if (document.querySelector(".ch-view")){ document.querySelector(".ch-view").remove(); return; }
     if (document.querySelector(".ch-sheet")){ closeSheet(); return; }
@@ -2158,13 +2215,613 @@ function openGameSheet(peer){
   s.innerHTML = `<div role="dialog" aria-label="Hry"><h3>Hra s ${esc(nameOf(peer))}</h3>
     <button type="button" class="ch-act" data-chg="pk"><span style="font-size:20px;width:22px;text-align:center">✕</span><span>Piškvorky<small>${pk ? "rozehraná hra – otevřít" : "plocha 15×15, pět v řadě"}</small></span></button>
     <button type="button" class="ch-act" data-chg="ld"><span style="font-size:20px;width:22px;text-align:center">⚓</span><span>Lodě<small>${ld ? "rozehraná hra – otevřít" : "plocha 10×10, 5 lodí"}</small></span></button>
+    <button type="button" class="ch-act" data-chg="px"><span style="font-size:20px;width:22px;text-align:center">🃏</span><span>Pexeso<small>${hgWith("px", peer) ? "rozehraná hra – otevřít" : "18 párů, kdo najde víc"}</small></span></button>
+    <button type="button" class="ch-act" data-chg="sh"><span style="font-size:22px;width:22px;text-align:center;font-family:'DejaVu Sans','Segoe UI Symbol',sans-serif">♞</span><span>Šachy<small>${hgWith("sh", peer) ? "rozehraná hra – otevřít" : "klasická pravidla, vyzývající hraje bílými"}</small></span></button>
     <button type="button" class="ch-act" data-chg="x">${ic(ICO.close)}Zavřít</button></div>`;
   s.addEventListener("click", e => {
     if (e.target === s){ closeSheet(); return; }
     const a = e.target.closest("[data-chg]"); if (!a) return; closeSheet();
-    if (a.dataset.chg === "pk") pkChallenge(peer); else if (a.dataset.chg === "ld") ldoChallenge(peer);
+    if (a.dataset.chg === "pk") pkChallenge(peer); else if (a.dataset.chg === "ld") ldoChallenge(peer); else if (a.dataset.chg === "px" || a.dataset.chg === "sh") hgChallenge(a.dataset.chg, peer);
   });
   document.body.appendChild(s);
+}
+
+/* ================= šachy – pravidla =================
+   Plocha: pole 64 znaků, index 0 = a8 … 63 = h1. Bílé figury velkými (PNBRQK), černé malými, prázdné „.“.
+   Stav: {b, w (bílý na tahu), c (rošády „KQkq“), ep (pole pro braní mimochodem, -1), h (půltahy pro pravidlo 50 tahů), f (číslo tahu)} */
+const SH_START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const shSq = n => (8 - +n[1]) * 8 + "abcdefgh".indexOf(n[0]);
+const shName = i => "abcdefgh"[i & 7] + (8 - (i >> 3));
+const shIsW = p => p !== "." && p === p.toUpperCase();
+function shParse(fen){
+  const [p, t, c, e, h, f] = (fen || SH_START).split(" "), b = [];
+  for (const ch of p){ if (ch === "/") continue; if (ch >= "1" && ch <= "8") for (let i = 0; i < +ch; i++) b.push("."); else b.push(ch); }
+  return {b, w:t === "w", c:c === "-" ? "" : c, ep:e && e !== "-" ? shSq(e) : -1, h:+h || 0, f:+f || 1};
+}
+function shFen(s){
+  let o = "";
+  for (let r = 0; r < 8; r++){ let n = 0;
+    for (let c = 0; c < 8; c++){ const p = s.b[r * 8 + c]; if (p === "."){ n++; continue; } if (n){ o += n; n = 0; } o += p; }
+    if (n) o += n; if (r < 7) o += "/"; }
+  return `${o} ${s.w ? "w" : "b"} ${s.c || "-"} ${s.ep >= 0 ? shName(s.ep) : "-"} ${s.h} ${s.f}`;
+}
+const shKey = fen => fen.split(" ").slice(0, 4).join(" "); // pozice pro opakování
+const SH_N = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+const SH_K = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+const SH_D = [[-1,-1],[-1,1],[1,-1],[1,1]], SH_O = [[-1,0],[1,0],[0,-1],[0,1]];
+// je pole i napadené stranou byW?
+function shAttacked(b, i, byW){
+  const r = i >> 3, c = i & 7, at = (rr, cc) => rr >= 0 && rr < 8 && cc >= 0 && cc < 8 ? b[rr * 8 + cc] : null;
+  const P = byW ? "P" : "p", N = byW ? "N" : "n", K = byW ? "K" : "k", B = byW ? "B" : "b", R = byW ? "R" : "r", Q = byW ? "Q" : "q";
+  const pr = byW ? r + 1 : r - 1;
+  if (at(pr, c - 1) === P || at(pr, c + 1) === P) return true;
+  for (const [dr, dc] of SH_N) if (at(r + dr, c + dc) === N) return true;
+  for (const [dr, dc] of SH_K) if (at(r + dr, c + dc) === K) return true;
+  for (const [dr, dc] of SH_D){ let rr = r + dr, cc = c + dc, x; while ((x = at(rr, cc)) !== null){ if (x !== "."){ if (x === B || x === Q) return true; break; } rr += dr; cc += dc; } }
+  for (const [dr, dc] of SH_O){ let rr = r + dr, cc = c + dc, x; while ((x = at(rr, cc)) !== null){ if (x !== "."){ if (x === R || x === Q) return true; break; } rr += dr; cc += dc; } }
+  return false;
+}
+const shKing = (b, w) => b.indexOf(w ? "K" : "k");
+const shInCheck = s => shAttacked(s.b, shKing(s.b, s.w), !s.w);
+// pseudolegální tahy {f, t, p, x, pr, ep, ro}
+function shPseudo(s){
+  const b = s.b, w = s.w, out = [], own = p => p !== "." && shIsW(p) === w, foe = p => p !== "." && shIsW(p) !== w;
+  const add = (f, t, extra) => out.push(Object.assign({f, t, p:b[f], x:b[t]}, extra || {}));
+  for (let f = 0; f < 64; f++){
+    const p = b[f]; if (!own(p)) continue;
+    const r = f >> 3, c = f & 7, u = p.toUpperCase();
+    if (u === "P"){
+      const d = w ? -1 : 1, r1 = r + d, last = w ? 0 : 7, home = w ? 6 : 1;
+      const push = (t, ex) => { if ((t >> 3) === last) for (const q of "QRBN") add(f, t, Object.assign({pr:w ? q : q.toLowerCase()}, ex)); else add(f, t, ex); };
+      if (r1 >= 0 && r1 < 8 && b[r1 * 8 + c] === "."){ push(r1 * 8 + c);
+        if (r === home && b[(r + 2 * d) * 8 + c] === ".") add(f, (r + 2 * d) * 8 + c); }
+      for (const dc of [-1, 1]){ const cc = c + dc; if (cc < 0 || cc > 7 || r1 < 0 || r1 > 7) continue; const t = r1 * 8 + cc;
+        if (foe(b[t])) push(t); else if (t === s.ep) add(f, t, {ep:true, x:w ? "p" : "P"}); }
+    } else if (u === "N" || u === "K"){
+      for (const [dr, dc] of (u === "N" ? SH_N : SH_K)){ const rr = r + dr, cc = c + dc; if (rr < 0 || rr > 7 || cc < 0 || cc > 7) continue; const t = rr * 8 + cc; if (!own(b[t])) add(f, t); }
+      if (u === "K"){
+        const cs = s.c, row = w ? 7 : 0, k = row * 8 + 4;
+        if (f === k && !shAttacked(b, k, !w)){
+          if (cs.includes(w ? "K" : "k") && b[k + 1] === "." && b[k + 2] === "." && b[k + 3] === (w ? "R" : "r") && !shAttacked(b, k + 1, !w) && !shAttacked(b, k + 2, !w)) add(f, k + 2, {ro:"K"});
+          if (cs.includes(w ? "Q" : "q") && b[k - 1] === "." && b[k - 2] === "." && b[k - 3] === "." && b[k - 4] === (w ? "R" : "r") && !shAttacked(b, k - 1, !w) && !shAttacked(b, k - 2, !w)) add(f, k - 2, {ro:"Q"});
+        }
+      }
+    } else {
+      const dirs = u === "B" ? SH_D : u === "R" ? SH_O : SH_D.concat(SH_O);
+      for (const [dr, dc] of dirs){ let rr = r + dr, cc = c + dc;
+        while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8){ const t = rr * 8 + cc; if (own(b[t])) break; add(f, t); if (b[t] !== ".") break; rr += dr; cc += dc; } }
+    }
+  }
+  return out;
+}
+function shMake(s, m){
+  const b = s.b.slice(), w = s.w;
+  b[m.t] = m.pr || m.p; b[m.f] = ".";
+  if (m.ep) b[m.t + (w ? 8 : -8)] = ".";
+  if (m.ro){ const row = w ? 7 : 0; if (m.ro === "K"){ b[row * 8 + 5] = b[row * 8 + 7]; b[row * 8 + 7] = "."; } else { b[row * 8 + 3] = b[row * 8]; b[row * 8] = "."; } }
+  let c = s.c;
+  const lose = (i, ch) => { if (m.f === i || m.t === i) c = c.replace(ch, ""); };
+  if (m.p === "K") c = c.replace("K", "").replace("Q", ""); if (m.p === "k") c = c.replace("k", "").replace("q", "");
+  lose(63, "K"); lose(56, "Q"); lose(7, "k"); lose(0, "q");
+  const u = m.p.toUpperCase();
+  const ep = u === "P" && Math.abs(m.t - m.f) === 16 ? (m.f + m.t) / 2 : -1;
+  return {b, w:!w, c, ep, h:u === "P" || m.x !== "." ? 0 : s.h + 1, f:s.f + (w ? 0 : 1)};
+}
+function shLegal(s){ return shPseudo(s).filter(m => { const n = shMake(s, m); return !shAttacked(n.b, shKing(n.b, s.w), !s.w); }); }
+// konec hry: {typ:"mat"|"pat"|"material"|"50"|"opakovani", vitez:"w"|"b"|null}
+function shEnd(s, poz){
+  if (!shLegal(s).length) return shInCheck(s) ? {typ:"mat", vitez:s.w ? "b" : "w"} : {typ:"pat", vitez:null};
+  const fig = s.b.filter(p => p !== "." && p.toUpperCase() !== "K");
+  if (!fig.length || (fig.length === 1 && "NBnb".includes(fig[0]))) return {typ:"material", vitez:null};
+  if (s.h >= 100) return {typ:"50", vitez:null};
+  if (poz && poz.length){ const k = poz[poz.length - 1]; if (poz.filter(x => x === k).length >= 3) return {typ:"opakovani", vitez:null}; }
+  return null;
+}
+// česká notace: K král, D dáma, V věž, S střelec, J jezdec
+const SH_CZ = {K:"K", Q:"D", R:"V", B:"S", N:"J", P:""};
+function shSan(s, m, all){
+  if (m.ro) return m.ro === "K" ? "O-O" : "O-O-O";
+  const u = m.p.toUpperCase(); let o = SH_CZ[u];
+  if (u === "P"){ if (m.x !== ".") o += shName(m.f)[0]; }
+  else { const same = (all || shLegal(s)).filter(x => x !== m && x.p === m.p && x.t === m.t && x.f !== m.f);
+    if (same.length){ const fc = same.some(x => (x.f & 7) === (m.f & 7)), fr = same.some(x => (x.f >> 3) === (m.f >> 3));
+      o += !fc ? shName(m.f)[0] : !fr ? shName(m.f)[1] : shName(m.f); } }
+  if (m.x !== ".") o += "×";
+  o += shName(m.t);
+  if (m.pr) o += "=" + SH_CZ[m.pr.toUpperCase()];
+  const n = shMake(s, m);
+  if (shInCheck(n)) o += shLegal(n).length ? "+" : "#";
+  return o;
+}
+/* --- počítač: alfa-beta s hodnocením materiálu a pozice --- */
+const SH_V = {P:100, N:320, B:330, R:500, Q:900, K:0};
+const SH_PST = { // z pohledu bílého, index 0 = a8
+  P:[0,0,0,0,0,0,0,0, 50,50,50,50,50,50,50,50, 10,10,20,30,30,20,10,10, 5,5,10,25,25,10,5,5, 0,0,0,20,20,0,0,0, 5,-5,-10,0,0,-10,-5,5, 5,10,10,-20,-20,10,10,5, 0,0,0,0,0,0,0,0],
+  N:[-50,-40,-30,-30,-30,-30,-40,-50, -40,-20,0,0,0,0,-20,-40, -30,0,10,15,15,10,0,-30, -30,5,15,20,20,15,5,-30, -30,0,15,20,20,15,0,-30, -30,5,10,15,15,10,5,-30, -40,-20,0,5,5,0,-20,-40, -50,-40,-30,-30,-30,-30,-40,-50],
+  B:[-20,-10,-10,-10,-10,-10,-10,-20, -10,0,0,0,0,0,0,-10, -10,0,5,10,10,5,0,-10, -10,5,5,10,10,5,5,-10, -10,0,10,10,10,10,0,-10, -10,10,10,10,10,10,10,-10, -10,5,0,0,0,0,5,-10, -20,-10,-10,-10,-10,-10,-10,-20],
+  R:[0,0,0,0,0,0,0,0, 5,10,10,10,10,10,10,5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, -5,0,0,0,0,0,0,-5, 0,0,0,5,5,0,0,0],
+  Q:[-20,-10,-10,-5,-5,-10,-10,-20, -10,0,0,0,0,0,0,-10, -10,0,5,5,5,5,0,-10, -5,0,5,5,5,5,0,-5, 0,0,5,5,5,5,0,-5, -10,5,5,5,5,5,0,-10, -10,0,5,0,0,0,0,-10, -20,-10,-10,-5,-5,-10,-10,-20],
+  K:[-30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -30,-40,-40,-50,-50,-40,-40,-30, -20,-30,-30,-40,-40,-30,-30,-20, -10,-20,-20,-20,-20,-20,-20,-10, 20,20,0,0,0,0,20,20, 20,30,10,0,0,10,30,20]
+};
+function shEval(s){ // kladné = dobré pro stranu na tahu
+  let v = 0;
+  for (let i = 0; i < 64; i++){ const p = s.b[i]; if (p === ".") continue; const u = p.toUpperCase(), wh = p === u;
+    const x = SH_V[u] + SH_PST[u][wh ? i : (7 - (i >> 3)) * 8 + (i & 7)]; v += wh ? x : -x; }
+  return s.w ? v : -v;
+}
+const shOrder = ms => ms.sort((a, b) => ((b.x !== "." ? SH_V[b.x.toUpperCase()] * 10 - SH_V[b.p.toUpperCase()] : 0) + (b.pr ? 800 : 0)) - ((a.x !== "." ? SH_V[a.x.toUpperCase()] * 10 - SH_V[a.p.toUpperCase()] : 0) + (a.pr ? 800 : 0)));
+function shQ(s, al, be, d){
+  const st = shEval(s); if (st >= be) return be; if (st > al) al = st; if (d <= 0) return al;
+  for (const m of shOrder(shLegal(s).filter(m => m.x !== "." || m.pr))){ const v = -shQ(shMake(s, m), -be, -al, d - 1); if (v >= be) return be; if (v > al) al = v; }
+  return al;
+}
+function shSearch(s, d, al, be, qd, cnt){
+  if (cnt.n++ > cnt.max) return shEval(s);
+  const ms = shLegal(s);
+  if (!ms.length) return shInCheck(s) ? -100000 - d : 0;
+  if (d <= 0) return qd ? shQ(s, al, be, qd) : shEval(s);
+  for (const m of shOrder(ms)){ const v = -shSearch(shMake(s, m), d - 1, -be, -al, qd, cnt); if (v >= be) return be; if (v > al) al = v; }
+  return al;
+}
+// lvl 1 lehká, 2 střední, 3 těžká
+function shAI(s, lvl){
+  const ms = shOrder(shLegal(s)); if (!ms.length) return null;
+  const d = lvl === 1 ? 1 : lvl === 2 ? 2 : 3, qd = lvl === 1 ? 0 : lvl === 2 ? 2 : 4, noise = lvl === 1 ? 120 : lvl === 2 ? 25 : 4;
+  const cnt = {n:0, max:lvl === 3 ? 60000 : 20000};
+  let best = null, bv = -Infinity;
+  for (const m of ms){
+    const v = -shSearch(shMake(s, m), d - 1, -Infinity, Infinity, qd, cnt) + Math.random() * noise;
+    if (v > bv){ bv = v; best = m; }
+  }
+  return best;
+}
+
+/* ================= společné pro hry s kolegou (pexeso, šachy) ================= */
+const HG = {
+  px:{col:"pexeso", key:"pexG", nazev:"Pexeso", ico:"🃏", msg:"pexeso", pref:"pex:"},
+  sh:{col:"sachy", key:"sachG", nazev:"Šachy", ico:"♞", msg:"sachy", pref:"sach:"}
+};
+const hgMe = () => String(O.me);
+const hgOpp = g => (g.hraci || []).map(String).find(c => c !== hgMe()) || "";
+const hgMyTurn = g => !!g && g.faze === "hra" && String(g.tah) === hgMe();
+const hgGames = k => S[HG[k].key] || {};
+function hgActive(k){ return Object.entries(hgGames(k)).filter(([, g]) => g.faze !== "konec").sort((a, b) => (hgMyTurn(b[1]) - hgMyTurn(a[1])) || ms(b[1].zmeneno) - ms(a[1].zmeneno)); }
+function hgDone(k){ return Object.entries(hgGames(k)).filter(([, g]) => g.faze === "konec").sort((a, b) => ms(b[1].zmeneno) - ms(a[1].zmeneno)); }
+const hgWith = (k, peer) => hgActive(k).find(([, g]) => hgOpp(g) === String(peer));
+const hgTurnCount = k => PK_ON() ? Object.values(hgGames(k)).filter(g => hgMyTurn(g) || (g.faze === "hra" && g.remiza && String(g.remiza) !== hgMe())).length : 0;
+const hgRes = g => g.vitez == null ? "r" : String(g.vitez) === hgMe() ? "v" : "p";
+async function hgChallenge(k, peer, odveta){
+  peer = String(peer);
+  const ex = hgWith(k, peer); if (ex){ (k === "px" ? pxOpen : shOpen)(ex[0]); return; }
+  const H = HG[k], tid = dmId(O.me, peer), ref = O.db.collection(H.col).doc(), fv = FV(), me = hgMe();
+  const first = odveta ? peer : me; // odveta: začíná (u šachů bílými hraje) druhý hráč
+  const base = {hraci:[me, peer], jmena:{[me]:meName(), [peer]:nameOf(peer)}, vlakno:tid, faze:"hra", tah:first, vitez:null, ...(odveta ? {odveta} : {}), vytvoreno:fv.serverTimestamp(), zmeneno:fv.serverTimestamp()};
+  const g = k === "px" ? {...base, zacina:first, pary:{[me]:0, [peer]:0}, nalezeno:{}, prvni:null, posledni:null, tahu:0}
+    : {...base, bily:first, fen:SH_START, tahy:[], pozice:[shKey(SH_START)], posledni:null, pocet:0, vysledek:null, remiza:null};
+  try {
+    await ref.set(g);
+    S[H.key] = {...hgGames(k), [ref.id]:{...g, vytvoreno:now(), zmeneno:now()}};
+    await writeMsg({text:`${H.ico} ${odveta ? `Odveta – ${H.nazev.toLowerCase()}!` : `Vyzývám tě na ${k === "px" ? "pexeso" : "šachy"}`}`, [H.msg]:ref.id}, tid);
+    if (!odveta) CH.openThread(tid);
+    (k === "px" ? pxOpen : shOpen)(ref.id);
+  } catch (e){ toast(e.code === "permission-denied" ? "Hru nejde založit – chybí pravidla Firestore pro tuto hru." : "Výzvu se nepodařilo odeslat."); }
+}
+async function hgResign(k, id){
+  const g = hgGames(k)[id]; if (!g || g.faze === "konec") return;
+  if (!confirm("Opravdu hru vzdát?")) return;
+  try { await O.db.collection(HG[k].col).doc(id).update({faze:"konec", vitez:hgOpp(g), vzdal:hgMe(), tah:null, zmeneno:FV().serverTimestamp()}); }
+  catch (e){ toast("Nepodařilo se uložit."); }
+}
+function hgHubRows(k, status){
+  return hgActive(k).map(([id, g]) => `<button type="button" class="pk-row" data-chhg="${k}:${esc(id)}"><span>${HG[k].ico} vs <b>${esc(shortName(nameOf(hgOpp(g))))}</b></span>${hgMyTurn(g) ? `<em>Jsi na tahu</em>` : g.remiza && String(g.remiza) !== hgMe() ? `<em>Nabídka remízy</em>` : `<small>${esc(status(g))}</small>`}</button>`).join("");
+}
+function hgHubStats(k, extra){
+  const per = {};
+  hgDone(k).forEach(([, g]) => { const op = hgOpp(g), x = per[op] = per[op] || {v:0, p:0, r:0, n:0, s:0}; x[hgRes(g)]++; x.n++; if (extra) x.s += extra(g); });
+  const rows = Object.entries(per).sort((a, b) => b[1].n - a[1].n);
+  return rows.length ? `<div class="pk-stat">${rows.map(([c, x]) => `<div class="pk-sr"><span>${HG[k].ico} ${esc(shortName(nameOf(c)))}</span><span><b class="pk-sv">${x.v}</b> : <b class="pk-sp">${x.p}</b>${x.r ? ` <small>· remízy ${x.r}</small>` : ""}${extra ? ` <small>· průměr ${String(Math.round(x.s / x.n * 10) / 10).replace(".", ",")} páru</small>` : ""}</span></div>`).join("")}</div>` : `<p class="ch-empty">Zatím žádná dohraná hra s kolegou.</p>`;
+}
+function hgAIStats(k, bl){
+  const levels = [1, 2, 3].filter(l => bl[l] && (bl[l].v + bl[l].p + (bl[l].r || 0)));
+  return levels.length ? `<div class="pk-stat">${levels.map(l => `<div class="pk-sr"><span>🖥️ ${PK_LVL[l]}</span><span><b class="pk-sv">${bl[l].v}</b> : <b class="pk-sp">${bl[l].p}</b>${bl[l].r ? ` <small>· remízy ${bl[l].r}</small>` : ""}</span></div>`).join("")}</div>` : `<p class="ch-empty">Zatím žádná dohraná hra.</p>`;
+}
+function hgHist(k, hist, rowOnline, rowAI){
+  const all = [...hgDone(k).map(([id, g]) => ({at:ms(g.zmeneno), html:rowOnline(id, g)})), ...(hist || []).map(h => ({at:h.at, html:rowAI(h)}))].sort((a, b) => b.at - a.at).slice(0, 40);
+  return all.length ? `<div class="pk-hist">${all.map(x => x.html).join("")}</div>` : `<p class="ch-empty">Zatím žádné.</p>`;
+}
+const HG_RES = {v:"Výhra", p:"Prohra", r:"Remíza"};
+function hgMount(idv, label, onClick){
+  if ($(idv)) return $(idv);
+  const v = document.createElement("div"); v.className = "pk-ov" + (O.desk ? " desk" : ""); v.id = idv;
+  v.setAttribute("role", "dialog"); v.setAttribute("aria-label", label);
+  document.body.appendChild(v); v.addEventListener("click", onClick);
+  return v;
+}
+const hgTop = (t, n) => `<div class="pk-top"><button type="button" class="pk-back" data-hgx aria-label="Zavřít hru">‹</button><b>${t}</b><span class="pk-n">${n || ""}</span></div>`;
+
+/* ================= pexeso =================
+   36 karet = 18 párů. S kolegou: rozložení zná jen server (pexesoKarty/{id}); hráč zapíše otoc{od,i},
+   server kartu odhalí (prvni / posledni / nalezeno). Proti počítači vše v telefonu (localStorage „pxAI“). */
+const PX_E = ["🚓","👮","🚨","🔦","📻","🗝️","🚔","🦺","⛑️","🧭","📟","🚲","🐕","🔒","📸","🚦","🧯","🏍️"];
+const PX_N = 36, PX_P = 18;
+function pxDeal(){ const a = []; for (let i = 0; i < PX_P; i++) a.push(i, i); for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const pxPairsTxt = n => `${n} ${n === 1 ? "pár" : n >= 2 && n <= 4 ? "páry" : "párů"}`;
+function pxAIload(){ try { return JSON.parse(localStorage.getItem("pxAI") || "null"); } catch (e){ return null; } }
+function pxAIsave(g){ try { localStorage.setItem("pxAI", JSON.stringify(g)); } catch (e){} }
+function pxAInew(lvl){ const o = pxAIload() || {}, zac = o.zacina === "ty" ? "pc" : "ty";
+  return {karty:pxDeal(), nal:{}, prvni:null, tah:zac, zacina:zac, pary:{ty:0, pc:0}, mem:{}, lvl:lvl || o.lvl || 2, faze:"hra", tahu:0, posledni:null, bl:o.bl || {}, hist:o.hist || []}; }
+const PX_MEM = {1:.25, 2:.6, 3:1};
+function pxSee(g, i){ if (Math.random() < PX_MEM[g.lvl]) g.mem[i] = g.karty[i]; }
+function pxAIrec(g, r){ const L = g.bl[g.lvl] = g.bl[g.lvl] || {v:0, p:0, r:0}; L[r]++; g.hist.unshift({at:Date.now(), lvl:g.lvl, r, ty:g.pary.ty, pc:g.pary.pc}); g.hist = g.hist.slice(0, 40); }
+function pxAIend(g){
+  if (g.pary.ty + g.pary.pc < PX_P) return false;
+  g.faze = "konec"; g.vitez = g.pary.ty > g.pary.pc ? "ty" : g.pary.pc > g.pary.ty ? "pc" : null;
+  pxAIrec(g, g.vitez === "ty" ? "v" : g.vitez === "pc" ? "p" : "r"); return true;
+}
+// vyhodnocení dvojice (ty i počítač)
+function pxAIpair(g, who, i, j, done){
+  const a = g.karty[i], b = g.karty[j], hit = a === b;
+  S.pxShow = {i, j, a, b}; g.tahu++; g.posledni = {od:who, i, j, a, b, shoda:hit}; pxRender();
+  setTimeout(() => {
+    if (S.px !== g) return;
+    S.pxShow = null; g.prvni = null;
+    if (hit){ g.nal[i] = who; g.nal[j] = who; g.pary[who]++; delete g.mem[i]; delete g.mem[j]; }
+    else g.tah = who === "ty" ? "pc" : "ty";
+    const end = pxAIend(g); pxAIsave(g); pxRender();
+    if (!end) done(hit);
+  }, hit ? 700 : 1400);
+}
+function pxAIclick(i){
+  const g = S.px; if (g.faze !== "hra" || g.tah !== "ty" || S.pxBusy || S.pxShow || g.nal[i] != null || g.prvni === i) return;
+  pxSee(g, i);
+  if (g.prvni == null){ g.prvni = i; pxAIsave(g); pxRender(); return; }
+  S.pxBusy = true;
+  pxAIpair(g, "ty", g.prvni, i, () => { S.pxBusy = false; if (g.tah === "pc") pxPcTurn(); else pxRender(); });
+}
+function pxPcTurn(){
+  const g = S.px; if (!g || g.faze !== "hra" || g.tah !== "pc") return;
+  S.pxBusy = true; pxRender();
+  const open = [...Array(PX_N).keys()].filter(i => g.nal[i] == null);
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  setTimeout(() => {
+    if (S.px !== g) return;
+    const known = {}; let pair = null;
+    Object.entries(g.mem).forEach(([i, v]) => { i = +i; if (g.nal[i] != null) return; if (known[v] != null && !pair) pair = [known[v], i]; else known[v] = i; });
+    const unknown = open.filter(i => g.mem[i] == null);
+    const i = pair ? pair[0] : pick(unknown.length ? unknown : open);
+    g.prvni = i; pxSee(g, i); pxRender();
+    setTimeout(() => {
+      if (S.px !== g) return;
+      const v = g.karty[i];
+      const m = Object.entries(g.mem).find(([k, x]) => +k !== i && x === v && g.nal[+k] == null);
+      const rest = open.filter(k => k !== i && g.mem[k] == null), rest2 = open.filter(k => k !== i);
+      const j = m ? +m[0] : pick(rest.length ? rest : rest2);
+      pxSee(g, j);
+      pxAIpair(g, "pc", i, j, hit => { if (hit) pxPcTurn(); else { S.pxBusy = false; pxRender(); } });
+    }, 750);
+  }, 650);
+}
+/* s kolegem */
+function pxStatus(g){
+  const p = surname(nameOf(hgOpp(g))), me = hgMe(), a = (g.pary || {})[me] || 0, b = (g.pary || {})[hgOpp(g)] || 0;
+  if (g.faze === "konec"){
+    if (g.vzdal) return String(g.vzdal) === me ? "Vzdal jsi" : `${p} to vzdal – vyhrál jsi`;
+    return g.vitez == null ? `Remíza ${a} : ${b}` : String(g.vitez) === me ? `Vyhrál jsi ${a} : ${b}! 🏆` : `Vyhrál ${p} ${b} : ${a}`;
+  }
+  return hgMyTurn(g) ? (g.prvni ? "Otoč druhou kartu" : "Jsi na tahu – otoč dvě karty") : `Na tahu je ${p}`;
+}
+async function pxFlip(i){
+  const id = S.px.online, g = hgGames("px")[id]; if (!hgMyTurn(g) || S.pxBusy || S.pxShow) return;
+  if ((g.nalezeno || {})[i] || (g.prvni && g.prvni.i === i)) return;
+  S.pxBusy = true; S.pxWait = i; pxRender();
+  try { await O.db.collection("pexeso").doc(id).update({otoc:{od:hgMe(), i, at:Date.now()}, zmeneno:FV().serverTimestamp()}); }
+  catch (e){ S.pxBusy = false; S.pxWait = null; S.pxMsg = "Kartu se nepodařilo otočit."; pxRender(); return; }
+  clearTimeout(S.pxT); S.pxT = setTimeout(() => { if (S.pxBusy){ S.pxBusy = false; S.pxWait = null; S.pxMsg = "Server zatím neodpověděl – zkus to za chvíli znovu."; pxRender(); } }, 20000);
+}
+function pxOnUpdate(){
+  const P = S.px; if (!P || !P.online) return;
+  const g = hgGames("px")[P.online]; if (!g) return;
+  if (S.pxBusy && !g.otoc){ S.pxBusy = false; S.pxWait = null; clearTimeout(S.pxT); }
+  const L = g.posledni;
+  if (L && L.at && L.at !== P.seenAt){
+    const first = P.seenAt == null; P.seenAt = L.at;
+    if (!first && !L.shoda){ S.pxShow = {i:L.i, j:L.j, a:L.a, b:L.b}; clearTimeout(S.pxShowT); S.pxShowT = setTimeout(() => { S.pxShow = null; pxRender(); }, 1800); }
+    const kdo = String(L.od) === hgMe() ? "Ty" : surname(nameOf(L.od));
+    S.pxMsg = `${kdo}: ${PX_E[L.a]} a ${PX_E[L.b]} – ${L.shoda ? "pár! " + (String(L.od) === hgMe() ? "Hraješ znovu." : "Hraje znovu.") : "nepasují."}`;
+  }
+  pxRender();
+}
+function pxOpen(id){
+  S.px = {online:id, seenAt:null}; S.pxShow = null; S.pxBusy = false; S.pxMsg = "";
+  hgMount("pxOv", "Pexeso", pxClick); pxOnUpdate(); pxRender(); hraBeat();
+}
+function pxOpenAI(){
+  let g = pxAIload(); if (!g || g.faze !== "hra" || !g.karty) g = pxAInew(); pxAIsave(g);
+  S.px = g; S.pxShow = null; S.pxBusy = false; S.pxMsg = "";
+  hgMount("pxOv", "Pexeso", pxClick); pxRender();
+  if (g.tah === "pc") pxPcTurn();
+}
+function pxClose(){ const v = $("pxOv"); if (v) v.remove(); S.px = null; S.pxBusy = false; S.pxShow = null; clearTimeout(S.pxT); hraBeat(); if (S.open && S.view === "list") renderList(); }
+function pxClick(e){
+  const c = x => e.target.closest(x), P = S.px; if (!P) return;
+  if (c("[data-hgx]")){ pxClose(); return; }
+  const card = c("[data-pxi]"); if (card){ const i = +card.dataset.pxi; if (P.online) pxFlip(i); else pxAIclick(i); return; }
+  if (c("[data-hgchat]")){ const g = hgGames("px")[P.online]; pxClose(); if (g) CH.openThread(g.vlakno || dmId(O.me, hgOpp(g))); return; }
+  if (c("[data-hgresign]")){ hgResign("px", P.online); return; }
+  if (c("[data-hgre]")){ const g = hgGames("px")[P.online]; if (g){ const p = hgOpp(g), id = P.online; pxClose(); hgChallenge("px", p, id); } return; }
+  const lv = c("[data-hglvl]"); if (lv && !P.online){ if (P.tahu && P.faze === "hra" && !confirm("Změnou obtížnosti začne nová hra. Pokračovat?")) return;
+    S.px = pxAInew(+lv.dataset.hglvl); S.px.zacina = P.zacina; S.px.tah = P.zacina; pxAIsave(S.px); S.pxBusy = false; S.pxShow = null; pxRender(); if (S.px.tah === "pc") pxPcTurn(); return; }
+  if (c("[data-hgnew]") && !P.online){ if (P.faze === "hra" && P.tahu > 2){ if (!confirm("Rozehraná hra se počítá jako prohra. Nová hra?")) return; pxAIrec(P, "p"); }
+    S.px = pxAInew(P.lvl); S.px.bl = P.bl; S.px.hist = P.hist; pxAIsave(S.px); S.pxBusy = false; S.pxShow = null; pxRender(); if (S.px.tah === "pc") pxPcTurn(); return; }
+}
+function pxRender(){
+  const v = $("pxOv"), P = S.px; if (!v || !P) return;
+  const on = !!P.online, g = on ? hgGames("px")[P.online] : P;
+  if (!g){ v.innerHTML = `<div class="pk-in">${hgTop("Pexeso")}<p class="pk-st">Hra se načítá…</p></div>`; return; }
+  const me = hgMe(), op = on ? hgOpp(g) : null;
+  const face = {}, own = {};
+  if (on){ Object.entries(g.nalezeno || {}).forEach(([i, x]) => { face[i] = x.v; own[i] = String(x.od) === me ? "me" : "op"; }); if (g.prvni) face[g.prvni.i] = g.prvni.v; }
+  else { Object.entries(g.nal).forEach(([i, w]) => { face[i] = g.karty[i]; own[i] = w === "ty" ? "me" : "op"; }); if (g.prvni != null) face[g.prvni] = g.karty[g.prvni]; }
+  if (S.pxShow){ face[S.pxShow.i] = S.pxShow.a; face[S.pxShow.j] = S.pxShow.b; }
+  const myTurn = on ? hgMyTurn(g) : g.faze === "hra" && g.tah === "ty" && !S.pxBusy;
+  const can = myTurn && !S.pxBusy && !S.pxShow;
+  let cards = "";
+  for (let i = 0; i < PX_N; i++){
+    const f = face[i], o = own[i], flip = f != null && !o;
+    const cls = o ? `m ${o}` : flip ? "f" : S.pxWait === i ? "b w" : "b";
+    cards += `<button type="button" class="px-c ${cls}" data-pxi="${i}" aria-label="Karta ${i + 1}${f != null ? " " + (i + 1) : ""}"${!can || o || flip ? ' tabindex="-1"' : ""}>${f != null ? PX_E[f] : ""}</button>`;
+  }
+  const pMe = on ? (g.pary || {})[me] || 0 : g.pary.ty, pOp = on ? (g.pary || {})[op] || 0 : g.pary.pc;
+  const opN = on ? surname(nameOf(op)) : "🖥️ Počítač";
+  const end = g.faze === "konec";
+  let st;
+  if (on) st = S.pxBusy ? "Otáčím kartu…" : pxStatus(g);
+  else st = end ? (g.vitez === "ty" ? `Vyhrál jsi ${pMe} : ${pOp}! 🏆` : g.vitez === "pc" ? `Vyhrál počítač ${pOp} : ${pMe}` : `Remíza ${pMe} : ${pOp}`)
+    : g.tah === "pc" ? "Hraje počítač…" : g.prvni != null ? "Otoč druhou kartu" : "Jsi na tahu – otoč dvě karty";
+  let msg = S.pxMsg || "";
+  if (!on && g.posledni){ const L = g.posledni; msg = `${L.od === "ty" ? "Ty" : "Počítač"}: ${PX_E[L.a]} a ${PX_E[L.b]} – ${L.shoda ? "pár!" : "nepasují."}`; }
+  const left = PX_P - pMe - pOp;
+  const win = on ? String(g.vitez) === me : g.vitez === "ty";
+  const btns = on ? (end ? `<button type="button" class="pk-b sec" data-hgchat>Chat</button><button type="button" class="pk-b" data-hgre>Odveta</button>`
+      : `<button type="button" class="pk-b sec" data-hgresign>Vzdát</button><button type="button" class="pk-b sec" data-hgchat>Chat</button>`)
+    : `<button type="button" class="pk-b sec" data-hgx>Zpět</button><button type="button" class="pk-b${end ? "" : " sec"}" data-hgnew>Nová hra</button>`;
+  const cap = on ? `${PX_P} párů · zbývá ${left} · po nalezení páru hraješ znovu`
+    : `Obtížnost: ${[1, 2, 3].map(l => `<button type="button" class="pk-l${g.lvl === l ? " on" : ""}" data-hglvl="${l}">${PK_LVL[l]}</button>`).join(" · ")}<br>Zbývá ${pxPairsTxt(left)} · ${g.zacina === "pc" ? "tuto hru začínal počítač" : "tuto hru začínáš ty"}`;
+  v.innerHTML = `<div class="pk-in">${hgTop(on ? "Pexeso" : "Pexeso · počítač", `tah ${g.tahu || 0}`)}
+    <div class="pk-pl"><span class="pk-p${myTurn && !end ? " on" : ""}">🃏 ${on ? esc(surname(meName())) + " (ty)" : "Ty"}</span><span class="pk-p${!myTurn && !end ? " on" : ""}">${esc(opN)}${on ? "" : " · " + PK_LVL[g.lvl]}</span></div>
+    <div class="px-sc"><div><span class="me">${pMe}</span><small>tvoje páry</small></div><span class="px-dv">:</span><div><span class="op">${pOp}</span><small>${esc(on ? opN : "počítač")}</small></div></div>
+    <p class="pk-st${win ? " win" : ""}" style="font-size:21px;margin:0 0 6px">${esc(st)}</p>
+    <div class="px-g${can ? " can" : ""}">${cards}</div>
+    <p class="ld-msg">${esc(msg)}</p>
+    <div class="pk-btns">${btns}</div>
+    <p class="pk-cap">${cap}</p></div>`;
+}
+function pxCardHTML(id, m){
+  const g = hgGames("px")[id];
+  if (!g) return `<div class="pk-card"><b>🃏 Pexeso</b><small>Hra se načítá nebo už není k dispozici.</small></div>`;
+  const me = hgMe(), op = hgOpp(g), hot = hgMyTurn(g);
+  return `<div class="pk-card"><b>🃏 ${g.faze === "konec" ? "Pexeso – konec" : `Pexeso · ${(g.pary || {})[me] || 0} : ${(g.pary || {})[op] || 0}`}</b>
+    <small>${g.tahu ? "" : `${esc(surname(nameOf(String(m.od))))} vs. ${esc(surname(nameOf((g.hraci || []).map(String).find(c => c !== String(m.od)) || "")))} · 18 párů. `}<span class="${hot ? "hot" : ""}">${esc(pxStatus(g))}</span></small>
+    <button type="button" class="pk-go" data-chhg="px:${esc(id)}">${g.faze === "konec" ? "Zobrazit hru" : hot ? "Hrát" : "Otevřít hru"}</button></div>`;
+}
+function pxHubHTML(){
+  const ai = pxAIload() || {}, run = ai.faze === "hra" && ai.karty;
+  const rows = hgHubRows("px", g => `na tahu je ${surname(nameOf(hgOpp(g)))}`);
+  return `<div class="ch-sec">Rozehrané hry</div><div class="pk-box">${rows}${run ? `<button type="button" class="pk-row" data-chpxai><span>🖥️ <b>Počítač</b> · ${PK_LVL[ai.lvl] || ""}</span><small>${ai.pary.ty} : ${ai.pary.pc}</small></button>` : ""}${!rows && !run ? `<p class="ch-empty" style="margin:0 0 6px">Žádná rozehraná hra.</p>` : ""}
+      <div class="pk-btns"><button type="button" class="pk-b" data-chpxai>${run ? "Počítač – pokračovat" : "Hrát proti počítači"}</button><button type="button" class="pk-b sec" data-chgpick="px">Výzva…</button></div></div>
+    <div class="ch-sec">Statistiky – proti kolegům</div>${hgHubStats("px", g => (g.pary || {})[hgMe()] || 0)}
+    <div class="ch-sec">Statistiky – proti počítači</div>${hgAIStats("px", ai.bl || {})}
+    <div class="ch-sec">Odehrané hry</div>${hgHist("px", ai.hist,
+      (id, g) => { const r = hgRes(g), me = hgMe(); return `<button type="button" class="pk-h" data-chhg="px:${esc(id)}"><span><b>🃏 ${esc(shortName(nameOf(hgOpp(g))))}</b><small>${pkDate(ms(g.zmeneno))} · ${(g.pary || {})[me] || 0} : ${(g.pary || {})[hgOpp(g)] || 0}${g.vzdal ? " · vzdáno" : ""}</small></span><i class="r-${r}">${HG_RES[r]}</i></button>`; },
+      h => `<div class="pk-h"><span><b>🖥️ Počítač · ${PK_LVL[h.lvl] || ""}</b><small>${pkDate(h.at)} · ${h.ty} : ${h.pc}</small></span><i class="r-${h.r}">${HG_RES[h.r]}</i></div>`)}`;
+}
+
+/* ================= šachy – hra ================= */
+const shTahu = n => `${n} ${n === 1 ? "tah" : n >= 2 && n <= 4 ? "tahy" : "tahů"}`;
+const SH_G = {K:"♚", Q:"♛", R:"♜", B:"♝", N:"♞", P:"♟"};
+const SH_END = {mat:"mat", pat:"pat", material:"nedostatek materiálu", "50":"pravidlo 50 tahů", opakovani:"trojí opakování", vzdal:"vzdání", remiza:"dohoda"};
+function shAIload(){ try { return JSON.parse(localStorage.getItem("shAI") || "null"); } catch (e){ return null; } }
+function shAIsave(g){ try { localStorage.setItem("shAI", JSON.stringify(g)); } catch (e){} }
+function shAInew(lvl){ const o = shAIload() || {}, ja = o.ja === "w" ? "b" : "w";
+  return {fen:SH_START, tahy:[], pozice:[shKey(SH_START)], posledni:null, ja, lvl:lvl || o.lvl || 2, faze:"hra", vitez:null, vysledek:null, bl:o.bl || {}, hist:o.hist || []}; }
+function shAIrec(g, r){ const L = g.bl[g.lvl] = g.bl[g.lvl] || {v:0, p:0, r:0}; L[r]++; g.hist.unshift({at:Date.now(), lvl:g.lvl, r, n:g.tahy.length, typ:g.vysledek}); g.hist = g.hist.slice(0, 40); }
+// aplikovat tah na lokální/online objekt hry → vrací změny
+function shApply(g, m){
+  const s = shParse(g.fen), all = shLegal(s), mm = all.find(x => x.f === m.f && x.t === m.t && (x.pr || "").toUpperCase() === (m.pr || "").toUpperCase());
+  if (!mm) return null;
+  const san = shSan(s, mm, all), n = shMake(s, mm), fen = shFen(n), poz = (g.pozice || []).concat(shKey(fen));
+  return {fen, san, tahy:(g.tahy || []).concat(san), pozice:poz.slice(-120), posledni:[mm.f, mm.t], konec:shEnd(n, poz)};
+}
+function shMyColor(g){ return S.sh && !S.sh.online ? g.ja : String(g.bily) === hgMe() ? "w" : "b"; }
+function shCanMove(g){ if (!g || g.faze !== "hra" || S.shBusy) return false; const s = shParse(g.fen), col = shMyColor(g); return (s.w ? "w" : "b") === col && (S.sh.online ? hgMyTurn(g) : true); }
+function shCur(){ return S.sh ? (S.sh.online ? hgGames("sh")[S.sh.online] : S.sh) : null; }
+function shDo(m){
+  const g = shCur(); S.shSel = null; S.shPend = null; S.shPromo = null;
+  if (S.sh.online) shoMove(S.sh.online, m); else shAImove(m);
+}
+function shAImove(m){
+  const g = S.sh, r = shApply(g, m); if (!r) return;
+  Object.assign(g, {fen:r.fen, tahy:r.tahy, pozice:r.pozice, posledni:r.posledni});
+  if (r.konec){ shAIfinish(g, r.konec); return; }
+  shAIsave(g); shRender(); shPcTurn();
+}
+function shAIfinish(g, e){
+  g.faze = "konec"; g.vysledek = e.typ; g.vitez = e.vitez ? (e.vitez === g.ja ? "ty" : "pc") : null;
+  shAIrec(g, g.vitez === "ty" ? "v" : g.vitez === "pc" ? "p" : "r"); shAIsave(g); S.shBusy = false; shRender();
+}
+function shPcTurn(){
+  const g = S.sh; if (!g || g.online || g.faze !== "hra") return;
+  const s = shParse(g.fen); if ((s.w ? "w" : "b") === g.ja) return;
+  S.shBusy = true; shRender();
+  setTimeout(() => {
+    if (S.sh !== g) return;
+    const m = shAI(s, g.lvl); if (!m){ S.shBusy = false; return; }
+    const r = shApply(g, m);
+    Object.assign(g, {fen:r.fen, tahy:r.tahy, pozice:r.pozice, posledni:r.posledni});
+    S.shBusy = false;
+    if (r.konec){ shAIfinish(g, r.konec); return; }
+    shAIsave(g); shRender();
+  }, 350);
+}
+async function shoMove(id, m){
+  const ref = O.db.collection("sachy").doc(id), me = hgMe();
+  S.shBusy = true; shRender();
+  try {
+    await O.db.runTransaction(async tx => {
+      const d = (await tx.get(ref)).data();
+      if (!d || d.faze !== "hra" || String(d.tah) !== me) throw new Error("tah");
+      const r = shApply(d, m); if (!r) throw new Error("pravidla");
+      const op = (d.hraci || []).map(String).find(c => c !== me);
+      const upd = {fen:r.fen, tahy:r.tahy, pozice:r.pozice, posledni:r.posledni, pocet:(d.pocet || 0) + 1, tah:op, remiza:null, zmeneno:FV().serverTimestamp()};
+      if (r.konec){ upd.faze = "konec"; upd.tah = null; upd.vysledek = r.konec.typ; upd.vitez = r.konec.vitez ? (r.konec.vitez === "w" ? String(d.bily) : (String(d.bily) === me ? op : me)) : null; }
+      tx.update(ref, upd);
+    });
+  } catch (e){ toast(e.message === "tah" ? "Teď nejsi na tahu." : e.message === "pravidla" ? "Tento tah není podle pravidel." : "Tah se nepodařilo uložit."); }
+  S.shBusy = false; shRender();
+}
+async function shoDraw(act){
+  const id = S.sh.online, g = hgGames("sh")[id]; if (!g || g.faze !== "hra") return;
+  const ref = O.db.collection("sachy").doc(id), ts = FV().serverTimestamp();
+  try {
+    if (act === "offer"){ if (!confirm("Nabídnout soupeři remízu?")) return; await ref.update({remiza:hgMe(), zmeneno:ts}); toast("Remíza nabídnuta."); }
+    else if (act === "accept") await ref.update({faze:"konec", vitez:null, vysledek:"remiza", tah:null, remiza:null, zmeneno:ts});
+    else if (act === "decline") await ref.update({remiza:null, zmeneno:ts});
+  } catch (e){ toast("Nepodařilo se uložit."); }
+}
+function shOpen(id){ S.sh = {online:id}; S.shSel = null; S.shPend = null; S.shPromo = null; S.shBusy = false; hgMount("shOv", "Šachy", shClick); shRender(); hraBeat(); }
+function shOpenAI(){
+  let g = shAIload(); if (!g || g.faze !== "hra" || !g.fen) g = shAInew(); shAIsave(g);
+  S.sh = g; S.shSel = null; S.shPend = null; S.shPromo = null; S.shBusy = false;
+  hgMount("shOv", "Šachy", shClick); shRender(); shPcTurn();
+}
+function shClose(){ const v = $("shOv"); if (v) v.remove(); S.sh = null; S.shBusy = false; hraBeat(); if (S.open && S.view === "list") renderList(); }
+function shClick(e){
+  const c = x => e.target.closest(x), P = S.sh; if (!P) return;
+  if (c("[data-hgx]")){ shClose(); return; }
+  const g = shCur(); if (!g) return;
+  const pr = c("[data-shpr]"); if (pr){ const m = S.shPromo; S.shPromo = null; if (m) shDo({...m, pr:pr.dataset.shpr}); else shRender(); return; }
+  if (c("[data-shprx]")){ S.shPromo = null; shRender(); return; }
+  const q = c("[data-shq]");
+  if (q){ if (!shCanMove(g)) return;
+    const i = +q.dataset.shq, s = shParse(g.fen), all = shLegal(s), mine = s.b[i] !== "." && shIsW(s.b[i]) === s.w;
+    if (S.shSel != null){
+      const ms = all.filter(m => m.f === S.shSel && m.t === i);
+      if (ms.length){
+        if (ms[0].pr){ S.shPromo = {f:S.shSel, t:i}; shRender(); return; }
+        if (O.desk || (S.shPend && S.shPend.t === i)){ shDo({f:S.shSel, t:i}); return; }
+        S.shPend = {f:S.shSel, t:i, san:shSan(s, ms[0], all)}; shRender(); return;
+      }
+    }
+    if (mine){ S.shSel = S.shSel === i ? null : i; S.shPend = null; shRender(); return; }
+    S.shSel = null; S.shPend = null; shRender(); return;
+  }
+  if (c("[data-shgo]")){ if (S.shPend) shDo({f:S.shPend.f, t:S.shPend.t}); return; }
+  if (c("[data-hgchat]")){ const og = hgGames("sh")[P.online]; shClose(); if (og) CH.openThread(og.vlakno || dmId(O.me, hgOpp(og))); return; }
+  if (c("[data-hgresign]")){ if (P.online) hgResign("sh", P.online); else if (g.faze === "hra" && confirm("Opravdu to vzdát?")){ g.vysledek = "vzdal"; g.faze = "konec"; g.vitez = "pc"; shAIrec(g, "p"); shAIsave(g); shRender(); } return; }
+  const dr = c("[data-shdraw]"); if (dr){ shoDraw(dr.dataset.shdraw); return; }
+  if (c("[data-hgre]")){ const og = hgGames("sh")[P.online]; if (og){ const p = hgOpp(og), id = P.online; shClose(); hgChallenge("sh", p, id); } return; }
+  const lv = c("[data-hglvl]"); if (lv && !P.online){ if (g.tahy.length && g.faze === "hra" && !confirm("Změnou obtížnosti začne nová hra. Pokračovat?")) return;
+    S.sh = shAInew(+lv.dataset.hglvl); S.sh.ja = g.ja; shAIsave(S.sh); S.shSel = null; shRender(); shPcTurn(); return; }
+  if (c("[data-hgnew]") && !P.online){ if (g.faze === "hra" && g.tahy.length > 3){ if (!confirm("Rozehraná hra se počítá jako prohra. Nová hra?")) return; g.vysledek = "vzdal"; shAIrec(g, "p"); }
+    S.sh = shAInew(g.lvl); S.sh.bl = g.bl; S.sh.hist = g.hist; shAIsave(S.sh); S.shSel = null; S.shBusy = false; shRender(); shPcTurn(); return; }
+}
+function shStatus(g){
+  const op = hgOpp(g), p = surname(nameOf(op)), me = hgMe();
+  if (g.faze === "konec"){
+    if (g.vzdal) return String(g.vzdal) === me ? "Vzdal jsi" : `${p} to vzdal – vyhrál jsi`;
+    if (g.vitez == null) return `Remíza – ${SH_END[g.vysledek] || "dohoda"}`;
+    return String(g.vitez) === me ? "Mat – vyhrál jsi! 🏆" : `Mat – vyhrál ${p}`;
+  }
+  const chk = shInCheck(shParse(g.fen));
+  if (g.remiza && String(g.remiza) !== me) return `${p} nabízí remízu`;
+  return hgMyTurn(g) ? (chk ? "Šach! Jsi na tahu" : `Jsi na tahu – ${String(g.bily) === me ? "bílý" : "černý"}`) : (chk ? `Šach! Na tahu je ${p}` : `Na tahu je ${p}`);
+}
+function shCaptured(b){ // co chybí oproti začátku: {w:[…], b:[…]} – sebrané figury dané barvy
+  const full = {P:8, N:2, B:2, R:2, Q:1}, cnt = {};
+  b.forEach(p => { if (p !== ".") cnt[p] = (cnt[p] || 0) + 1; });
+  const miss = w => Object.entries(full).flatMap(([u, n]) => Array(Math.max(0, n - (cnt[w ? u : u.toLowerCase()] || 0))).fill(u)).reverse();
+  return {w:miss(true), b:miss(false)};
+}
+function shBoardHTML(g, can, col){
+  const s = shParse(g.fen), flip = col === "b", all = can ? shLegal(s) : [];
+  const tg = S.shSel != null ? all.filter(m => m.f === S.shSel) : [];
+  const last = g.posledni || [], chk = shInCheck(s) ? shKing(s.b, s.w) : -1;
+  let cells = "";
+  for (let k = 0; k < 64; k++){
+    const i = flip ? 63 - k : k, r = i >> 3, cc = i & 7, p = s.b[i];
+    let cl = "sh-c " + ((r + cc) % 2 ? "d" : "l");
+    if (last.includes(i)) cl += " last";
+    if (i === S.shSel) cl += " sel";
+    if (S.shPend && S.shPend.t === i) cl += " pend";
+    if (tg.some(m => m.t === i)) cl += p !== "." || tg.some(m => m.t === i && m.ep) ? " cap" : " dot";
+    if (i === chk) cl += " chk";
+    cells += `<button type="button" class="${cl}" data-shq="${i}" aria-label="${shName(i)}${p !== "." ? " " + (shIsW(p) ? "bílý " : "černý ") + ({K:"král", Q:"dáma", R:"věž", B:"střelec", N:"jezdec", P:"pěšec"})[p.toUpperCase()] : ""}">${p !== "." ? `<span class="${shIsW(p) ? "w" : "k"}">${SH_G[p.toUpperCase()]}</span>` : ""}</button>`;
+  }
+  const files = flip ? "hgfedcba" : "abcdefgh", ranks = flip ? "12345678" : "87654321";
+  return `<div class="sh-b">${[...ranks].map((x, n) => `<span class="lb" style="grid-row:${n + 1}">${x}</span>`).join("")}<div class="sh-g">${cells}</div><div class="sh-cols">${[...files].map(x => `<span>${x}</span>`).join("")}</div></div>`;
+}
+function shMovesHTML(tahy){
+  if (!tahy || !tahy.length) return "";
+  let o = ""; for (let k = 0; k < tahy.length; k += 2) o += `<span>${k / 2 + 1}. ${esc(tahy[k])}${tahy[k + 1] ? " " + esc(tahy[k + 1]) : ""}</span> `;
+  return `<div class="sh-mv"><b>Tahy:</b> ${o}</div>`;
+}
+function shRender(){
+  const v = $("shOv"), P = S.sh; if (!v || !P) return;
+  const on = !!P.online, g = shCur();
+  if (!g){ v.innerHTML = `<div class="pk-in">${hgTop("Šachy")}<p class="pk-st">Hra se načítá…</p></div>`; return; }
+  const me = hgMe(), col = shMyColor(g), s = shParse(g.fen), can = shCanMove(g), end = g.faze === "konec";
+  const turnMe = !end && (s.w ? "w" : "b") === col;
+  const opN = on ? surname(nameOf(hgOpp(g))) : `🖥️ Počítač · ${PK_LVL[g.lvl]}`;
+  const k = c => `<span class="sh-k">${c === "w" ? "♔" : "♚"}</span>`;
+  let st;
+  if (on) st = S.shBusy ? "Ukládám tah…" : shStatus(g);
+  else st = end ? (g.vitez === "ty" ? "Mat – vyhrál jsi! 🏆" : g.vitez === "pc" ? (g.vysledek === "vzdal" ? "Vzdal jsi" : "Mat – vyhrál počítač") : `Remíza – ${SH_END[g.vysledek] || ""}`)
+    : S.shBusy || !turnMe ? "Počítač přemýšlí…" : shInCheck(s) ? "Šach! Jsi na tahu" : `Jsi na tahu – ${col === "w" ? "bílý" : "černý"}`;
+  const cap = shCaptured(s.b), opCol = col === "w" ? "b" : "w";
+  const capRow = (list, c) => `<div class="sh-cap">${list.map(u => `<span class="${c === "w" ? "w" : "k"}">${SH_G[u]}</span>`).join("")}</div>`;
+  const lastSan = (g.tahy || []).length ? g.tahy[g.tahy.length - 1] : "";
+  let msg = "";
+  if (S.shPend) msg = `Táhnout ${S.shPend.san}? Potvrď tlačítkem, nebo klepni na pole znovu.`;
+  else if (S.shSel != null) msg = "Vyber pole, kam táhnout (tečky, kroužek = braní).";
+  else if (lastSan && !end) msg = `Poslední tah: ${lastSan}`;
+  const offer = on && !end && g.remiza && String(g.remiza) !== me, myOffer = on && !end && String(g.remiza) === me;
+  const btns = on ? (end ? `<button type="button" class="pk-b sec" data-hgchat>Chat</button><button type="button" class="pk-b" data-hgre>Odveta</button>`
+      : offer ? `<button type="button" class="pk-b sec" data-shdraw="decline">Odmítnout remízu</button><button type="button" class="pk-b" data-shdraw="accept">Přijmout remízu</button>`
+      : `<button type="button" class="pk-b sec" data-hgresign>Vzdát</button><button type="button" class="pk-b sec" data-hgchat>Chat</button>${S.shPend && !O.desk ? `<button type="button" class="pk-b" data-shgo>Táhnout ${esc(S.shPend.san)}</button>` : `<button type="button" class="pk-b sec" data-shdraw="offer" ${myOffer ? "disabled" : ""}>${myOffer ? "Remíza nabídnuta" : "Nabídnout remízu"}</button>`}`)
+    : end ? `<button type="button" class="pk-b sec" data-hgx>Zpět</button><button type="button" class="pk-b" data-hgnew>Nová hra</button>`
+    : `<button type="button" class="pk-b sec" data-hgresign>Vzdát</button>${S.shPend && !O.desk ? `<button type="button" class="pk-b" data-shgo>Táhnout ${esc(S.shPend.san)}</button>` : `<button type="button" class="pk-b sec" data-hgnew>Nová hra</button>`}`;
+  const capTxt = on ? "" : `<p class="pk-cap">Obtížnost: ${[1, 2, 3].map(l => `<button type="button" class="pk-l${g.lvl === l ? " on" : ""}" data-hglvl="${l}">${PK_LVL[l]}</button>`).join(" · ")}<br>Hraješ ${col === "w" ? "bílými" : "černými"} – v další hře se barvy prohodí.</p>`;
+  const promo = S.shPromo ? `<div class="sh-pro" role="dialog" aria-label="Proměna pěšce"><h3>Proměna pěšce na ${shName(S.shPromo.t)} – vyber figuru</h3><div>${[["Q", "Dáma"], ["R", "Věž"], ["B", "Střelec"], ["N", "Jezdec"]].map(([u, n]) => `<button type="button" data-shpr="${u}"><span class="${col === "w" ? "w" : "k"}">${SH_G[u]}</span><small>${n}</small></button>`).join("")}</div><button type="button" class="pk-b sec" data-shprx style="width:100%;margin-top:10px">Zrušit</button></div>` : "";
+  const win = on ? String(g.vitez) === me : g.vitez === "ty";
+  v.innerHTML = `<div class="pk-in">${hgTop(on ? "Šachy" : "Šachy · počítač", `tah ${Math.floor(((g.tahy || []).length) / 2) + 1}`)}
+    <div class="pk-pl"><span class="pk-p${turnMe ? " on" : ""}">${k(col)} ${on ? esc(surname(meName())) + " (ty)" : "Ty"}</span><span class="pk-p${!end && !turnMe ? " on" : ""}">${k(opCol)} ${esc(opN)}</span></div>
+    <p class="pk-st${win ? " win" : ""}">${esc(st)}</p>
+    ${capRow(cap[opCol], opCol)}
+    ${shBoardHTML(g, can, col)}
+    ${capRow(cap[col], col)}
+    <p class="ld-msg">${esc(msg)}</p>
+    <div class="pk-btns">${btns}</div>
+    ${capTxt}${shMovesHTML(g.tahy)}${promo}</div>`;
+}
+function shCardHTML(id, m){
+  const g = hgGames("sh")[id];
+  if (!g) return `<div class="pk-card"><b>♞ Šachy</b><small>Hra se načítá nebo už není k dispozici.</small></div>`;
+  const hot = hgMyTurn(g) || (g.remiza && String(g.remiza) !== hgMe() && g.faze === "hra");
+  const bily = surname(nameOf(String(g.bily))), cerny = surname(nameOf((g.hraci || []).map(String).find(c => c !== String(g.bily)) || ""));
+  return `<div class="pk-card"><b>♞ ${g.faze === "konec" ? "Šachy – konec" : `Šachy · tah ${Math.floor((g.tahy || []).length / 2) + 1}`}</b>
+    <small>${(g.tahy || []).length ? "" : `♔ ${esc(bily)} vs. ♚ ${esc(cerny)}. `}<span class="${hot ? "hot" : ""}">${esc(shStatus(g))}</span></small>
+    <button type="button" class="pk-go" data-chhg="sh:${esc(id)}">${g.faze === "konec" ? "Zobrazit hru" : hot ? "Táhnout" : "Otevřít hru"}</button></div>`;
+}
+function shHubHTML(){
+  const ai = shAIload() || {}, run = ai.faze === "hra" && ai.fen && (ai.tahy || []).length;
+  const rows = hgHubRows("sh", g => `na tahu je ${surname(nameOf(hgOpp(g)))}`);
+  return `<div class="ch-sec">Rozehrané hry</div><div class="pk-box">${rows}${run ? `<button type="button" class="pk-row" data-chshai><span>🖥️ <b>Počítač</b> · ${PK_LVL[ai.lvl] || ""}</span><small>tah ${Math.floor(ai.tahy.length / 2) + 1}</small></button>` : ""}${!rows && !run ? `<p class="ch-empty" style="margin:0 0 6px">Žádná rozehraná hra.</p>` : ""}
+      <div class="pk-btns"><button type="button" class="pk-b" data-chshai>${run ? "Počítač – pokračovat" : "Hrát proti počítači"}</button><button type="button" class="pk-b sec" data-chgpick="sh">Výzva…</button></div></div>
+    <div class="ch-sec">Statistiky – proti kolegům</div>${hgHubStats("sh")}
+    <div class="ch-sec">Statistiky – proti počítači</div>${hgAIStats("sh", ai.bl || {})}
+    <div class="ch-sec">Odehrané hry</div>${hgHist("sh", ai.hist,
+      (id, g) => { const r = hgRes(g); return `<button type="button" class="pk-h" data-chhg="sh:${esc(id)}"><span><b>♞ ${esc(shortName(nameOf(hgOpp(g))))}</b><small>${pkDate(ms(g.zmeneno))} · ${shTahu(Math.ceil((g.tahy || []).length / 2))} · ${g.vzdal ? "vzdáno" : SH_END[g.vysledek] || ""}</small></span><i class="r-${r}">${HG_RES[r]}</i></button>`; },
+      h => `<div class="pk-h"><span><b>🖥️ Počítač · ${PK_LVL[h.lvl] || ""}</b><small>${pkDate(h.at)} · ${shTahu(Math.ceil(h.n / 2))} · ${SH_END[h.typ] || ""}</small></span><i class="r-${h.r}">${HG_RES[h.r]}</i></div>`)}`;
 }
 
 window.SluzbyChat = CH;
