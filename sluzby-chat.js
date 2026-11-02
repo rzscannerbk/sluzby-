@@ -446,6 +446,9 @@ const STYLE = `
 .sh-b .lb{grid-column:1;font-size:11px;color:var(--ink2,#5A6480);display:flex;align-items:center;justify-content:center}
 .sh-g{grid-column:2;grid-row:1/9;display:grid;grid-template-columns:repeat(8,1fr);border:2px solid #1D2A4D;border-radius:4px;overflow:hidden}
 .sh-c{aspect-ratio:1;border:0;padding:0;display:flex;align-items:center;justify-content:center;font-size:clamp(26px,8.4vw,44px);line-height:1;position:relative;font-family:"DejaVu Sans","Segoe UI Symbol","Noto Sans Symbols 2",sans-serif;cursor:pointer}
+.sh-c svg{width:94%;height:94%;pointer-events:none}
+.sh-cap svg{width:24px;height:24px}
+.sh-pro div button svg{width:46px;height:46px}
 .sh-c.l{background:#EEF1E6}.sh-c.d{background:#8DA27A}
 .sh-c.last{box-shadow:inset 0 0 0 100px rgba(242,210,74,.45)}
 .sh-c.sel{box-shadow:inset 0 0 0 3px #2E9E5B,inset 0 0 0 100px rgba(46,158,91,.25)}
@@ -457,7 +460,7 @@ const STYLE = `
 .sh-c .k,.sh-cap .k,.sh-pro .k{color:#1D2A4D}
 .sh-cols{grid-column:2;grid-row:9;display:grid;grid-template-columns:repeat(8,1fr);font-size:11px;color:var(--ink2,#5A6480);text-align:center;margin-top:2px}
 .sh-cap{display:flex;flex-wrap:wrap;gap:1px;font-size:19px;min-height:24px;padding:0 10px 0 28px;font-family:"DejaVu Sans","Segoe UI Symbol",sans-serif;align-items:center;max-width:480px;margin:0 auto}
-.sh-k{font-family:"DejaVu Sans","Segoe UI Symbol",sans-serif;font-size:18px}
+.sh-k{display:inline-flex;width:22px;height:22px}.sh-k svg{width:22px;height:22px}
 .sh-mv{font-size:13px;color:var(--ink2,#5A6480);padding:6px 12px;line-height:1.6;max-width:480px;margin:0 auto}
 .sh-mv span{white-space:nowrap}
 .sh-pro{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);max-width:460px;margin:0 auto;background:var(--sheet,#FAFBF7);border:1.5px solid #1D2A4D;border-radius:16px;padding:14px;box-shadow:0 12px 34px rgba(0,0,0,.4);z-index:80}
@@ -2618,6 +2621,17 @@ function pxHubHTML(){
 
 /* ================= šachy – hra ================= */
 const shTahu = n => `${n} ${n === 1 ? "tah" : n >= 2 && n <= 4 ? "tahy" : "tahů"}`;
+// figury jako obrázky (SVG) – znaky ♟ apod. iPhone kreslí jako barevné emoji a nejde jim nastavit barva
+const SH_SVG = {
+  P:'<circle cx="22.5" cy="13" r="5.5"/><path d="M16.5 35 L18.5 25 Q15 22.5 17 19.5 L28 19.5 Q30 22.5 26.5 25 L28.5 35 Z"/><rect x="11.5" y="34" width="22" height="5" rx="2"/>',
+  R:'<path d="M12 9 h4.5 v3.5 h3.5 v-3.5 h5 v3.5 h3.5 v-3.5 h4.5 v8.5 l-3 2.5 v13 h-15 v-13 l-3 -2.5 z"/><rect x="11" y="34" width="23" height="5" rx="2"/>',
+  B:'<circle cx="22.5" cy="8" r="2.8"/><path d="M15.5 33 Q13 24.5 22.5 11.5 Q32 24.5 29.5 33 Z"/><path d="M19.5 21.5 L25.5 18" fill="none" stroke="#L"/><rect x="11.5" y="33" width="22" height="6" rx="2"/>',
+  N:'<path d="M13 39 L33 39 Q35 26 30 17 Q26 9.5 19.5 9 L18 5.5 L15.8 10.2 Q11 13.5 9.5 21 Q9.2 24 12 24.5 L15.5 22.5 Q18.5 21.5 21 20 Q19.5 26 13.8 30.5 Z"/><circle cx="17.5" cy="14.5" r="1.4" fill="#L" stroke="none"/>',
+  Q:'<path d="M10.5 31.5 L12 15 L17 25 L19.2 11.5 L22.5 24 L25.8 11.5 L28 25 L33 15 L34.5 31.5 Z"/><circle cx="12" cy="13.3" r="2.3"/><circle cx="19.2" cy="9.6" r="2.3"/><circle cx="25.8" cy="9.6" r="2.3"/><circle cx="33" cy="13.3" r="2.3"/><rect x="11" y="32" width="23" height="7" rx="2"/>',
+  K:'<path d="M22.5 3.5 v9 M18.5 7 h8" fill="none" stroke-width="3.2"/><path d="M14 33 Q10 21 17 18.5 Q20.5 17.5 22.5 21 Q24.5 17.5 28 18.5 Q35 21 31 33 Z"/><rect x="11" y="32" width="23" height="7" rx="2"/>'
+};
+// bílé: bílá výplň s tmavým obrysem; černé: tmavá výplň se světlou linkou uvnitř
+const shPiece = (u, w) => `<svg viewBox="0 0 45 45" aria-hidden="true"><g fill="${w ? "#FFFFFF" : "#1D2A4D"}" stroke="#1D2A4D" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">${SH_SVG[u].replace(/#L/g, w ? "#1D2A4D" : "#EEF1E6")}</g></svg>`;
 const SH_G = {K:"♚", Q:"♛", R:"♜", B:"♝", N:"♞", P:"♟"};
 const SH_END = {mat:"mat", pat:"pat", material:"nedostatek materiálu", "50":"pravidlo 50 tahů", opakovani:"trojí opakování", vzdal:"vzdání", remiza:"dohoda"};
 function shAIload(){ try { return JSON.parse(localStorage.getItem("shAI") || "null"); } catch (e){ return null; } }
@@ -2755,7 +2769,7 @@ function shBoardHTML(g, can, col){
     if (S.shPend && S.shPend.t === i) cl += " pend";
     if (tg.some(m => m.t === i)) cl += p !== "." || tg.some(m => m.t === i && m.ep) ? " cap" : " dot";
     if (i === chk) cl += " chk";
-    cells += `<button type="button" class="${cl}" data-shq="${i}" aria-label="${shName(i)}${p !== "." ? " " + (shIsW(p) ? "bílý " : "černý ") + ({K:"král", Q:"dáma", R:"věž", B:"střelec", N:"jezdec", P:"pěšec"})[p.toUpperCase()] : ""}">${p !== "." ? `<span class="${shIsW(p) ? "w" : "k"}">${SH_G[p.toUpperCase()]}</span>` : ""}</button>`;
+    cells += `<button type="button" class="${cl}" data-shq="${i}" aria-label="${shName(i)}${p !== "." ? " " + (shIsW(p) ? "bílý " : "černý ") + ({K:"král", Q:"dáma", R:"věž", B:"střelec", N:"jezdec", P:"pěšec"})[p.toUpperCase()] : ""}">${p !== "." ? shPiece(p.toUpperCase(), shIsW(p)) : ""}</button>`;
   }
   const files = flip ? "hgfedcba" : "abcdefgh", ranks = flip ? "12345678" : "87654321";
   return `<div class="sh-b">${[...ranks].map((x, n) => `<span class="lb" style="grid-row:${n + 1}">${x}</span>`).join("")}<div class="sh-g">${cells}</div><div class="sh-cols">${[...files].map(x => `<span>${x}</span>`).join("")}</div></div>`;
@@ -2772,13 +2786,13 @@ function shRender(){
   const me = hgMe(), col = shMyColor(g), s = shParse(g.fen), can = shCanMove(g), end = g.faze === "konec";
   const turnMe = !end && (s.w ? "w" : "b") === col;
   const opN = on ? surname(nameOf(hgOpp(g))) : `🖥️ Počítač · ${PK_LVL[g.lvl]}`;
-  const k = c => `<span class="sh-k">${c === "w" ? "♔" : "♚"}</span>`;
+  const k = c => `<span class="sh-k">${shPiece("K", c === "w")}</span>`;
   let st;
   if (on) st = S.shBusy ? "Ukládám tah…" : shStatus(g);
   else st = end ? (g.vitez === "ty" ? "Mat – vyhrál jsi! 🏆" : g.vitez === "pc" ? (g.vysledek === "vzdal" ? "Vzdal jsi" : "Mat – vyhrál počítač") : `Remíza – ${SH_END[g.vysledek] || ""}`)
     : S.shBusy || !turnMe ? "Počítač přemýšlí…" : shInCheck(s) ? "Šach! Jsi na tahu" : `Jsi na tahu – ${col === "w" ? "bílý" : "černý"}`;
   const cap = shCaptured(s.b), opCol = col === "w" ? "b" : "w";
-  const capRow = (list, c) => `<div class="sh-cap">${list.map(u => `<span class="${c === "w" ? "w" : "k"}">${SH_G[u]}</span>`).join("")}</div>`;
+  const capRow = (list, c) => `<div class="sh-cap">${list.map(u => shPiece(u, c === "w")).join("")}</div>`;
   const lastSan = (g.tahy || []).length ? g.tahy[g.tahy.length - 1] : "";
   let msg = "";
   if (S.shPend) msg = `Táhnout ${S.shPend.san}? Potvrď tlačítkem, nebo klepni na pole znovu.`;
@@ -2791,7 +2805,7 @@ function shRender(){
     : end ? `<button type="button" class="pk-b sec" data-hgx>Zpět</button><button type="button" class="pk-b" data-hgnew>Nová hra</button>`
     : `<button type="button" class="pk-b sec" data-hgresign>Vzdát</button>${S.shPend && !O.desk ? `<button type="button" class="pk-b" data-shgo>Táhnout ${esc(S.shPend.san)}</button>` : `<button type="button" class="pk-b sec" data-hgnew>Nová hra</button>`}`;
   const capTxt = on ? "" : `<p class="pk-cap">Obtížnost: ${[1, 2, 3].map(l => `<button type="button" class="pk-l${g.lvl === l ? " on" : ""}" data-hglvl="${l}">${PK_LVL[l]}</button>`).join(" · ")}<br>Hraješ ${col === "w" ? "bílými" : "černými"} – v další hře se barvy prohodí.</p>`;
-  const promo = S.shPromo ? `<div class="sh-pro" role="dialog" aria-label="Proměna pěšce"><h3>Proměna pěšce na ${shName(S.shPromo.t)} – vyber figuru</h3><div>${[["Q", "Dáma"], ["R", "Věž"], ["B", "Střelec"], ["N", "Jezdec"]].map(([u, n]) => `<button type="button" data-shpr="${u}"><span class="${col === "w" ? "w" : "k"}">${SH_G[u]}</span><small>${n}</small></button>`).join("")}</div><button type="button" class="pk-b sec" data-shprx style="width:100%;margin-top:10px">Zrušit</button></div>` : "";
+  const promo = S.shPromo ? `<div class="sh-pro" role="dialog" aria-label="Proměna pěšce"><h3>Proměna pěšce na ${shName(S.shPromo.t)} – vyber figuru</h3><div>${[["Q", "Dáma"], ["R", "Věž"], ["B", "Střelec"], ["N", "Jezdec"]].map(([u, n]) => `<button type="button" data-shpr="${u}">${shPiece(u, col === "w")}<small>${n}</small></button>`).join("")}</div><button type="button" class="pk-b sec" data-shprx style="width:100%;margin-top:10px">Zrušit</button></div>` : "";
   const win = on ? String(g.vitez) === me : g.vitez === "ty";
   v.innerHTML = `<div class="pk-in">${hgTop(on ? "Šachy" : "Šachy · počítač", `tah ${Math.floor(((g.tahy || []).length) / 2) + 1}`)}
     <div class="pk-pl"><span class="pk-p${turnMe ? " on" : ""}">${k(col)} ${on ? esc(surname(meName())) + " (ty)" : "Ty"}</span><span class="pk-p${!end && !turnMe ? " on" : ""}">${k(opCol)} ${esc(opN)}</span></div>
