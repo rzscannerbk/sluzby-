@@ -425,6 +425,37 @@ const STYLE = `
 .ld-sm i.s{background:#4D5B7C}.ld-sm i.w{background:radial-gradient(circle,#7E93AE 0 18%,#DCEBF7 22%)}
 .ld-sm i.h{background:#8E3B47}.ld-sm i.k{background:#D04848}.ld-sm i.last{box-shadow:inset 0 0 0 1.5px #E2C33A}
 .ld-sm.card{width:100%;max-width:190px}
+.ch-sheet input,.ch-sheet textarea{-webkit-user-select:text;user-select:text}
+.ch-sheet.pq{align-items:flex-start;padding-top:calc(env(safe-area-inset-top,0px) + 14px);overflow-y:auto}
+.ch-sheet.pq>div{display:flex;flex-direction:column;gap:8px}
+.ch-sheet.pq textarea,.ch-sheet.pq input[type=text]{font:inherit;font-size:16px;border:1.5px solid var(--line,#C9CED8);border-radius:10px;padding:9px 11px;background:var(--paper,#fff);color:var(--ink,#1D2A4D);width:100%;box-sizing:border-box;resize:none}
+.pq-row{display:flex;gap:6px;align-items:center}
+.pq-del{flex:none;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--line,#C9CED8);background:transparent;color:inherit;font-size:14px}
+.pq-add{align-self:flex-start;border:0;background:none;color:#1E63C6;font:inherit;font-weight:700;padding:4px 2px;cursor:pointer}
+.pq-chk{display:flex;align-items:center;gap:8px;font-size:15px}
+.pq-chk input{width:20px;height:20px}
+.pq-err{color:#D04848;font-weight:600;margin:0}
+.pq-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.pq-b{font:inherit;font-weight:700;font-size:15px;border-radius:12px;padding:11px 8px;border:1.5px solid var(--ink,#1D2A4D);background:var(--ink,#1D2A4D);color:var(--paper,#fff);cursor:pointer}
+.pq-b.sec{background:transparent;color:var(--ink,#1D2A4D)}
+.ch-poll{display:flex;flex-direction:column;gap:6px;min-width:min(250px,62vw)}
+.pq-q{font-size:16px}
+.pq-sub,.pq-sum{font-size:12px;opacity:.75}
+.ch-root .pq-o{position:relative;display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 8px;text-align:left;border:1.5px solid rgba(29,42,77,.25);border-radius:10px;padding:8px 10px;background:#F4F6F9;color:#1D2A4D;font:inherit;font-size:15px;overflow:hidden;cursor:pointer}
+.ch-root .pq-o.my{border-color:#2E9E5B}
+.ch-root .pq-o:disabled{cursor:default}
+.pq-bar{position:absolute;left:0;top:0;bottom:0;background:rgba(46,158,91,.18);transition:width .3s}
+.pq-o.my .pq-bar{background:rgba(46,158,91,.3)}
+.pq-t{position:relative;display:flex;gap:6px;align-items:center;font-weight:600}
+.pq-t i{font-style:normal;color:#2E9E5B;width:12px}
+.pq-n{position:relative;font-weight:700}
+.pq-w{position:relative;grid-column:1/-1;font-size:11.5px;opacity:.7;padding-left:18px}
+.ch-root .pq-end{border:0;background:none;color:inherit;text-decoration:underline;font:inherit;font-size:12px;padding:0;cursor:pointer}
+.ul-lv{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.ch-root .ul-lv button{border:1.5px solid var(--line,#DDE1E7);background:var(--sheet,#FAFBF7);border-radius:10px;padding:8px 4px;color:var(--ink,#1D2A4D);display:flex;flex-direction:column;align-items:center;gap:2px;font:inherit;font-size:13px;cursor:pointer}
+.ch-root .ul-lv button small{font-size:12px;opacity:.7}
+.ul-bad [data-bad]{box-shadow:inset 0 0 0 3px #D04848,inset 0 0 0 100px rgba(208,72,72,.25)}
+.pk-ov .ld-msg.bad{color:#D04848;font-weight:600}
 .hub-tabs.n4{grid-template-columns:repeat(4,1fr)}
 .hub-tabs.n4 button{padding:7px 2px;font-size:12.5px;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.1}
 .hub-tabs.n4 button span{font-size:18px;line-height:1;font-family:"DejaVu Sans","Segoe UI Symbol",sans-serif}
@@ -834,6 +865,7 @@ function renderThread(){
       <div id="chStage"></div><div id="chBar"></div><p class="ch-err" id="chErr" hidden></p>
       <div class="ch-row2">
         <button type="button" class="ch-photo" data-chphoto aria-label="Poslat fotku"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+        <button type="button" class="ch-photo" data-chpoll aria-label="Nová anketa" title="Anketa">${POLL_ICO}</button>
         <input type="file" id="chFile" accept="image/*" multiple hidden>
         <textarea id="chText" rows="1" maxlength="2000" placeholder="Zpráva"></textarea>
         <button type="button" class="ch-send" data-chsend aria-label="Odeslat"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 20.5 21 12 3 3.5l2.4 7.1L14 12l-8.6 1.4z"/></svg></button>
@@ -934,8 +966,8 @@ function renderMsgs(autoscroll, keepScroll){
       const show = imgs.slice(0, 4), more = imgs.length - show.length;
       pics = `<div class="ch-grid n${Math.min(imgs.length, 4)}">${show.map((x, i) => `<button type="button" data-chgal="${m.id}" data-i="${i}" aria-label="Fotka ${i + 1} z ${imgs.length}"><img src="${x.image}" alt="" loading="lazy">${i === 3 && more > 0 ? `<span class="more">+${more}</span>` : ""}</button>`).join("")}</div>`;
     }
-    const isPk = !!((m.hra || m.lode || m.pexeso || m.sachy) && !m.smazano);
-    const body = isPk ? (m.lode ? ldoCardHTML(m.lode, m) : m.pexeso ? pxCardHTML(m.pexeso, m) : m.sachy ? shCardHTML(m.sachy, m) : pkCardHTML(m.hra, m)) : allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.preposlano ? `<span class="ch-fwd">${ic(ICO.fwd, 14)}Přeposláno od ${esc(m.preposlano.jmeno || "")}</span>` : ""}${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.text && !m.smazano ? linkify(m.text) : ""}`;
+    const isPk = !!((m.hra || m.lode || m.pexeso || m.sachy) && !m.smazano), isPoll = !!(m.anketa && !m.smazano);
+    const body = isPoll ? pollHTML(m) : isPk ? (m.lode ? ldoCardHTML(m.lode, m) : m.pexeso ? pxCardHTML(m.pexeso, m) : m.sachy ? shCardHTML(m.sachy, m) : pkCardHTML(m.hra, m)) : allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.preposlano ? `<span class="ch-fwd">${ic(ICO.fwd, 14)}Přeposláno od ${esc(m.preposlano.jmeno || "")}</span>` : ""}${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.text && !m.smazano ? linkify(m.text) : ""}`;
     html += `<div class="ch-m${mine ? " mine" : ""}${hit ? " hit" : ""}${isPk ? " pk" : ""}" data-mid="${m.id}">${group && !mine && lastFrom !== m.od ? `<span class="ch-who">${esc(m.jmeno || nameOf(m.od))}</span>` : ""}
       <div class="ch-bub">${body}<div class="ch-meta">${imgs.length > 1 ? `${imgs.length} ${imgs.length < 5 ? "fotky" : "fotek"} · ` : ""}${m.upraveno && !m.smazano ? "upraveno · " : ""}${hm(ms(lastM.at))}</div></div>${rx ? `<div class="ch-rx">${rx}</div>` : ""}${allDel ? "" : `<button type="button" class="ch-more" data-chmore="${m.id}" aria-label="Možnosti zprávy">⋯</button>`}</div>`;
     const stM = it.list.includes(lastMine) ? lastMine : (mine && it.list.some(x => x.id === S.infoMid) ? lastM : null);
@@ -1139,7 +1171,7 @@ function openSheet(mid){
     <button type="button" class="ch-act" data-chs="fwd">${ic(ICO.fwd)}Přeposlat</button>
     ${m.text ? `<button type="button" class="ch-act" data-chs="copy">${ic(ICO.copy)}Kopírovat text</button>` : ""}
     ${t && !ro ? `<button type="button" class="ch-act" data-chs="pin">${ic(pinned ? ICO.unpin : ICO.pin)}${pinned ? "Odepnout" : "Připnout nahoru"}</button>` : ""}
-    ${mine && m.text && !ro ? `<button type="button" class="ch-act" data-chs="edit">${ic(ICO.edit)}Upravit</button>` : ""}
+    ${mine && m.text && !ro && !m.anketa ? `<button type="button" class="ch-act" data-chs="edit">${ic(ICO.edit)}Upravit</button>` : ""}
     ${mine && !ro ? `<button type="button" class="ch-act red" data-chs="del">${ic(ICO.del)}Smazat</button>` : ""}
     <button type="button" class="ch-act" data-chs="x">${ic(ICO.close)}Zavřít</button></div>`;
   s.addEventListener("click", async e => {
@@ -1351,6 +1383,11 @@ function bind(root){
     if (c("[data-chpkpick]")){ S.pickHra = true; S.pkView = true; renderList(); $("chList").scrollTop = 0; return; }
     const dm = c("[data-chdm]"); if (dm){ S.pick = false; CH.openThread(dmId(O.me, dm.dataset.chdm)); return; }
     const th = c("[data-cht]"); if (th){ CH.openThread(th.dataset.cht); return; }
+    const vt = c("[data-chvote]"); if (vt){ const [mid, i] = vt.dataset.chvote.split(":"); pollVote(mid, +i); return; }
+    const pe = c("[data-chpollend]"); if (pe){ pollEnd(pe.dataset.chpollend); return; }
+    if (c("[data-chpoll]")){ openPollSheet(); return; }
+    const ul = c("[data-chul]"); if (ul){ ulOpen(ul.dataset.chul); return; }
+    const uln = c("[data-chuln]"); if (uln){ const nx = ulNext(+uln.dataset.chuln); if (nx) ulOpen(nx); return; }
     const sb = c("[data-chsend]"); if (sb){ if (sb.dataset.tt){ delete sb.dataset.tt; return; } send(); return; }
     if (c("[data-chphoto]")){ const f = $("chFile"); if (f) f.click(); return; }
     const us = c("[data-chunstage]");
@@ -2651,7 +2688,7 @@ function shCanMove(g){ if (!g || g.faze !== "hra" || S.shBusy) return false; con
 function shCur(){ return S.sh ? (S.sh.online ? hgGames("sh")[S.sh.online] : S.sh) : null; }
 function shDo(m){
   const g = shCur(); S.shSel = null; S.shPend = null; S.shPromo = null;
-  if (S.sh.online) shoMove(S.sh.online, m); else shAImove(m);
+  if (S.sh.uloha) ulMove(m); else if (S.sh.online) shoMove(S.sh.online, m); else shAImove(m);
 }
 function shAImove(m){
   const g = S.sh, r = shApply(g, m); if (!r) return;
@@ -2713,6 +2750,13 @@ function shClick(e){
   const c = x => e.target.closest(x), P = S.sh; if (!P) return;
   if (c("[data-hgx]")){ shClose(); return; }
   const g = shCur(); if (!g) return;
+  if (P.uloha){
+    if (c("[data-ulhint]")){ ulHint(); return; }
+    if (c("[data-ulsol]")){ ulSolution(); return; }
+    if (c("[data-ulre]")){ ulOpen(P.uloha.id); return; }
+    if (c("[data-ulnext]")){ const nx = ulNext(P.uloha.n, P.uloha.id); if (nx) ulOpen(nx); return; }
+    if (c("[data-shq]")){ S.ulBad = null; S.ulMsg = ""; }
+  }
   const pr = c("[data-shpr]"); if (pr){ const m = S.shPromo; S.shPromo = null; if (m) shDo({...m, pr:pr.dataset.shpr}); else shRender(); return; }
   if (c("[data-shprx]")){ S.shPromo = null; shRender(); return; }
   const q = c("[data-shq]");
@@ -2781,6 +2825,7 @@ function shMovesHTML(tahy){
 }
 function shRender(){
   const v = $("shOv"), P = S.sh; if (!v || !P) return;
+  if (P.uloha){ ulRender(v); return; }
   const on = !!P.online, g = shCur();
   if (!g){ v.innerHTML = `<div class="pk-in">${hgTop("Šachy")}<p class="pk-st">Hra se načítá…</p></div>`; return; }
   const me = hgMe(), col = shMyColor(g), s = shParse(g.fen), can = shCanMove(g), end = g.faze === "konec";
@@ -2831,11 +2876,187 @@ function shHubHTML(){
   const rows = hgHubRows("sh", g => `na tahu je ${surname(nameOf(hgOpp(g)))}`);
   return `<div class="ch-sec">Rozehrané hry</div><div class="pk-box">${rows}${run ? `<button type="button" class="pk-row" data-chshai><span>🖥️ <b>Počítač</b> · ${PK_LVL[ai.lvl] || ""}</span><small>tah ${Math.floor(ai.tahy.length / 2) + 1}</small></button>` : ""}${!rows && !run ? `<p class="ch-empty" style="margin:0 0 6px">Žádná rozehraná hra.</p>` : ""}
       <div class="pk-btns"><button type="button" class="pk-b" data-chshai>${run ? "Počítač – pokračovat" : "Hrát proti počítači"}</button><button type="button" class="pk-b sec" data-chgpick="sh">Výzva…</button></div></div>
+    ${ulHubHTML()}
     <div class="ch-sec">Statistiky – proti kolegům</div>${hgHubStats("sh")}
     <div class="ch-sec">Statistiky – proti počítači</div>${hgAIStats("sh", ai.bl || {})}
     <div class="ch-sec">Odehrané hry</div>${hgHist("sh", ai.hist,
       (id, g) => { const r = hgRes(g); return `<button type="button" class="pk-h" data-chhg="sh:${esc(id)}"><span><b>♞ ${esc(shortName(nameOf(hgOpp(g))))}</b><small>${pkDate(ms(g.zmeneno))} · ${shTahu(Math.ceil((g.tahy || []).length / 2))} · ${g.vzdal ? "vzdáno" : SH_END[g.vysledek] || ""}</small></span><i class="r-${r}">${HG_RES[r]}</i></button>`; },
       h => `<div class="pk-h"><span><b>🖥️ Počítač · ${PK_LVL[h.lvl] || ""}</b><small>${pkDate(h.at)} · ${shTahu(Math.ceil(h.n / 2))} · ${SH_END[h.typ] || ""}</small></span><i class="r-${h.r}">${HG_RES[h.r]}</i></div>`)}`;
+}
+
+/* ================= ankety ve vlákně =================
+   Zpráva s polem anketa{otazka, moznosti[], vice}; hlasy{č:[indexy]} – každý mění jen svůj hlas, autor může anketu ukončit (uzavreno). */
+const POLL_ICO = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 20v-8M12 20V5M19 20v-5"/></svg>';
+const hlasTxt = n => n === 1 ? "hlas" : n >= 2 && n <= 4 ? "hlasy" : "hlasů";
+function openPollSheet(){
+  closeSheet();
+  const s = document.createElement("div"); s.className = "ch-sheet pq";
+  let opts = ["", ""];
+  const draw = () => {
+    const ed = s.querySelector("#pqOpts"); if (!ed) return;
+    ed.innerHTML = opts.map((o, i) => `<div class="pq-row"><input type="text" maxlength="80" data-pqi="${i}" value="${esc(o)}" placeholder="Možnost ${i + 1}">${opts.length > 2 ? `<button type="button" class="pq-del" data-pqdel="${i}" aria-label="Odebrat možnost ${i + 1}">✕</button>` : ""}</div>`).join("");
+    s.querySelector("[data-pq='add']").hidden = opts.length >= 8;
+  };
+  s.innerHTML = `<div role="dialog" aria-label="Nová anketa"><h3>📊 Nová anketa</h3>
+    <textarea id="pqQ" rows="2" maxlength="300" placeholder="Otázka – např. Kdo jde v pátek na školení?"></textarea>
+    <div id="pqOpts"></div>
+    <button type="button" class="pq-add" data-pq="add">+ Přidat možnost</button>
+    <label class="pq-chk"><input type="checkbox" id="pqMulti"> Lze vybrat víc možností</label>
+    <p class="pq-err" id="pqErr" hidden></p>
+    <div class="pq-btns"><button type="button" class="pq-b sec" data-pq="x">Zrušit</button><button type="button" class="pq-b" data-pq="send">Odeslat anketu</button></div></div>`;
+  s.addEventListener("input", e => { const i = e.target.dataset.pqi; if (i != null) opts[+i] = e.target.value; });
+  s.addEventListener("click", async e => {
+    if (e.target === s){ closeSheet(); return; }
+    const del = e.target.closest("[data-pqdel]"); if (del){ opts.splice(+del.dataset.pqdel, 1); draw(); return; }
+    const b = e.target.closest("[data-pq]"); if (!b) return;
+    const a = b.dataset.pq;
+    if (a === "x"){ closeSheet(); return; }
+    if (a === "add"){ if (opts.length < 8){ opts.push(""); draw(); const ins = s.querySelectorAll("[data-pqi]"); ins[ins.length - 1].focus(); } return; }
+    if (a === "send"){
+      const q = s.querySelector("#pqQ").value.trim(), mo = opts.map(x => x.trim()).filter(Boolean), err = s.querySelector("#pqErr");
+      if (!q || mo.length < 2){ err.textContent = !q ? "Napiš otázku." : "Zadej aspoň dvě možnosti."; err.hidden = false; return; }
+      if (new Set(mo.map(x => x.toLowerCase())).size !== mo.length){ err.textContent = "Možnosti se nesmí opakovat."; err.hidden = false; return; }
+      b.disabled = true;
+      try { await writeMsg({text:"📊 " + q, anketa:{otazka:q, moznosti:mo, vice:s.querySelector("#pqMulti").checked}, hlasy:{}}); closeSheet(); S.atBottom = true; stickBottom(); }
+      catch (er){ b.disabled = false; err.textContent = "Anketu se nepodařilo odeslat."; err.hidden = false; }
+    }
+  });
+  document.body.appendChild(s); draw();
+  setTimeout(() => { const q = s.querySelector("#pqQ"); if (q) q.focus(); }, 60);
+}
+function pollHTML(m){
+  const a = m.anketa || {}, mo = a.moznosti || [], H = m.hlasy || {}, me = String(O.me), closed = !!m.uzavreno;
+  const of = c => (H[c] || []).map(Number);
+  const voters = Object.keys(H).filter(c => of(c).length), mine = of(me);
+  const rows = mo.map((o, i) => {
+    const who = voters.filter(c => of(c).includes(i)), n = who.length, pct = voters.length ? Math.round(n / voters.length * 100) : 0, my = mine.includes(i);
+    return `<button type="button" class="pq-o${my ? " my" : ""}" data-chvote="${esc(m.id)}:${i}"${closed ? " disabled" : ""} aria-pressed="${my}"><span class="pq-bar" style="width:${pct}%"></span><span class="pq-t"><i>${my ? "✓" : ""}</i>${esc(o)}</span><span class="pq-n">${n}</span>${n ? `<small class="pq-w">${esc(who.map(c => surname(nameOf(c))).join(", "))}</small>` : ""}</button>`;
+  }).join("");
+  return `<div class="ch-poll"><b class="pq-q">📊 ${esc(a.otazka || "")}</b><small class="pq-sub">${closed ? "Anketa je ukončená" : a.vice ? "Můžeš vybrat víc možností" : "Vyber jednu možnost"}</small>${rows}
+    <small class="pq-sum">${voters.length} ${hlasTxt(voters.length)}${String(m.od) === me && !closed ? ` · <button type="button" class="pq-end" data-chpollend="${esc(m.id)}">Ukončit anketu</button>` : ""}</small></div>`;
+}
+function pollVote(mid, i){
+  const m = (S.msgs || []).find(x => x.id === mid); if (!m || !m.anketa || m.uzavreno) return;
+  const me = String(O.me); let cur = ((m.hlasy || {})[me] || []).map(Number);
+  if (m.anketa.vice) cur = cur.includes(i) ? cur.filter(x => x !== i) : cur.concat(i).sort((a, b) => a - b);
+  else cur = cur.includes(i) ? [] : [i];
+  const prev = m.hlasy; m.hlasy = {...(m.hlasy || {}), [me]:cur}; renderMsgs(false);
+  tref().collection("zpravy").doc(mid).update({["hlasy." + me]: cur.length ? cur : FV().delete()})
+    .catch(e => { m.hlasy = prev; renderMsgs(false); toast(e.code === "permission-denied" ? "Hlasovat zatím nejde – chybí úprava pravidel Firestore." : "Hlas se nepodařilo uložit."); });
+}
+function pollEnd(mid){
+  if (!confirm("Ukončit anketu? Pak už nikdo nebude moct hlasovat.")) return;
+  tref().collection("zpravy").doc(mid).update({uzavreno:true}).catch(e => toast(e.code === "permission-denied" ? "Ukončit zatím nejde – chybí úprava pravidel Firestore." : "Nepodařilo se uložit."));
+}
+
+/* ================= šachové úlohy (mat 1., 2. a 3. tahem) =================
+   Úlohy jsou vybrané z partií a ověřené řešičem: tah útočníka je v hlavní variantě vždy jediný správný,
+   obránce hraje nejdelší obranu. Poslední (matující) tah se uzná jakýkoli. Výsledky jen v telefonu („shUl“). */
+const SH_UL = /*ULOHY*/{"1":[{"f":"8/8/p1p4p/4p3/4P1P1/5k2/2r2p2/5K2 b - - 0 43","t":["Vc1#"]},{"f":"r6r/4kpbp/2p5/1nq5/8/P7/1P3PPP/2R3K1 b - - 1 19","t":["D×c1#"]},{"f":"r5k1/2pK2p1/p7/2q5/3bp3/8/8/8 b - - 1 43","t":["Dd6#"]},{"f":"rq3k2/1pp1p3/4Bp2/7P/p5Q1/P7/KPPR1P2/R1r5 w - - 5 31","t":["Dg8#"]},{"f":"3r2k1/ppp2p1p/5p2/R2p4/1b1P4/8/1PPr1PPP/6KR b - - 0 19","t":["Vd1#"]},{"f":"r4rk1/ppp2ppp/3b4/4pbP1/8/P7/KPq2P1P/R1B4R b - - 1 23","t":["Se6#"]},{"f":"r4rk1/pppb1ppp/2nbp3/6P1/3PP3/1KPq1N2/PP5P/R1B4Q b - - 0 15","t":["Ja5#"]},{"f":"r3k2r/ppp2ppp/6n1/8/1b4b1/3PBP2/1PP1K1PP/1q3B1R b kq - 0 15","t":["De1#"]},{"f":"1k6/p1p5/8/r7/3pB3/1K6/7p/2q5 b - - 5 46","t":["Dc3#"]},{"f":"5rk1/ppp3pp/8/5bK1/8/3n4/7r/8 b - - 1 32","t":["h6#"]},{"f":"8/2p3k1/7p/5p2/2b1r1p1/2P3q1/6P1/7K b - - 1 35","t":["Ve1#"]},{"f":"1k1r4/ppp3p1/4p3/4n3/1b6/8/1r6/5K2 b - - 7 28","t":["Vd1#"]},{"f":"R7/1kP5/8/3N3p/1P2P2P/8/1b6/7K w - - 2 53","t":["c8=D#"]},{"f":"6kr/1pp4p/p7/2K5/7q/4r3/8/8 b - - 5 61","t":["Ve5#"]},{"f":"1k6/ppp2p2/8/7R/3PpK2/8/Br6/8 w - - 1 56","t":["Vh8#"]},{"f":"r3k2r/p1p2ppp/3b4/8/8/8/2q2PPP/4KB1R b kq - 6 22","t":["Sb4#"]},{"f":"2r3k1/1pp1pp1p/p3q1p1/3r1b2/P2b1P2/5K2/1P2P1PP/n3QBR1 b - - 1 20","t":["De3#"]},{"f":"8/kp6/1ppB1p2/1P2pB2/4P3/3P3P/2P2P2/2R1R1K1 w - - 2 42","t":["Va1#"]},{"f":"5r2/p2kpp2/b2b4/8/K2n4/7P/P1P2P2/q5R1 b - - 4 23","t":["D×a2#"]},{"f":"r6r/pbp2pkp/8/4p3/P6P/6P1/4PP1K/3q4 b - - 1 20","t":["Dh1#"]}],"2":[{"f":"8/8/p1p4p/4p3/4P1k1/6P1/2r2p2/5K2 b - - 1 42","t":["Kf3","g4","Vc1#"]},{"f":"r6r/1k6/p6p/2Q1PR2/8/7P/P7/2KN3R w - - 1 37","t":["Vf7+","Kb8","Dc7#"]},{"f":"6k1/r1p3p1/p7/3Kp3/3b4/8/4q3/8 b - - 11 39","t":["Kf7","Kc6","Db5#"]},{"f":"r4rk1/ppp2ppp/3b4/4pbP1/8/P2q4/1PQ2P1P/RKB4R b - - 0 22","t":["D×c2+","Ka2","Se6#"]},{"f":"k6r/pp5p/4nQp1/4p3/P7/8/1PP2PPP/4KR2 w - - 1 28","t":["D×h8+","Jd8","D×d8#"]},{"f":"r1b1k2r/ppp2ppp/6n1/8/1b6/3PB3/1PP1KPPP/1q3B1R b kq - 3 14","t":["Sg4+","f3","De1#"]},{"f":"5rk1/ppp3pp/8/5b1K/8/3n4/4r2P/8 b - - 3 31","t":["V×h2+","Kg5","h6#"]},{"f":"8/2p3k1/4r2p/5p2/2b1B1p1/2P3q1/6P1/6K1 b - - 3 34","t":["V×e4","Kh1","Ve1#"]},{"f":"2kr4/ppp3p1/4p3/4n3/1b6/1r6/6K1/8 b - - 3 26","t":["Vd2+","Kf1","Vb1#"]},{"f":"6kr/1pp4p/p7/3K4/7q/5r2/8/8 b - - 3 60","t":["Ve3","Kc5","Ve5#"]},{"f":"3rr1k1/p1p2pp1/7p/3p1p2/3P1P2/1P5P/Pq4P1/3n2K1 b - - 0 34","t":["Je3","b4","D×g2#"]},{"f":"7k/2p5/2Np1rPB/1R1Bp3/p5p1/8/1P3PPP/3R2K1 w - - 1 36","t":["Vb8+","Vf8","V×f8#"]},{"f":"6k1/7p/6b1/4q3/2p2r1P/2P3R1/6PK/8 b - - 3 45","t":["V×h4+","Kg1","De1#"]},{"f":"1rb1r3/pp3p1k/1q2pn2/8/1P1P2Q1/P3PN2/2P2PP1/2KR4 w - - 5 30","t":["Vh1+","Jh5","V×h5#"]},{"f":"3r2k1/7p/2b3p1/2p5/8/5PB1/1q5P/2R4K b - - 13 43","t":["S×f3+","Kg1","Dg2#"]},{"f":"8/4kp2/1p4p1/3Q3r/3P3p/7P/1PP1PPP1/RK3BR1 w - - 1 47","t":["Va7+","Ke8","Da8#"]},{"f":"r2qkb1r/1pp1pppp/2bp1n2/p7/2B1P3/1QN2N2/PPP2PPP/R1B1K2R w KQkq - 0 9","t":["S×f7+","Kd7","De6#"]},{"f":"1rb1k2r/p1p2p1p/2p2n1p/2b5/8/7P/PPP2qP1/R2K1R2 b k - 1 15","t":["D×f1+","Kd2","Je4#"]},{"f":"6k1/p4p2/Pp2b2p/1P5P/5p2/2r2P2/6PK/2q5 b - - 0 43","t":["Df1","g3","Vc2#"]},{"f":"r3k2r/ppp2ppp/5n2/3p4/3P4/2PbB2P/PP3P2/R3KN1q b Qkq - 1 17","t":["D×f1+","Kd2","Je4#"]},{"f":"1k6/1p6/1pp2p2/1P2pB2/1B2P3/3P3P/2P2P2/2R1R1K1 w - - 0 41","t":["Sd6+","Ka8","Va1#"]},{"f":"5r2/p2kpp2/b7/8/1K1n4/6bP/P1P2P2/q5R1 b - - 2 22","t":["Sd6+","Ka5","D×a2#"]},{"f":"r1b4r/pBp2pkp/8/4p3/P2q3P/6P1/3BPP2/4K2R b K - 0 17","t":["Da1+","Sc1","D×c1#"]},{"f":"6R1/8/4B2k/8/P3N3/6B1/1P4PP/1K6 w - - 11 65","t":["Sf5","Kh5","Vh8#"]},{"f":"r3k3/p1p5/2n4r/1p1np3/7q/P2P1P1P/1PP1B2P/1R1Q1K1R b q - 3 16","t":["Je3+","Kg1","Vg6#"]},{"f":"1k2r3/1p3pp1/8/5r2/1P1bpP1p/P6P/2p3K1/8 b - - 0 40","t":["c1=D","b5","Dg1#"]},{"f":"8/1kp5/p7/2Q5/1p1P1B2/8/PPP2P1P/2R3K1 w - - 1 32","t":["D×c7+","Ka8","Db8#"]},{"f":"2k1r3/1pp2pp1/p6p/8/P3nb2/8/1PP1r2P/6K1 b - - 1 29","t":["S×h2+","Kh1","Jg3#"]},{"f":"5k2/rpp1pp2/4b3/4p1p1/3qn1P1/1P6/P1P1KPBP/6R1 b - - 1 16","t":["Jc3+","Kf3","Df4#"]},{"f":"3r2k1/p1p3p1/4p2p/7P/2pP4/P3P3/2b1q1P1/6K1 b - - 0 35","t":["Se4","d5","D×g2#"]},{"f":"2kr3r/ppp1bpp1/7B/7p/5K2/P7/2n2P1P/q6R b - - 1 20","t":["Dd4+","Kf3","Dg4#"]},{"f":"r5k1/ppp2ppp/8/3p4/1P5q/P2br3/1B3PPP/R2K2R1 b - - 1 24","t":["D×f2","b5","Dc2#"]},{"f":"8/6Q1/kp5R/4p3/p3P3/P4P2/1PP3P1/2K5 w - - 0 38","t":["c4","Ka5","Da7#"]},{"f":"8/5pkp/4r1q1/p6p/8/8/7K/2R5 b - - 5 64","t":["Ve2+","Kh3","Dg4#"]},{"f":"r3Rk2/ppp2pb1/8/3p4/3p3q/3B1p2/PPP2PPr/R4K2 b - - 1 20","t":["V×e8","Sc4","Vh1#"]},{"f":"r2k2nr/pp3ppp/3bbq2/8/3nP2P/P7/2P2PP1/R4RK1 b - - 1 16","t":["Je2+","Kh1","D×h4#"]},{"f":"1r3r1k/1p1P1p1p/pp6/5q2/4p3/1n2P3/2p2P2/5RK1 b - - 0 40","t":["Vg8+","Kh2","Dh5#"]},{"f":"1r3r1k/2p3pp/1p6/4np2/8/PBP1P3/PB2K2P/3R3q b - - 1 25","t":["Dg2+","Ke1","Jf3#"]},{"f":"3r2kr/2B4p/5b2/1b3p2/8/P7/1PP4P/1RK5 b - - 1 38","t":["Sg5+","Sf4","S×f4#"]},{"f":"3k4/8/r5p1/P3ppp1/8/3b4/2r5/3K4 b - - 11 55","t":["V×a5","Ke1","Va1#"]},{"f":"1r3k2/ppp3p1/8/3p4/P3qP2/8/5K1b/8 b - - 0 28","t":["Ve8","a5","De2#"]},{"f":"r4rk1/ppp2ppp/1b6/8/4Npb1/3B4/2PR2PP/1qN1K2R b K - 4 19","t":["D×c1+","Vd1","D×d1#"]},{"f":"rr4k1/ppp2ppp/1bnpq3/4p2P/1P2P3/P2B2P1/2PPNn1K/R1BQR3 b - - 1 15","t":["Dh3+","Kg1","Dh1#"]},{"f":"5rk1/1pp2pp1/8/2rb3p/7P/b5P1/5P2/6K1 b - - 0 25","t":["Vc1+","Kh2","Vh1#"]},{"f":"r1b4r/pp1k1p1p/2n2bp1/8/P5P1/8/2q2P1P/4K3 b - - 1 18","t":["Dd3","f3","Sh4#"]}],"3":[{"f":"r5k1/2p3p1/pb6/4p3/1P5q/8/8/1K6 b - - 1 31","t":["Dh2","Kc1","Vf8","b5","Vf1#"]},{"f":"5rk1/ppp3pp/8/5P2/2n1b2K/8/1P5P/4r3 b - - 0 27","t":["Vg1","f6","V×f6","Kh5","Vh6#"]},{"f":"5rk1/p1p5/3Rb2p/1B3p2/2P3p1/4p1P1/P1P2PPK/q7 b - - 1 25","t":["e×f2","Vd1","D×d1","Sa6","Dg1#"]},{"f":"3rr1k1/p1p2pp1/7p/3p1p2/3P1P2/1P6/Pq3nPP/3R2K1 b - - 3 33","t":["J×d1","h3","Je3","b4","D×g2#"]},{"f":"7r/p6k/P1bp3p/4p3/7P/8/1P3r2/2K5 b - - 0 26","t":["Vg8","Kb1","Sd5","h5","Vg1#"]},{"f":"1rb1r2k/pp1n1p2/3qp3/6Q1/1P1Pp2N/4P3/P1P2PP1/2KR4 w - - 3 24","t":["Jf5","e×f5","Vh1+","Dh2","V×h2#"]},{"f":"r3kb2/1pp1ppp1/8/4r3/6n1/8/q1P2PPP/3Q1K1R b q - 1 18","t":["D×c2","D×c2","Va1+","Db1","V×b1#"]},{"f":"6r1/1p3Rp1/pk1p4/5p1p/7P/5p2/3r4/6K1 b - - 1 57","t":["Vc8","Ve7","Vc1+","Ve1","V×e1#"]},{"f":"6kr/1p2b1pp/4q3/8/4bB2/7P/5PPK/r7 b - - 1 26","t":["Vh1+","K×h1","D×h3+","Sh2","D×g2#"]},{"f":"5r2/Q1pk1p1p/2b3p1/2p5/5B2/5P2/4qRPP/6K1 w - - 0 32","t":["D×c7+","Ke8","V×e2+","Se4","V×e4#"]},{"f":"r3r3/1pp2pkp/p7/8/1PP5/4P2q/P3P3/RK6 b - c3 0 23","t":["V×e3","Kc2","V×e2+","Kd1","Df1#"]},{"f":"8/5R2/1k6/8/1pPP1NP1/8/PP3PK1/3R4 w - - 3 51","t":["Jd5+","Kc6","Vh1","Kd6","Vh6#"]},{"f":"r3k2r/ppp2ppp/5n2/3p4/3P4/2PbB2P/PP1N1Pq1/R3K2R b KQkq - 1 16","t":["D×h1+","Jf1","D×f1+","Kd2","Je4#"]},{"f":"r1b1k2r/pp3ppp/5n2/q7/P2nP3/b2K4/2P2PPP/5B1R b kq - 1 15","t":["Sb2","Ke3","Jg4+","Kf4","De5#"]},{"f":"8/1kp3pp/8/3p4/1P5K/7P/2r1r3/8 b - - 1 58","t":["Vg2","b5","g6","b6","Vc4#"]},{"f":"2b5/1ppk3p/2n5/4p3/1p4p1/3K4/r1PB2PP/q4B1R b - - 1 24","t":["Dd4+","Ke2","V×c2","Kd1","D×d2#"]},{"f":"r3kb1r/1pp1np1p/B7/6p1/3q4/8/P4PPP/4K2R b kq - 0 15","t":["V×a6","f3","V×a2","f4","Da1#"]},{"f":"3RB3/8/5N1k/8/7p/P5B1/1P4PP/1K6 w - - 0 54","t":["S×h4","Kg7","Vd7+","Kf8","Vf7#"]},{"f":"k7/2p5/p7/2Q5/1p1P1p2/4B3/PPP2P1P/2R3K1 w - - 2 31","t":["S×f4","Kb8","D×c7+","Ka8","Db8#"]},{"f":"2k1r3/1pp2pp1/p6p/8/P3nb2/8/1PP1Rr1P/7K b - - 3 28","t":["V×e2","Kg1","S×h2+","Kh1","Jg3#"]},{"f":"3r2k1/p1p3p1/4p2p/8/2pPb2P/P3P3/2R1q1P1/6K1 b - - 1 34","t":["D×c2","Kf1","Vb8","d5","Vb1#"]},{"f":"r3k2r/p1p2p1p/8/8/2nb1P2/3b3P/8/7K b kq - 0 28","t":["Vg8","h4","Sg1","f5","Se4#"]},{"f":"8/5pkp/4rq2/p6p/8/8/6K1/2R5 b - - 3 63","t":["Ve2+","Kh1","Df3+","Kg1","Dg2#"]},{"f":"r4k2/ppp2pb1/8/3p4/3p1p1q/3B4/PPP2PPr/R3RK2 b - - 5 19","t":["f3","Ve8+","V×e8","Sc4","Vh1#"]},{"f":"4k3/5p2/8/2N1P1QP/p7/P6P/8/6K1 w - - 1 69","t":["Df6","Kf8","Je6+","Ke8","Dd8#"]},{"f":"1r3r1k/2p3pp/1p6/4np2/3q4/PB6/P5K1/8 b - - 1 30","t":["Jg4","a4","Df2+","Kh3","Dh2#"]},{"f":"2rk4/p7/6p1/2P1ppp1/PP6/3b4/6r1/2K5 b - - 0 43","t":["Ke7","c6","Vh8","c7","Vh1#"]},{"f":"r4rk1/ppp2ppp/1b6/8/4Npb1/1N1B4/q1PR2PP/4K2R b K - 2 18","t":["Db1+","Jc1","D×c1+","Vd1","D×d1#"]},{"f":"6k1/1pp4p/4pKp1/5p2/1pq5/8/r1P5/8 b - - 7 57","t":["Dh4+","K×e6","Dd8","Ke5","Dd6#"]},{"f":"4rr2/p1pp1ppk/1pb5/8/P1P2n2/2K2n2/1P6/8 b - - 1 29","t":["Ve3+","Kc2","Se4+","Kc1","Ve1#"]},{"f":"r3k1r1/p1p2p1p/2p3p1/2b3p1/2P1P3/3P1B1P/q4PP1/1R4KR b q - 3 19","t":["D×f2+","Kh2","Sd6+","e5","S×e5#"]},{"f":"1k5r/p3b2p/7p/2p1p3/P1b1PpP1/8/7K/r7 b - - 1 41","t":["Va2+","Kg1","Vd8","a5","Vd1#"]},{"f":"2k3r1/2p2p2/p1p3pp/4p3/1P1r1n1P/4K3/P2N1P2/7R b - - 1 30","t":["Vd3+","Ke4","Ve8","b5","f5#"]},{"f":"5br1/rpp1kpp1/7p/4n3/5q2/7P/PP6/4K3 b - - 1 24","t":["V×a2","Ke2","V×b2+","Ke1","Dc1#"]},{"f":"5k2/8/p5P1/P3B3/1P2P3/8/2P5/4R1K1 w - - 1 49","t":["Sf6","Ke8","Vd1","Kf8","Vd8#"]},{"f":"8/1p2B2k/6b1/7p/r2P4/4p3/6P1/4K1R1 b - - 1 35","t":["Sd3","Sa3","V×a3","d5","Va1#"]},{"f":"k4B2/1p3p2/p7/6pp/1P6/P7/1P1R1PPP/3R2K1 w - g6 0 38","t":["Vd8+","Ka7","Sc5+","b6","V1d7#"]},{"f":"r2qk2r/ppp2pp1/8/4n2p/3Nn1b1/5N2/PPPbKPPP/R4B1R b kq - 3 11","t":["D×d4","Kd1","J×f2+","Ke2","De3#"]},{"f":"1k1r3r/2p2ppp/pp6/3P4/PbP1q1P1/8/4P3/K4BR1 b - - 1 29","t":["Sc3+","Ka2","Dc2+","Ka3","Db2#"]}]};
+const ulDay = () => { const d = new Date(now()); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+function ulLoad(){ try { return Object.assign({hotovo:{}, dny:{}}, JSON.parse(localStorage.getItem("shUl") || "{}")); } catch (e){ return {hotovo:{}, dny:{}}; } }
+function ulSave(x){ try { localStorage.setItem("shUl", JSON.stringify(x)); } catch (e){} }
+function ulDayId(){
+  const d = new Date(now()), days = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5);
+  const pool = [...(SH_UL[2] || []).map((_, i) => "2-" + i), ...(SH_UL[3] || []).map((_, i) => "3-" + i)];
+  // promíchat pořadí pevně (stejné pro všechny), aby se střídaly mat 2 a mat 3
+  const k = (days * 7919) % pool.length; return pool[k];
+}
+function ulGet(id){ const [n, i] = String(id).split("-").map(Number), u = (SH_UL[n] || [])[i]; return u ? {id, n, fen:u.f, tahy:u.t} : null; }
+function ulNext(n, after){
+  const L = SH_UL[n] || [], st = ulLoad(); if (!L.length) return null;
+  const start = after != null ? +String(after).split("-")[1] + 1 : 0;
+  for (let k = 0; k < L.length; k++){ const i = (start + k) % L.length; if (!st.hotovo[`${n}-${i}`]) return `${n}-${i}`; }
+  return `${n}-${start % L.length}`;
+}
+function ulStreak(st){ let n = 0; const d = new Date(now()); for (;;){ const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; if (!st.dny[k]) break; n++; d.setDate(d.getDate() - 1); } return n; }
+function ulOpen(id){
+  const u = ulGet(id); if (!u){ toast("Úloha není k dispozici."); return; }
+  const s = shParse(u.fen);
+  S.sh = {uloha:u, fen:u.fen, posledni:null, ja:s.w ? "w" : "b", krok:0, chyby:0, faze:"hra", tahy:[], napoveda:false, reseni:false, lvl:2};
+  S.shSel = null; S.shPend = null; S.shPromo = null; S.shBusy = false; S.ulMsg = ""; S.ulBad = null;
+  hgMount("shOv", "Šachová úloha", shClick); shRender();
+}
+const ulStrip = x => String(x).replace(/[+#]/g, "");
+function ulMove(m){
+  const g = S.sh, u = g.uloha, s = shParse(g.fen), all = shLegal(s);
+  const mm = all.find(x => x.f === m.f && x.t === m.t && (x.pr || "").toUpperCase() === (m.pr || "").toUpperCase()); if (!mm) return;
+  const san = shSan(s, mm, all), last = g.krok === u.tahy.length - 1, n = shMake(s, mm);
+  const ok = last ? shInCheck(n) && !shLegal(n).length : ulStrip(san) === ulStrip(u.tahy[g.krok]);
+  if (!ok){ g.chyby++; S.ulMsg = `${san} – tohle k matu nevede. Zkus jiný tah.`; S.ulBad = [mm.f, mm.t]; shRender(); return; }
+  S.ulBad = null; S.ulMsg = "";
+  g.fen = shFen(n); g.posledni = [mm.f, mm.t]; g.tahy.push(san); g.krok++;
+  if (last){ ulSolved(); return; }
+  ulReply(g);
+}
+function ulReply(g, then){
+  S.shBusy = true; shRender();
+  setTimeout(() => {
+    if (S.sh !== g) return;
+    const s = shParse(g.fen), a = shLegal(s), d = a.find(x => ulStrip(shSan(s, x, a)) === ulStrip(g.uloha.tahy[g.krok]));
+    if (d){ g.tahy.push(shSan(s, d, a)); g.fen = shFen(shMake(s, d)); g.posledni = [d.f, d.t]; g.krok++; }
+    S.shBusy = false; shRender(); if (then) then();
+  }, 650);
+}
+function ulSolved(){
+  const g = S.sh; g.faze = "konec";
+  if (!g.reseni){
+    const st = ulLoad();
+    if (!st.hotovo[g.uloha.id]) st.hotovo[g.uloha.id] = {at:Date.now(), chyby:g.chyby, napoveda:g.napoveda};
+    if (g.uloha.id === ulDayId()) st.dny[ulDay()] = true;
+    ulSave(st);
+  }
+  shRender();
+}
+function ulHint(){
+  const g = S.sh; if (g.faze !== "hra" || S.shBusy) return;
+  const s = shParse(g.fen), a = shLegal(s), m = a.find(x => ulStrip(shSan(s, x, a)) === ulStrip(g.uloha.tahy[g.krok]));
+  if (!m) return;
+  g.napoveda = true; S.shSel = m.f; S.shPend = null; S.ulMsg = "Nápověda: táhni figurou na zvýrazněném poli."; shRender();
+}
+function ulSolution(){
+  const g = S.sh; if (g.faze !== "hra" || S.shBusy) return;
+  g.reseni = true; S.shSel = null; S.shPend = null; S.ulMsg = ""; S.ulBad = null;
+  const step = () => {
+    if (S.sh !== g) return;
+    if (g.krok >= g.uloha.tahy.length){ S.ulMsg = ""; ulSolved(); return; }
+    ulReply(g, () => setTimeout(step, 250));
+  };
+  step();
+}
+function ulRender(v){
+  const g = S.sh, u = g.uloha, col = g.ja, s = shParse(g.fen), can = shCanMove(g), end = g.faze === "konec";
+  const side = col === "w" ? "bílý" : "černý", tah = Math.floor(g.krok / 2) + 1;
+  const daily = u.id === ulDayId(), st = ulLoad();
+  const title = `Mat ${u.n}. tahem`;
+  let status;
+  if (end) status = g.reseni ? "Řešení úlohy" : g.chyby || g.napoveda ? "Mat! Vyřešeno ✓" : "Mat! Vyřešeno napoprvé 🏆";
+  else if (S.shBusy) status = "Soupeř odpovídá…";
+  else status = `${side === "bílý" ? "Bílý" : "Černý"} táhne – ${tah}. tah z ${u.n}`;
+  let msg = S.ulMsg || "";
+  if (!msg && S.shPend) msg = `Táhnout ${S.shPend.san}? Potvrď tlačítkem, nebo klepni na pole znovu.`;
+  else if (!msg && end) msg = `Řešení: ${u.tahy.map((t, i) => i % 2 ? t : `${Math.floor(i / 2) + 1}. ${t}`).join(" ")}`;
+  else if (!msg && !g.krok) msg = `Hraješ za ${col === "w" ? "bílé" : "černé"} (dole). Najdi mat ${u.n === 1 ? "jedním tahem" : `nejpozději ${u.n}. tahem`} – soupeř se bude bránit.`;
+  const bad = S.ulBad || [];
+  const btns = end ? `<button type="button" class="pk-b sec" data-ulre>Znovu</button><button type="button" class="pk-b" data-ulnext>Další úloha</button>`
+    : `<button type="button" class="pk-b sec" data-ulhint ${S.shBusy ? "disabled" : ""}>Nápověda</button><button type="button" class="pk-b sec" data-ulsol ${S.shBusy ? "disabled" : ""}>Řešení</button>${S.shPend && !O.desk ? `<button type="button" class="pk-b" data-shgo>Táhnout ${esc(S.shPend.san)}</button>` : ""}`;
+  const done = Object.keys(st.hotovo).filter(k => k.startsWith(u.n + "-")).length;
+  v.innerHTML = `<div class="pk-in">${hgTop(daily ? "Úloha dne" : "Šachová úloha", `${title}`)}
+    <div class="pk-pl"><span class="pk-p${!end && can ? " on" : ""}"><span class="sh-k">${shPiece("K", col === "w")}</span> Ty – ${side}</span><span class="pk-p${!end && S.shBusy ? " on" : ""}"><span class="sh-k">${shPiece("K", col !== "w")}</span> Soupeř</span></div>
+    <p class="pk-st${end && !g.reseni ? " win" : ""}">${esc(status)}</p>
+    <div class="ul-bad">${shBoardHTML(g, can, col).replace(/data-shq="(\d+)"/g, (x, i) => bad.includes(+i) ? `${x} data-bad` : x)}</div>
+    <p class="ld-msg${S.ulBad ? " bad" : ""}">${esc(msg)}</p>
+    <div class="pk-btns">${btns}</div>
+    <p class="pk-cap">${g.chyby ? `Chybné tahy: ${g.chyby} · ` : ""}Vyřešeno ${done} z ${(SH_UL[u.n] || []).length} úloh (mat ${u.n}. tahem)${ulStreak(st) ? ` · série úloh dne: ${ulStreak(st)} ${ulStreak(st) === 1 ? "den" : ulStreak(st) < 5 ? "dny" : "dní"}` : ""}</p>
+    ${shMovesHTML(g.tahy)}${S.shPromo ? `<div class="sh-pro" role="dialog" aria-label="Proměna pěšce"><h3>Proměna pěšce – vyber figuru</h3><div>${[["Q", "Dáma"], ["R", "Věž"], ["B", "Střelec"], ["N", "Jezdec"]].map(([x, nz]) => `<button type="button" data-shpr="${x}">${shPiece(x, col === "w")}<small>${nz}</small></button>`).join("")}</div><button type="button" class="pk-b sec" data-shprx style="width:100%;margin-top:10px">Zrušit</button></div>` : ""}</div>`;
+}
+function ulHubHTML(){
+  const st = ulLoad(), id = ulDayId(), u = id ? ulGet(id) : null; if (!u) return "";
+  const today = !!st.hotovo[id], streak = ulStreak(st), total = Object.keys(st.hotovo).length;
+  return `<div class="ch-sec">Šachové úlohy</div><div class="pk-box">
+    <button type="button" class="pk-row" data-chul="${id}"><span>⭐ <b>Úloha dne</b> · mat ${u.n}. tahem</span>${today ? `<small>vyřešeno ✓</small>` : `<em>Vyřešit</em>`}</button>
+    <div class="ul-lv">${[1, 2, 3].map(n => `<button type="button" data-chuln="${n}"><b>Mat ${n}. tahem</b><small>${Object.keys(st.hotovo).filter(k => k.startsWith(n + "-")).length} / ${(SH_UL[n] || []).length}</small></button>`).join("")}</div>
+    <p class="ch-empty" style="margin:6px 0 0">Vyřešeno celkem ${total}${streak ? ` · série úloh dne ${streak} ${streak === 1 ? "den" : streak < 5 ? "dny" : "dní"} 🔥` : ""}</p></div>`;
 }
 
 window.SluzbyChat = CH;
