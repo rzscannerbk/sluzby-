@@ -117,6 +117,12 @@ body{margin:0;height:100%;background:var(--paper);color:var(--ink);font-family:v
 .marks .d{background:#F2D24A}
 .marks .n{background:#4B3F9E}
 .marks .s{background:#2E9E5B}
+.akm{position:absolute;left:3px;top:3px;line-height:1;display:flex;flex-direction:column;gap:2px}.akm .ik{width:12px;height:12px}
+.wxi{display:inline-flex}.wxi .ik{width:22px;height:22px}.wxp{display:inline-flex;align-items:center;gap:1px}.wxp .ik{width:14px;height:14px}
+.akce-c{margin-top:8px;padding:7px 10px;border-radius:8px;background:rgba(30,99,198,.1);border-left:4px solid #1E63C6}
+.akce-c p{margin:0;display:flex;justify-content:space-between;gap:8px;font-size:15px}
+.akce-c p+p{margin-top:4px}
+.akce-c span{white-space:nowrap;font-weight:600;color:var(--ink2)}
 
 .group{margin:0 0 22px}
 .card{background:var(--sheet);border:1.5px solid var(--ink);border-radius:12px;padding:12px 14px 14px;margin:0 0 10px;position:relative}
@@ -650,7 +656,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.27</span>
+      <span class="ver" id="verDiag">v5.29</span>
     </div>
   </div>
 </header>
@@ -764,8 +770,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.27"></script>
-<script src="sluzby-chat.js?v=5.27"></script>
+<script src="sluzby-core.js?v=5.29"></script>
+<script src="sluzby-chat.js?v=5.29"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -879,14 +885,14 @@ function wxLoad(force){
 }
 const WX_SEV = c => c >= 95 ? 9 : (c >= 71 && c <= 77) || c === 85 || c === 86 ? 8 : c >= 80 ? 7 : c >= 61 ? 6 : c >= 51 ? 5 : c >= 45 ? 4 : c;
 function wxIcon(c, night){
-  if (c >= 95) return "⛈️";
-  if ((c >= 71 && c <= 77) || c === 85 || c === 86) return "🌨️";
-  if (c >= 80) return "🌦️";
-  if (c >= 51) return "🌧️";
-  if (c >= 45) return "🌫️";
-  if (c === 3) return "☁️";
-  if (c === 2) return night ? "☁️" : "⛅";
-  return night ? "🌙" : c === 1 ? "🌤️" : "☀️";
+  if (c >= 95) return ikona("bourka");
+  if ((c >= 71 && c <= 77) || c === 85 || c === 86) return ikona("snih");
+  if (c >= 80) return ikona("prehanky");
+  if (c >= 51) return ikona("dest");
+  if (c >= 45) return ikona("mlha");
+  if (c === 3) return ikona("oblak");
+  if (c === 2) return night ? ikona("oblak") : ikona("polojasno");
+  return night ? ikona("mesic") : c === 1 ? ikona("polojasno") : ikona("slunce");
 }
 function wxHTML(win, kind){
   if (!WX) return "";
@@ -900,7 +906,7 @@ function wxHTML(win, kind){
   const codes = Object.keys(cnt).map(Number);
   const code = (codes.filter(c => cnt[c] >= 2).sort((a, b) => WX_SEV(b) - WX_SEV(a))[0]) ?? codes.sort((a, b) => cnt[b] - cnt[a])[0];
   const lo = Math.round(Math.min(...t)), hi = Math.round(Math.max(...t));
-  return `<span class="wxi">${wxIcon(code, kind === "N")}</span><span class="wxt">${lo === hi ? lo : `${lo}–${hi}`}°</span>${p >= 30 ? `<span class="wxp">💧${p} %</span>` : ""}`;
+  return `<span class="wxi">${wxIcon(code, kind === "N")}</span><span class="wxt">${lo === hi ? lo : `${lo}–${hi}`}°</span>${p >= 30 ? `<span class="wxp">${ikona("kapka")}${p} %</span>` : ""}`;
 }
 function wxFill(){
   document.querySelectorAll(".card[data-start]").forEach(c => {
@@ -945,6 +951,8 @@ function cardHTML(kind, g, slot, now){
     }
     for (const [code, names] of Object.entries(slot.A || {})) parts.push(`<p><b>${CODES[code].label}:</b> ${names.map(n => nameBtn(n)).join(", ")}</p>`);
     if (parts.length) aside = `<div class="aside">${parts.join("")}</div>`;
+    const ak = g.prev ? [] : akceOn(g.date);
+    if (ak.length) aside += `<div class="akce-c">${ak.map(a => `<p><b>${ikona("kalendar")} ${esc(a.nazev)}</b><span>${esc(akceCas(a))}</span></p>`).join("")}</div>`;
   }
   if (slot.note) aside += `<div class="aside"><p>${esc(slot.note)}</p></div>`;
   const snKey = shiftNoteKey(g.date, kind), sn = snotesOf(snKey);
@@ -1004,8 +1012,14 @@ function render(){
       if (dm && nm) cls.push("my-dn"); else if (dm) cls.push("my-d"); else if (nm) cls.push("my-n");
       if (dm === "s" || nm === "s") marks = `<span class="marks" aria-hidden="true"><span class="mk"><i class="s"></i></span></span>`;
     }
+    // vlevo nahoře: akce, na kterou jdu, a moje poznámka ke dni nebo ke službě
+    if (!g.prev){
+      const k = akceKey(d), hasN = !!(MY_NOTES[k] || snotesOf(k + "|D").length || snotesOf(k + "|N").length);
+      const ic = (akceOn(d).length ? ikona("kalendar") : "") + (hasN ? ikona("poznamka") : "");
+      if (ic) marks += `<span class="akm" aria-hidden="true">${ic}</span>`;
+    }
     const ev = g.prev ? g.prevName : "";
-    const label = `${DOW_T[wd]} ${d.getDate()}. ${d.getMonth()+1}.${ev ? ", " + ev : g.day?.ev ? ", " + g.day.ev : ""}`;
+    const label = `${DOW_T[wd]} ${d.getDate()}. ${d.getMonth()+1}.${ev ? ", " + ev : g.day?.ev ? ", " + g.day.ev : ""}${!g.prev && akceOn(d).length ? ", akce: " + akceOn(d).map(a => a.nazev).join(", ") : ""}${!g.prev && (MY_NOTES[akceKey(d)] || snotesOf(akceKey(d) + "|D").length || snotesOf(akceKey(d) + "|N").length) ? ", máš poznámku" : ""}`;
     return `<button type="button" class="${cls.join(" ")}" data-i="${i}" aria-label="${esc(label)}">${marks}
       <span class="dow">${DOW_T[wd]}</span><span class="dt">${d.getDate()}. ${d.getMonth()+1}.</span>${ev ? `<span class="ev">${esc(ev)}</span>` : ""}</button>`;
   }).join("");
@@ -1308,7 +1322,7 @@ const APP_VER = (document.getElementById("verDiag") || {}).textContent || "";
 /* chat (modul sluzby-chat.js) */
 function chatStart(){
   if (!window.SluzbyChat || !SELF_NO || !db) return;
-  SluzbyChat.init({db, firebase, me:SELF_NO, meName:() => SELF || SELF_EMAIL, officers:() => OFFICERS, isAdmin:isAdminUI(), now:getNow,
+  SluzbyChat.init({db, firebase, me:SELF_NO, meName:() => SELF || SELF_EMAIL, officers:() => OFFICERS, isAdmin:isAdminUI(), now:getNow, kolize:sluzbaVDobeAkce,
     onAllowed: ok => { document.getElementById("btnChat").hidden = !ok; },
     onBadge: n => { const b = document.getElementById("chatBadge"); b.hidden = !n; b.textContent = n > 99 ? "99+" : n; },
     onAdminChange: () => { if (!adm.hidden && ADM.tab === "uziv") renderAdm(); }});
@@ -1466,8 +1480,47 @@ function startNotes(){
     if (!vol.hidden) fillVol();
     render();
   }, () => {});
+  startAkce();
 }
-function stopNotes(){ if (unsubNotes){ unsubNotes(); unsubNotes = null; } MY_NOTES = {}; MY_SNOTES = {}; }
+/* ---------- akce z anket v chatu (potvrzená účast „Přijdu“) ---------- */
+var AKCE = [], unsubAkce = null;
+function startAkce(){
+  if (unsubAkce || !SELF_NO || !db) return;
+  unsubAkce = db.collection("akce").where("prijdu", "array-contains", String(SELF_NO)).onSnapshot(s => {
+    AKCE = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a, b) => (a.datum + (a.od || "")).localeCompare(b.datum + (b.od || "")));
+    render();
+  }, () => {});
+}
+function stopAkce(){ if (unsubAkce){ unsubAkce(); unsubAkce = null; } AKCE = []; }
+function akceKey(d){ return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+function akceOn(d){ return (typeof AKCE === "undefined" ? [] : AKCE).filter(a => a.datum === akceKey(d)); }
+function akceCas(a){ return a.celodenni ? "celý den" : `${a.od}–${a.do}`; }
+function akceWin(a){ const [y, m, d] = a.datum.split("-").map(Number);
+  if (a.celodenni) return [new Date(y, m - 1, d), new Date(y, m - 1, d + 1)];
+  const [h1, n1] = a.od.split(":").map(Number), [h2, n2] = a.do.split(":").map(Number);
+  return [new Date(y, m - 1, d, h1, n1), new Date(y, m - 1, d, h2, n2)]; }
+// varování při výměně: služba, kterou bych bral, se kryje s akcí
+function akceKolize(name, list, out){
+  if (!SELF || name !== SELF || !AKCE.length) return;
+  AKCE.forEach(a => { const [s, e] = akceWin(a);
+    const hit = list.find(x => x.s < e && x.e > s);
+    if (hit){ const [y, m, d] = a.datum.split("-").map(Number);
+      out.w.push(`Kolize s akcí „${a.nazev}“ (${DOW[new Date(y, m - 1, d).getDay()]} ${d}. ${m}. ${akceCas(a)}), na kterou máš potvrzenou účast.`); } });
+}
+// pro anketu v chatu: mám v době akce službu?
+function sluzbaVDobeAkce(ak){
+  if (!SELF) return null;
+  const [y, m, d] = String(ak.datum).split("-").map(Number), [s, e] = akceWin({...ak, nazev:""});
+  const found = [];
+  [[y, m - 1], [new Date(y, m - 2, 1).getFullYear(), new Date(y, m - 2, 1).getMonth()]].forEach(([yy, mm]) => {
+    const ms = MS[docId(yy, mm)]; if (!ms || !ms.T) return;
+    intervals(ms.T, SELF, yy, mm).forEach(x => { if (x.s < e && x.e > s) found.push(x); });
+  });
+  if (!found.length) return null;
+  const x = found[0], hm = t => `${t.getHours()}:${String(t.getMinutes()).padStart(2, "0")}`;
+  return `V tu dobu máš službu (${x.lbl.replace(/^\d+\. /, "")} ${hm(x.s)}–${hm(x.e)}). Domluv si výměnu.`;
+}
+function stopNotes(){ if (unsubNotes){ unsubNotes(); unsubNotes = null; } MY_NOTES = {}; MY_SNOTES = {}; stopAkce(); }
 /* poznámka ke konkrétní službě – vidí ji jen autor */
 function openSnote(key, date, kind, idx){
   snoteRef = key; snoteIdx = idx;

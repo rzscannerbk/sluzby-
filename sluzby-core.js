@@ -156,7 +156,8 @@ function checkPerson(T, name, days, y, m, out, skipAbs){
       const hm = d => `${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`;
       out.e.push(`${name}: ${a.lbl} končí v ${hm(a.e)}, ale ${b.lbl} začíná už v ${hm(b.s)}.`);
     }
-  }
+  }  // kolize s akcí, na kterou má strážník potvrzenou účast (jen varování – výměnu jde potvrdit)
+  if (typeof akceKolize === "function") akceKolize(name, iv.filter(x => days.has(x.day)), out);
 }
 /* výměna přes přelom měsíce: Tod = plán měsíce nabízené služby, Tza = plán měsíce služby kolegy */
 function simulateCross(Tod, Tza, req, accepter){
@@ -246,9 +247,9 @@ function reqSeenLine(r){
   const no = list(r.nezajem), noSet = new Set(Object.keys(r.nezajem || {}));
   const seen = list(Object.fromEntries(Object.entries(r.videli || {}).filter(([c]) => !noSet.has(c))));
   const out = [];
-  if (seen.length) out.push(`👁 Viděl${seen.length > 1 ? "i" : ""} (${seen.length}): ${seen.join(", ")}`);
+  if (seen.length) out.push(`${ikona("oko")} Viděl${seen.length > 1 ? "i" : ""} (${seen.length}): ${seen.join(", ")}`);
   if (no.length) out.push(`✕ Nemá zájem (${no.length}): ${no.join(", ")}`);
-  if (!out.length && r.stav === "ceka") out.push("👁 Zatím nikdo neviděl");
+  if (!out.length && r.stav === "ceka") out.push(`${ikona("oko")} Zatím nikdo neviděl`);
   return out.join("<br>");
 }
 // zapíše „viděl jsem“ k cizím čekajícím žádostem (nabídky všem a žádosti pro mě) – jednou za relaci
@@ -431,3 +432,63 @@ const PRES_CSS = `.pres-sum{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 14
 .pres-main{flex:1 1 160px;display:flex;flex-direction:column;line-height:1.3}.pres-main span{font-size:13px;opacity:.8}
 .pres-dev{flex:2 1 220px;display:flex;flex-direction:column;font-size:13px;opacity:.85;line-height:1.35}.pres-dev .old{color:#C0392B;font-weight:600}
 .pres-note{font-size:12px;opacity:.75;margin:10px 0 0}`;
+
+/* ---------- jednobarevné ikony (linka 2 px, barva podle okolního textu) ---------- */
+const IKONY = {
+  kalendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M8 14.5h3M8 17.5h6"/>',
+  anketa:'<rect x="4" y="11" width="4" height="9" rx="1"/><rect x="10" y="4" width="4" height="16" rx="1"/><rect x="16" y="14" width="4" height="6" rx="1"/>',
+  pocitac:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8"/>',
+  hra:'<path d="M7 7.5h10a4.5 4.5 0 0 1 4.5 4.5v2a3.5 3.5 0 0 1-6.4 2l-1.1-1.5h-4l-1.1 1.5a3.5 3.5 0 0 1-6.4-2v-2A4.5 4.5 0 0 1 7 7.5z"/><path d="M7.5 10.5v3M6 12h3"/><path d="M15.5 11h.01M17.5 13h.01" stroke-width="2.6"/>',
+  pisk:'<path d="M4 4l6 6M10 4l-6 6"/><circle cx="17" cy="17" r="3.4"/><path d="M12 2.5v19M2.5 12h19" stroke-width="1.2" opacity=".55"/>',
+  kotva:'<circle cx="12" cy="5" r="2"/><path d="M12 7v14M8 11h8"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M3 15.5l1.5-1.5 1.5 1.5M18 15.5l1.5-1.5 1.5 1.5"/>',
+  karty:'<rect x="4" y="6" width="11" height="15" rx="2"/><path d="M9 3h9a2 2 0 0 1 2 2v12"/><path d="M9.5 10.5l1.8 3-1.8 3-1.8-3z"/>',
+  jezdec:'<path d="M7.5 20h10c.6-6.5-.6-11-4.5-14l-1.2-2.5-1.6 2.6C8 7.8 6 10.2 6 13.3l2 .6 3.2-2.1C10.2 15 7.5 16.6 7.5 20z"/><path d="M6 21h13"/><path d="M10.5 9h.01" stroke-width="2.6"/>',
+  hvezda:'<path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.2 6-5.5-3-5.5 3 1.2-6-4.5-4.2 6.1-.8z"/>',
+  plamen:'<path d="M12 3c.6 3.6 5.8 5.8 5.8 11.2a5.8 5.8 0 0 1-11.6 0c0-2.8 1.6-4.3 2.2-6.6 1.3 1 2.2 2.4 2.3 4 .9-2.4 1.6-5.4 1.3-8.6z"/>',
+  pohar:'<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 14v4M8 20h8"/>',
+  pozor:'<path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.2h.01"/>',
+  foto:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  oko:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+  kostka:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 8.5h.01M15.5 8.5h.01M12 12h.01M8.5 15.5h.01M15.5 15.5h.01" stroke-width="2.8"/>',
+  kapka:'<path d="M12 3.5s6 6.4 6 10.6a6 6 0 0 1-12 0c0-4.2 6-10.6 6-10.6z"/>',
+  slunce:'<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
+  mesic:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+  polojasno:'<path d="M8.5 4v1.2M3.6 8.8h1.2M5 5.3l.9.9M12.1 5.3l-.9.9"/><path d="M5.6 11.2A3.5 3.5 0 0 1 11.7 7.6"/><path d="M8 20h9.5a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.6.7A3.2 3.2 0 0 0 8 20z"/>',
+  oblak:'<path d="M7 19h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 12.1 3.5 3.5 0 0 0 7 19z"/>',
+  dest:'<path d="M7 15h10.5a3.8 3.8 0 0 0 .6-7.55A5.7 5.7 0 0 0 6.6 8.4 3.3 3.3 0 0 0 7 15z"/><path d="M8 18l-1 2.5M12 18l-1 2.5M16 18l-1 2.5"/>',
+  prehanky:'<path d="M5.5 7.2A3.3 3.3 0 0 1 11.3 5"/><path d="M8 15h9.5a3.5 3.5 0 0 0 .5-7 5 5 0 0 0-9.6.7A3.2 3.2 0 0 0 8 15z"/><path d="M10 18l-1 2.5M15 18l-1 2.5"/>',
+  snih:'<path d="M7 15h10.5a3.8 3.8 0 0 0 .6-7.55A5.7 5.7 0 0 0 6.6 8.4 3.3 3.3 0 0 0 7 15z"/><path d="M8 19h.01M12 18h.01M16 19h.01M10 21.5h.01M14 21.5h.01" stroke-width="2.6"/>',
+  bourka:'<path d="M7 15h10.5a3.8 3.8 0 0 0 .6-7.55A5.7 5.7 0 0 0 6.6 8.4 3.3 3.3 0 0 0 7 15z"/><path d="M12.5 15l-2 3.5h3l-2 3.5"/>',
+  mlha:'<path d="M4 8h16M3 12h13M6 16h15M4 20h12"/>',
+  poznamka:'<path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5M8.5 12h7M8.5 16h5"/>'
+};
+function ikona(n, cls){ return IKONY[n] ? `<svg class="ik${cls ? " " + cls : ""}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IKONY[n]}</svg>` : ""; }
+// emoji ve vlastních textech (hry, ankety, statistiky) → ikona; obsah zpráv a karty pexesa se nemění
+const EMO_IK = [["✕○", "pisk"], ["🖥️", "pocitac"], ["🖥", "pocitac"], ["⚓", "kotva"], ["🏆", "pohar"], ["📷", "foto"], ["📊", "anketa"], ["📅", "kalendar"], ["🎮", "hra"], ["🃏", "karty"], ["♞", "jezdec"], ["⚠️", "pozor"], ["⚠", "pozor"], ["⭐", "hvezda"], ["🔥", "plamen"], ["🎲", "kostka"], ["👁", "oko"], ["💧", "kapka"]];
+const EMO_MAP = Object.fromEntries(EMO_IK);
+const EMO_RE = new RegExp(EMO_IK.map(([e]) => e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
+const ikonyText = html => String(html).replace(EMO_RE, m => ikona(EMO_MAP[m]));
+// jen úvodní značka (náhled poslední zprávy – zbytek je text kolegy)
+const ikonaPrefix = html => { const s = String(html); for (const [e, n] of EMO_IK) if (s.startsWith(e)) return ikona(n) + s.slice(e.length); return s; };
+// v oknech her, nabídkách a kartách her se emoji převedou samy
+function ikonyIn(root){
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), list = [];
+  while (w.nextNode()){ const t = w.currentNode; EMO_RE.lastIndex = 0; if (EMO_RE.test(t.nodeValue)) list.push(t); }
+  list.forEach(t => {
+    const p = t.parentNode; if (!p || /^(TEXTAREA|INPUT|OPTION|TITLE|SCRIPT|STYLE)$/.test(p.nodeName) || p.closest(".ik-no")) return;
+    const tp = document.createElement("template"); tp.innerHTML = esc(t.nodeValue).replace(EMO_RE, m => ikona(EMO_MAP[m]));
+    p.replaceChild(tp.content, t);
+  });
+}
+if (typeof document !== "undefined" && typeof MutationObserver !== "undefined"){
+  const zone = el => el && el.closest && el.closest(".pk-ov, .ch-sheet, .pk-card, .ch-poll, .ik-zone");
+  const run = () => {
+    try { document.head.insertAdjacentHTML("beforeend", `<style>.ik{display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;flex:none}.ik-tab .ik{width:20px;height:20px;vertical-align:middle}</style>`); } catch (e){}
+    new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {
+      if (n.nodeType === 3){ if (zone(n.parentElement)) ikonyIn(n.parentElement); }
+      else if (n.nodeType === 1 && zone(n)) ikonyIn(n);
+      else if (n.nodeType === 1 && n.querySelector) n.querySelectorAll(".pk-card, .ch-poll").forEach(ikonyIn);
+    }))).observe(document.body, {childList:true, subtree:true});
+  };
+  if (document.body) run(); else document.addEventListener("DOMContentLoaded", run);
+}
