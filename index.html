@@ -542,6 +542,13 @@ button.cal-day{cursor:pointer}
 .mp-t td button,.mp-t th.nm{text-decoration:none}
 .mp-t td button{all:unset;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:var(--rh);cursor:pointer;position:relative;font-weight:700}
 .mp-t td .c-d{background:#F2D24A;color:#1D2A4D}
+.mp-t td{position:relative}
+.mp-t .mpm{position:absolute;left:1px;top:1px;display:flex;gap:0;pointer-events:none;line-height:0}
+.mp-t .mpm .ik{width:11px;height:11px}
+.mp-t td .mp-split + .mpm .ik{color:#1D2A4D}
+.mp-t td button.mp-only{color:var(--ink)}
+.mp-t td button.mp-only .mpm{position:static;gap:2px}
+.mp-t td button.mp-only .mpm .ik{width:15px;height:15px}
 .mp-t td .c-n{background:#4B3F9E;color:#fff}
 .mp-t td .c-p{background:#3A9AD9;color:#fff}
 .mp-t td .c-pn{background:linear-gradient(to bottom,#3A9AD9 0 50%,#4B3F9E 50% 100%);color:#fff}
@@ -567,7 +574,7 @@ button.cal-day{cursor:pointer}
 .mp-t td .mp-split button.c-n.sw::before{left:auto;right:2px;bottom:auto;top:30%;font-size:8px}
 .mp-t td button.pressing{transform:scale(.9);transition:transform .25s}
 .req .pz.ok-s{color:#2E9E5B;font-weight:600;font-style:normal}
-.mp-bar{padding:8px 12px;border-top:1.5px solid var(--ink);background:var(--sheet);font-size:14px;color:var(--ink)}
+.mp-bar{padding:8px 12px calc(max(var(--fsab), 0px) + 10px);border-top:1.5px solid var(--ink);background:var(--sheet);font-size:14px;color:var(--ink)}
 .mp-bar p{margin:0 0 6px;line-height:1.3}
 .mp-bar .x1{color:#D04848;font-weight:700}.mp-bar .x2{color:#2E9E5B;font-weight:700}
 .mp-bar .btns{display:flex;gap:8px}.mp-bar .btns .btn{flex:1;min-height:42px;padding:6px 8px}
@@ -656,7 +663,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.29</span>
+      <span class="ver" id="verDiag">v5.31</span>
     </div>
   </div>
 </header>
@@ -770,8 +777,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.29"></script>
-<script src="sluzby-chat.js?v=5.29"></script>
+<script src="sluzby-core.js?v=5.31"></script>
+<script src="sluzby-chat.js?v=5.31"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1479,6 +1486,7 @@ function startNotes(){
     if (calName) fillCal();
     if (!vol.hidden) fillVol();
     render();
+    if (!mplan.hidden) mpRedraw();
   }, () => {});
   startAkce();
 }
@@ -1489,6 +1497,7 @@ function startAkce(){
   unsubAkce = db.collection("akce").where("prijdu", "array-contains", String(SELF_NO)).onSnapshot(s => {
     AKCE = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a, b) => (a.datum + (a.od || "")).localeCompare(b.datum + (b.od || "")));
     render();
+    if (!mplan.hidden) mpRedraw();
   }, () => {});
 }
 function stopAkce(){ if (unsubAkce){ unsubAkce(); unsubAkce = null; } AKCE = []; }
@@ -2992,6 +3001,12 @@ function mpCtx(mid){
   return {mid:ms.mid, y:ms.y, m:ms.m, T:ms.T, notes:ms.notes || {}, order:ms.order || null};
 }
 const mpShift = (mid, k) => { const [y, m] = ymOf(mid), t = new Date(y, m + k, 1); return docId(t.getFullYear(), t.getMonth()); };
+// moje značky v celém plánu: akce, na kterou jdu, a moje poznámka ke dni nebo ke službě
+function mpMarks(y, m, d){
+  const dt = new Date(y, m, d), k = akceKey(dt);
+  const n = !!(MY_NOTES[k] || snotesOf(k + "|D").length || snotesOf(k + "|N").length);
+  return (akceOn(dt).length ? ikona("kalendar") : "") + (n ? ikona("poznamka") : "");
+}
 function mpHTML(){
   const C = mpCtx(), YEAR = C.y, MONTH = C.m, NOTES = C.notes;
   const n = new Date(YEAR, MONTH + 1, 0).getDate(), now = getNow();
@@ -3018,14 +3033,15 @@ function mpHTML(){
       const hasP = codes.some(isP), abs = codes.find(c => c === "DOV" || c === "ZdV"), k8 = codes.some(isK);
       if (kD){ sD++; cntD[d]++; } if (kN){ sN++; cntN[d]++; }
       const cls = [wc(d).trim(), d === todayD ? "today" : ""].filter(Boolean).join(" ");
-      if (!parts.length){ h += `<td class="${cls}"></td>`; continue; }
+      const mk = nm === SELF ? mpMarks(YEAR, MONTH, d) : "";
+      if (!parts.length){ h += mk ? `<td class="${cls}"><button type="button" class="mp-only" data-mpd="${d}" data-mpk="D" data-mpn="${esc(nm)}" aria-label="${d}. ${MONTH + 1}. – akce nebo poznámka, otevřít den"><span class="mpm">${mk}</span></button></td>` : `<td class="${cls}"></td>`; continue; }
       // denní i noční v jednom dni → políčko rozpůlené (nahoře den, dole noc), každá půlka zvlášť
       if (kD && kN){
         const half = (tk, k, cc) => {
           const swh = !!(NOTES && NOTES[`${d}|${k}|${nm}`]);
           return `<button type="button" class="${cc} hf${tk.endsWith("*") ? " st" : ""}${swh ? " sw" : ""}${mpxClass(nm, d, k, tk)}" data-mpd="${d}" data-mpk="${k}" data-mpn="${esc(nm)}" data-mpx="${k}" data-mpkod="${esc(tk)}" aria-label="${esc(nm)}, ${d}. ${MONTH + 1}., ${k === "N" ? "noční" : "denní"} ${esc(tk.replace(/\*$/, ""))}">${esc(tk.replace(/\*$/, ""))}</button>`;
         };
-        h += `<td class="${cls}"><div class="mp-split">${half(kD, "D", "c-d")}${half(kN, "N", "c-n")}</div></td>`;
+        h += `<td class="${cls}"><div class="mp-split">${half(kD, "D", "c-d")}${half(kN, "N", "c-n")}</div>${mk ? `<span class="mpm">${mk}</span>` : ""}</td>`;
         continue;
       }
       const main = kD || kN || (hasP ? codes.find(isP) : k8 ? codes.find(isK) : abs || parts[0]);
@@ -3037,7 +3053,7 @@ function mpHTML(){
       const extra = codes.filter(x => x !== lbl);
       const xk = kD || kN ? kindOf(kD || kN) : null, xkod = kD || kN || "";
       const xc = mpxClass(nm, d, xk, xkod);
-      h += `<td class="${cls}"><button type="button" class="${c}${st ? " st" : ""}${sw ? " sw" : ""}${xc}" data-mpd="${d}" data-mpk="${kind}" data-mpn="${esc(nm)}" data-mpx="${xk || ""}" data-mpkod="${esc(xkod)}" aria-label="${esc(nm)}, ${d}. ${MONTH + 1}., ${esc(typeof tokLbl === "function" ? tokLbl(tok) : tok)}">${esc(lbl)}${extra.length ? `<small>+${esc(extra.join("+"))}</small>` : ""}</button></td>`;
+      h += `<td class="${cls}"><button type="button" class="${c}${st ? " st" : ""}${sw ? " sw" : ""}${xc}" data-mpd="${d}" data-mpk="${kind}" data-mpn="${esc(nm)}" data-mpx="${xk || ""}" data-mpkod="${esc(xkod)}" aria-label="${esc(nm)}, ${d}. ${MONTH + 1}., ${esc(typeof tokLbl === "function" ? tokLbl(tok) : tok)}">${esc(lbl)}${extra.length ? `<small>+${esc(extra.join("+"))}</small>` : ""}${mk ? `<span class="mpm">${mk}</span>` : ""}</button></td>`;
     }
     h += `<td class="sum">${sD}</td><td class="sum">${sN}</td></tr>`;
   });
@@ -3105,11 +3121,11 @@ function mpRedraw(newMonth){
   const id = MPX.mid, nx = mpShift(id, 1), canNext = !!mpCtx(nx);
   const tl = MPX.targets.map(t => `${esc(surname(t.name))} ${fmtS(t.mesic, t)}`).join(", ");
   const nxHint = !MPX.targets.length && canNext ? (MPV === id ? ` <span style="font-size:12px;color:var(--ink2)">nebo šipkou › z dalšího měsíce</span>` : "") : "";
-  bar.innerHTML = `<p>Dávám <span class="x1">${fmtS(id, MPX.mine)}</span> za ${MPX.targets.length ? `<span class="x2">${tl}</span>` : "– klepni na 1 až 3 služby kolegů" + nxHint}</p>
+  bar.innerHTML = `<p>Dávám <span class="x1">${fmtS(id, MPX.mine)}</span> za ${MPX.targets.length ? `<span class="x2">${tl}</span>` : "– klepni na 1 až 3 služby kolegů, nebo dej Všem" + nxHint}</p>
     ${MPX.targets.length && MPX.targets[0].mesic !== id ? `<p class="small" style="font-size:12px;color:var(--ink2)">Výměna přes přelom měsíce.</p>` : ""}
     ${MPX.targets.length > 1 ? `<p class="small" style="font-size:12px;color:var(--ink2)">${new Set(MPX.targets.map(t => t.name)).size > 1 ? "Žádost dostane každý označený kolega – z těch, kdo souhlasí, si pak vybereš." : "Kolega si vybere jednu z variant."}</p>` : ""}
     <div class="checks">${MPX.msg || ""}</div>
-    <div class="btns"><button type="button" class="btn" data-mpsend ${MPX.targets.length ? "" : "disabled"}>Odeslat žádost</button><button type="button" class="btn sec" data-mpcancel>Zrušit</button></div>`;
+    <div class="btns"><button type="button" class="btn" data-mpsend ${MPX.targets.length ? "" : "disabled"}>Odeslat žádost</button><button type="button" class="btn sec" data-mpall title="Nabídnout službu všem, kdo ten den nemají stejnou službu">Všem</button><button type="button" class="btn sec" data-mpcancel>Zrušit</button></div>`;
   fit();
 }
 // žádosti: kolega s jednou službou → běžná výměna, se 2–3 službami → varianty; víc kolegů → každý svou (skupina)
@@ -3155,7 +3171,30 @@ async function mpxSend(btn){
     mpRedraw();
   }
 }
+// „Všem“: nabídka služby všem kolegům kromě těch, kdo mají ten den stejnou službu (den/noc) – stejně jako Nabídnout všem
+async function mpxAll(btn){
+  const id = MPX.mid, mine = MPX.mine, C = mpCtx(id);
+  if (PENDING.some(r => r.odCislo === SELF_NO && r.mesic === id && r.od && r.od.den === mine.den && r.od.kind === mine.kind && (r.stav === "ceka" || r.stav === "navrh"))){
+    MPX.msg = `<p class="e">Na tuhle službu už máš otevřenou žádost – najdeš ji ve Výměnách ⇄.</p>`; mpRedraw(); return; }
+  const kdo = Object.entries(C ? C.T : {}).filter(([n, a]) => n !== SELF && OFFICERS[n] && !(a[mine.den - 1] || ".").split("+").some(p => kindOf(p) === mine.kind)).map(([n]) => n);
+  const body = `<div class="ask-row"><i>NABÍZÍŠ</i><span>→ ${fmtS(id, mine)}</span></div>
+    <p style="margin:8px 0 0;font-size:14px">Nabídku dostane <b>${kdo.length}</b> ${kdo.length === 1 ? "kolega" : kdo.length >= 2 && kdo.length <= 4 ? "kolegové" : "kolegů"} – všichni kromě těch, kdo mají ${mine.den}. ${C.m + 1}. také ${mine.kind === "N" ? "noční" : "denní"} službu. Službu převezme ten, kdo ji vezme první.</p>${/\*$/.test(mine.kod) ? `<p style="margin:6px 0 0;font-size:14px">Kdo nabídku vezme, převezme i stálou službu.</p>` : ""}`;
+  if (!await askConfirm("Nabídnout službu všem?", body, "Ano, nabídnout")) return;
+  btn.disabled = true;
+  try {
+    await db.collection(SWAP_COL).add({typ:"nabidka", mesic:id, stav:"ceka", odCislo:SELF_NO, zaCislo:null,
+      od:{jmeno:SELF, cislo:SELF_NO, ...mine}, za:null, pozn:"", vytvoreno:firebase.firestore.FieldValue.serverTimestamp(), vyrizeno:null});
+    MPX = null; mpRedraw();
+    const h = document.getElementById("mpHint");
+    h.innerHTML = `<b style="color:#2E9E5B">Nabídka odeslána všem.</b> Najdeš ji ve Výměnách ⇄ v Moje žádosti.`;
+    setTimeout(() => { if (!MPX) h.innerHTML = `Klepnutím na službu přejdeš na ni v plánu. <b>Podržením své služby</b> začneš výměnu.`; }, 6000);
+  } catch (err){
+    btn.disabled = false;
+    MPX.msg = `<p class="e">${esc(err.code === "permission-denied" ? "Nabídku nejde uložit – chybí oprávnění." : "Odeslání se nepovedlo.")}</p>`; mpRedraw();
+  }
+}
 document.getElementById("mpBar").addEventListener("click", e => {
+  const al = e.target.closest("[data-mpall]"); if (al && MPX){ mpxAll(al); return; }
   if (e.target.closest("[data-mpcancel]")){ if (MPX && MPV !== MPX.mid) MPV = MPX.mid; MPX = null; mpRedraw(true); }
   const s = e.target.closest("[data-mpsend]"); if (s) mpxSend(s);
 });
