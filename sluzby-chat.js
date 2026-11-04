@@ -456,6 +456,11 @@ const STYLE = `
 .ch-root .ul-lv button small{font-size:12px;opacity:.7}
 .ul-bad [data-bad]{box-shadow:inset 0 0 0 3px #D04848,inset 0 0 0 100px rgba(208,72,72,.25)}
 .pk-ov .ld-msg.bad{color:#D04848;font-weight:600}
+.pk-on{margin:2px 6px 0;min-height:18px;text-align:right;font-size:13px;color:var(--ink2,#5A6480);display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.pk-on i{width:8px;height:8px;border-radius:50%;background:#B8BFCC;flex:none}
+.pk-on:empty{visibility:hidden}
+.pk-on.on i{background:#2E9E5B}
+.pk-on.in{color:#2E9E5B;font-weight:600}.pk-on.in i{background:#2E9E5B;box-shadow:0 0 0 3px rgba(46,158,91,.25)}
 .pq-ak{display:flex;flex-direction:column;gap:8px}
 .pq-ak[hidden],#pqPl[hidden],.pq-tm[hidden]{display:none}
 .pq-ak label:not(.pq-chk),.pq-tm label{display:flex;flex-direction:column;gap:3px;font-size:13px;font-weight:600}
@@ -618,6 +623,28 @@ function peerLine(){
   const y = new Date(today); y.setDate(y.getDate() - 1);
   const day = t.toDateString() === today.toDateString() ? "dnes" : t.toDateString() === y.toDateString() ? "včera" : `${DOW_S[t.getDay()]} ${t.getDate()}. ${t.getMonth() + 1}.`;
   return `naposledy online ${day} ${hm(at)}`;
+}
+/* ---------- online stav soupeře v okně hry ---------- */
+function lastSeenTxt(at){
+  const t = new Date(at), today = new Date(now()), y = new Date(today); y.setDate(y.getDate() - 1);
+  const day = t.toDateString() === today.toDateString() ? "dnes" : t.toDateString() === y.toDateString() ? "včera" : `${DOW_S[t.getDay()]} ${t.getDate()}. ${t.getMonth() + 1}.`;
+  return `naposledy online ${day} ${hm(at)}`;
+}
+function presRerender(){ if ($("pkOv")) pkRender(); if ($("ldOv") && S.ld && S.ld.online) ldRender(); if ($("pxOv")) pxRender(); if ($("shOv")) shRender(); }
+function presWatch(c){
+  c = String(c || ""); if (!c || S.presFor === c) return;
+  presStop(); S.presFor = c;
+  S.presUnsub = O.db.collection("chatOnline").doc(c).onSnapshot(sn => { S.pres = sn.exists ? sn.data({serverTimestamps:"estimate"}) : {}; presRerender(); }, () => {});
+  S.presT = setInterval(presRerender, 30e3);
+}
+function presStop(){ if (S.presUnsub){ try { S.presUnsub(); } catch (e){} } S.presUnsub = null; S.presFor = null; S.pres = null; clearInterval(S.presT); }
+// řádek pod hráči: „Chalupa je ve hře“ / „online“ / „naposledy online dnes 12:15“
+function presHTML(c, key){
+  if (!c) return ""; presWatch(c);
+  const p = S.presFor === String(c) ? S.pres : null; if (!p) return `<p class="pk-on"></p>`;
+  const at = ms(p.at), n = now(), inGame = p.hra === key && p.hraAt && n - ms(p.hraAt) < 40e3, on = at && n - at < 150e3;
+  const who = esc(surname(nameOf(c)));
+  return `<p class="pk-on${inGame ? " in" : on ? " on" : ""}"><i></i>${inGame ? `${who} má hru právě otevřenou` : on ? `${who} je online` : at ? `${who} – ${lastSeenTxt(at)}` : `${who} zatím nebyl online`}</p>`;
 }
 function watchPeer(){
   const tid = S.tid, peer = tid && tid.startsWith("dm_") ? tid.split("_").slice(1).find(c => c !== String(O.me)) : null;
@@ -1757,7 +1784,7 @@ function pkOpenAI(){
   if (g.pocet === 0 && g.ty === "o"){ pkAIstep(g); pkAIsave(g); }
   pkMount(); pkRender();
 }
-function pkClose(){ const v = $("pkOv"); if (v) v.remove(); S.pkId = null; S.pkSel = null; hraBeat(); if (S.open && S.view === "list") renderList(); }
+function pkClose(){ const v = $("pkOv"); if (v) v.remove(); presStop(); S.pkId = null; S.pkSel = null; hraBeat(); if (S.open && S.view === "list") renderList(); }
 function pkMount(){
   if ($("pkOv")) return;
   const v = document.createElement("div"); v.className = "pk-ov" + (O.desk ? " desk" : ""); v.id = "pkOv";
@@ -1809,7 +1836,7 @@ function pkRender(){
     : g.stav === "hraje" ? `<button type="button" class="pk-b sec" data-pkresign>Vzdát</button><button type="button" class="pk-b sec" data-pkchat>Chat</button>${O.desk ? "" : `<button type="button" class="pk-b" data-pkmove ${S.pkSel == null || !can ? "disabled" : ""}>Táhnout</button>`}`
     : `<button type="button" class="pk-b sec" data-pkchat>Chat</button><button type="button" class="pk-b" data-pkre>Odveta</button>`;
   v.innerHTML = `<div class="pk-in"><div class="pk-top"><button type="button" class="pk-back" data-pkx aria-label="Zavřít hru">‹</button><b>${ai ? "Piškvorky · počítač" : "Piškvorky"}</b><span class="pk-n">tah ${g.pocet || 0}</span></div>
-    <div class="pk-pl">${left}${right}</div>
+    <div class="pk-pl">${left}${right}</div>${ai ? "" : presHTML(peer, "pisk:" + S.pkId)}
     <p class="pk-st${(ai ? g.vitez === "ty" : String(g.vitez) === me) ? " win" : ""}">${esc(st)}</p>
     <div class="pk-board${can ? " can" : ""}">${cells}</div>
     <p class="pk-cap">${cap}</p>
@@ -1932,7 +1959,7 @@ function ldOpen(){
   ldRender();
   if (g.faze === "hra" && g.tah === "pc" && !S.ldBusy) ldPcTurn(); // hra zavřená během tahu počítače
 }
-function ldClose(){ const v = $("ldOv"); if (v) v.remove(); S.ld = null; S.ldoBusy = false; clearTimeout(S.ldoT); hraBeat(); if (S.open && S.view === "list") renderList(); }
+function ldClose(){ const v = $("ldOv"); if (v) v.remove(); presStop(); S.ld = null; S.ldoBusy = false; clearTimeout(S.ldoT); hraBeat(); if (S.open && S.view === "list") renderList(); }
 function ldClick(e){
   const c = x => e.target.closest(x), g = S.ld; if (!g) return;
   if (c("[data-ldx]")){ ldClose(); return; }
@@ -2203,7 +2230,7 @@ function ldoRender(v){
   const n = (g.n || {})[me] || 0, z = (g.zas || {})[me] || 0;
   const waiting = g.faze === "rozmisteni";
   const top = `<div class="pk-top"><button type="button" class="pk-back" data-ldx aria-label="Zavřít hru">‹</button><b>Lodě</b><span class="pk-n">${waiting ? "" : `výstřel ${n}`}</span></div>`;
-  const pl = `<div class="pk-pl"><span class="pk-p${can ? " on" : ""}">⚓ ${esc(surname(meName()))} (ty)</span><span class="pk-p${!end && !waiting && !ldoMyTurn(g) ? " on" : ""}">${esc(opN)}</span></div>`;
+  const pl = `<div class="pk-pl"><span class="pk-p${can ? " on" : ""}">⚓ ${esc(surname(meName()))} (ty)</span><span class="pk-p${!end && !waiting && !ldoMyTurn(g) ? " on" : ""}">${esc(opN)}</span></div>${presHTML(op, "lode:" + id)}`;
   const st = S.ldoBusy ? "Vyhodnocuji výstřel…" : ldoStatus(g);
   const win = end && String(g.vitez) === me;
   const myBoard = S.ld.my && S.ld.my.length ? ldSmall(S.ld.my, theirs, (g.posledni || {})[op]) : `<div class="ld-sm"></div>`;
@@ -2595,7 +2622,7 @@ function pxOpenAI(){
   hgMount("pxOv", "Pexeso", pxClick); pxRender();
   if (g.tah === "pc") pxPcTurn();
 }
-function pxClose(){ const v = $("pxOv"); if (v) v.remove(); S.px = null; S.pxBusy = false; S.pxShow = null; clearTimeout(S.pxT); hraBeat(); if (S.open && S.view === "list") renderList(); }
+function pxClose(){ const v = $("pxOv"); if (v) v.remove(); presStop(); S.px = null; S.pxBusy = false; S.pxShow = null; clearTimeout(S.pxT); hraBeat(); if (S.open && S.view === "list") renderList(); }
 function pxClick(e){
   const c = x => e.target.closest(x), P = S.px; if (!P) return;
   if (c("[data-hgx]")){ pxClose(); return; }
@@ -2642,7 +2669,7 @@ function pxRender(){
   const cap = on ? `${PX_P} párů · zbývá ${left} · po nalezení páru hraješ znovu`
     : `Obtížnost: ${[1, 2, 3].map(l => `<button type="button" class="pk-l${g.lvl === l ? " on" : ""}" data-hglvl="${l}">${PK_LVL[l]}</button>`).join(" · ")}<br>Zbývá ${pxPairsTxt(left)} · ${g.zacina === "pc" ? "tuto hru začínal počítač" : "tuto hru začínáš ty"}`;
   v.innerHTML = `<div class="pk-in">${hgTop(on ? "Pexeso" : "Pexeso · počítač", `tah ${g.tahu || 0}`)}
-    <div class="pk-pl"><span class="pk-p${myTurn && !end ? " on" : ""}">🃏 ${on ? esc(surname(meName())) + " (ty)" : "Ty"}</span><span class="pk-p${!myTurn && !end ? " on" : ""}">${esc(opN)}${on ? "" : " · " + PK_LVL[g.lvl]}</span></div>
+    <div class="pk-pl"><span class="pk-p${myTurn && !end ? " on" : ""}">🃏 ${on ? esc(surname(meName())) + " (ty)" : "Ty"}</span><span class="pk-p${!myTurn && !end ? " on" : ""}">${esc(opN)}${on ? "" : " · " + PK_LVL[g.lvl]}</span></div>${on ? presHTML(op, "pex:" + P.online) : ""}
     <div class="px-sc"><div><span class="me">${pMe}</span><small>tvoje páry</small></div><span class="px-dv">:</span><div><span class="op">${pOp}</span><small>${esc(on ? opN : "počítač")}</small></div></div>
     <p class="pk-st${win ? " win" : ""}" style="font-size:21px;margin:0 0 6px">${esc(st)}</p>
     <div class="px-g${can ? " can" : ""}">${cards}</div>
@@ -2759,7 +2786,7 @@ function shOpenAI(){
   S.sh = g; S.shSel = null; S.shPend = null; S.shPromo = null; S.shBusy = false;
   hgMount("shOv", "Šachy", shClick); shRender(); shPcTurn();
 }
-function shClose(){ const v = $("shOv"); if (v) v.remove(); S.sh = null; S.shBusy = false; hraBeat(); if (S.open && S.view === "list") renderList(); }
+function shClose(){ const v = $("shOv"); if (v) v.remove(); presStop(); S.sh = null; S.shBusy = false; hraBeat(); if (S.open && S.view === "list") renderList(); }
 function shClick(e){
   const c = x => e.target.closest(x), P = S.sh; if (!P) return;
   if (c("[data-hgx]")){ shClose(); return; }
@@ -2867,7 +2894,7 @@ function shRender(){
   const promo = S.shPromo ? `<div class="sh-pro" role="dialog" aria-label="Proměna pěšce"><h3>Proměna pěšce na ${shName(S.shPromo.t)} – vyber figuru</h3><div>${[["Q", "Dáma"], ["R", "Věž"], ["B", "Střelec"], ["N", "Jezdec"]].map(([u, n]) => `<button type="button" data-shpr="${u}">${shPiece(u, col === "w")}<small>${n}</small></button>`).join("")}</div><button type="button" class="pk-b sec" data-shprx style="width:100%;margin-top:10px">Zrušit</button></div>` : "";
   const win = on ? String(g.vitez) === me : g.vitez === "ty";
   v.innerHTML = `<div class="pk-in">${hgTop(on ? "Šachy" : "Šachy · počítač", `tah ${Math.floor(((g.tahy || []).length) / 2) + 1}`)}
-    <div class="pk-pl"><span class="pk-p${turnMe ? " on" : ""}">${k(col)} ${on ? esc(surname(meName())) + " (ty)" : "Ty"}</span><span class="pk-p${!end && !turnMe ? " on" : ""}">${k(opCol)} ${esc(opN)}</span></div>
+    <div class="pk-pl"><span class="pk-p${turnMe ? " on" : ""}">${k(col)} ${on ? esc(surname(meName())) + " (ty)" : "Ty"}</span><span class="pk-p${!end && !turnMe ? " on" : ""}">${k(opCol)} ${esc(opN)}</span></div>${on ? presHTML(hgOpp(g), "sach:" + P.online) : ""}
     <p class="pk-st${win ? " win" : ""}">${esc(st)}</p>
     ${capRow(cap[opCol], opCol)}
     ${shBoardHTML(g, can, col)}
