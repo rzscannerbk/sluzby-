@@ -727,6 +727,9 @@ button.cal-day{cursor:pointer}
 :root.x3 .mplan .mp-hint{padding-right:72px}
 :root.x3 .mplan:has(#mpBar:not([hidden])) .full-close{top:calc(env(safe-area-inset-top,0px) + 8px);bottom:auto;width:40px;height:40px;font-size:18px}
 .x3-sw{transition:transform .2s ease-out}
+.x3-mv{box-shadow:-10px 0 28px rgba(0,0,0,.22)}
+:root.x3 .ch-root:not(.two).x3-peek .ch-list{display:block;position:absolute;inset:0;z-index:0}
+:root.x3 .ch-root.x3-peek .ch-thread{z-index:1}
 </style>
 </head>
 <body>
@@ -785,7 +788,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.38</span>
+      <span class="ver" id="verDiag">v5.39</span>
     </div>
   </div>
 </header>
@@ -899,8 +902,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.38"></script>
-<script src="sluzby-chat.js?v=5.38"></script>
+<script src="sluzby-core.js?v=5.39"></script>
+<script src="sluzby-chat.js?v=5.39"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1108,7 +1111,8 @@ function x3Apply(){ document.documentElement.classList.toggle("x3", SELF_NO === 
     if (!st.on){
       if (Math.abs(dy) > 14 && Math.abs(dy) > dx){ st = null; return; }
       if (dx < 10) return;
-      st.on = true; st.box.classList.remove("x3-sw");
+      st.on = true; st.box.classList.remove("x3-sw"); st.box.classList.add("x3-mv");
+      if (st.box.classList.contains("ch-thread")){ const r = st.box.closest(".ch-root"); if (r && !r.classList.contains("two")){ r.classList.add("x3-peek"); st.peek = r; } }
     }
     e.preventDefault();
     st.dx = Math.max(0, dx); st.box.style.transform = `translateX(${st.dx}px)`;
@@ -1120,14 +1124,14 @@ function x3Apply(){ document.documentElement.classList.toggle("x3", SELF_NO === 
     if (!st || !st.on){ st = null; return; }
     if (e && e.cancelable) e.preventDefault();
     block = Date.now() + 400;
-    const {box, b, dx = 0} = st; st = null;
+    const {box, b, dx = 0, peek} = st; st = null;
     box.classList.add("x3-sw");
     if (dx > Math.min(110, innerWidth * .28)){
       box.style.transform = `translateX(${innerWidth}px)`;
-      setTimeout(() => { b.click(); box.classList.remove("x3-sw"); box.style.transform = ""; }, 190);
+      setTimeout(() => { b.click(); box.classList.remove("x3-sw", "x3-mv"); box.style.transform = ""; if (peek) peek.classList.remove("x3-peek"); }, 190);
     } else {
       box.style.transform = "";
-      setTimeout(() => box.classList.remove("x3-sw"), 220);
+      setTimeout(() => { box.classList.remove("x3-sw", "x3-mv"); if (peek) peek.classList.remove("x3-peek"); }, 220);
     }
   };
   document.addEventListener("touchend", end, {passive:false});
