@@ -863,7 +863,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v6.03</span>
+      <span class="ver" id="verDiag">v6.04</span>
     </div>
   </div>
 </header>
@@ -998,8 +998,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.03"></script>
-<script src="sluzby-chat.js?v=6.03"></script>
+<script src="sluzby-core.js?v=6.04"></script>
+<script src="sluzby-chat.js?v=6.04"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -2892,7 +2892,13 @@ function openFromPush(what, t){
   if (what !== "vymeny" && what !== "chat") return;
   if (!SELF){ OPEN_REQ = what; OPEN_T = t; return; } // ještě není načtený strážník – otevře se po načtení
   OPEN_REQ = null; OPEN_T = null;
-  if (what === "chat"){ if (window.SluzbyChat){ if (t) SluzbyChat.openThread(t); else SluzbyChat.open(); } return; }
+  if (what === "chat"){
+    // zavřít, co by překrývalo chat (kalendář, detail, poznámky…)
+    if (!cal.hidden) closeCal(); if (!full.hidden) closeFull(); if (!swp.hidden) closeSwp(); if (!adm.hidden) closeAdm(); vol.hidden = true;
+    closeSnote(); closeUkMenu(); const np = document.getElementById("ukPop"); if (np) np.remove();
+    if (window.SluzbyChat){ if (t) SluzbyChat.openThread(t); else SluzbyChat.open(); } else { OPEN_REQ = what; OPEN_T = t; }
+    return;
+  }
   if (!cal.hidden) closeCal();
   if (!full.hidden) closeFull();
   if (!swp.hidden) closeSwp();
@@ -2900,7 +2906,11 @@ function openFromPush(what, t){
   vol.hidden = true;
   openVym();
 }
-if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => { if (e.data && e.data.type === "open") openFromPush(e.data.open, e.data.t); });
+if (navigator.serviceWorker) navigator.serviceWorker.addEventListener("message", e => {
+  if (!e.data || e.data.type !== "open") return;
+  try { if (e.ports && e.ports[0]) e.ports[0].postMessage("ok"); } catch (er){} // potvrzení pro service worker
+  openFromPush(e.data.open, e.data.t);
+});
 document.getElementById("btnSwap").addEventListener("click", openVym);
 document.getElementById("vymClose").addEventListener("click", closeVym);
 

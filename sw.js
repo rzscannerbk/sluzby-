@@ -12,8 +12,16 @@ self.addEventListener("notificationclick", e => {
     const mine = list.filter(c => c.url.startsWith(self.registration.scope));
     const w = mine.find(c => c.focused) || mine.find(c => !c.url.includes("desktop")) || mine[0];
     if (w){
-      if (open) w.postMessage({type:"open", open, t:url.searchParams.get("t")});
-      return w.focus ? w.focus() : null;
+      // nejdřív přenést aplikaci do popředí, pak poslat, kam přejít; když stránka do 3 s nepotvrdí, načíst adresu znovu
+      return Promise.resolve(w.focus ? w.focus() : w).catch(() => w).then(c => {
+        c = c || w; if (!open) return null;
+        return new Promise(res => {
+          let ok = false; const ch = new MessageChannel();
+          ch.port1.onmessage = () => { ok = true; res(); };
+          c.postMessage({type:"open", open, t:url.searchParams.get("t")}, [ch.port2]);
+          setTimeout(() => { if (ok) return; res(c.navigate ? c.navigate(url.href).catch(() => clients.openWindow(url.href)) : clients.openWindow(url.href)); }, 3000);
+        });
+      });
     }
     return clients.openWindow(url.href);
   }));
@@ -37,16 +45,16 @@ try {
 
 
 // Při každé změně souborů zvyš verzi, aby se stará cache smazala.
-const VERSION = "sluzby-v175";
+const VERSION = "sluzby-v176";
 const LIB_CACHE = "sluzby-knihovny";
 const CORE = [
   "./",
   "./index.html",
   "./desktop.html",
   "./sluzby-core.js",
-  "./sluzby-core.js?v=6.03",
+  "./sluzby-core.js?v=6.04",
   "./sluzby-chat.js",
-  "./sluzby-chat.js?v=6.03",
+  "./sluzby-chat.js?v=6.04",
   "./firebase-config.js",
   "./manifest.webmanifest",
   "./icon-192.png",

@@ -378,9 +378,27 @@ const STYLE = `
 .pk-p .X,.pk-p .O{font-size:19px;font-weight:800}
 .pk-st{font-family:var(--f-cond,sans-serif);font-weight:600;font-size:24px;text-align:center;margin:6px 0 8px}
 .pk-st.win{color:#2E9E5B}
-.pk-board{display:grid;grid-template-columns:repeat(15,1fr);background:#fff;border:2px solid #1D2A4D;border-radius:8px;overflow:hidden;touch-action:manipulation}
+.pk-board{position:relative;display:grid;grid-template-columns:repeat(15,1fr);background:#fff;border:2px solid #1D2A4D;border-radius:8px;overflow:hidden;touch-action:manipulation}
 .pk-c{aspect-ratio:1;border:0;border-right:1px solid #DDE1E7;border-bottom:1px solid #DDE1E7;background:#fff;padding:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:clamp(13px,4.6vw,24px);line-height:1;cursor:default}
 .pk-board.can .pk-c:empty{cursor:pointer}
+.pk-line{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.pk-line line{stroke:#C0392B;stroke-width:.2;stroke-linecap:round;opacity:.85}
+.pk-line.won line{stroke:#E8B923;opacity:1;filter:drop-shadow(0 0 .15px #F2CF4A)}
+.pk-line.anim line{stroke-dasharray:1;stroke-dashoffset:1;animation:pkLine .6s .15s ease-out forwards}
+@keyframes pkLine{to{stroke-dashoffset:0}}
+.pk-board.cel .pk-c.win{animation:pkWinP 1.1s ease-in-out 3}
+@keyframes pkWinP{50%{background:#F7DC74}}
+.pk-cel{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;background:rgba(10,14,26,.55);animation:pkCelIn .3s .75s both;cursor:pointer}
+.pk-cel.off{opacity:0;transition:opacity .4s}
+.pk-cel-in{position:relative;display:flex;flex-direction:column;align-items:center;color:#F2CF4A;animation:pkPop .55s .8s cubic-bezier(.2,1.6,.4,1) both}
+.pk-tro{width:96px;height:96px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.5))}
+.pk-cel-in b{font-family:var(--f-cond,inherit);font-size:36px;font-weight:800;text-shadow:0 3px 14px rgba(0,0,0,.6);margin-top:4px}
+.pk-rays{position:absolute;left:50%;top:48px;width:0;height:0;animation:pkSpin 6s linear infinite}
+.pk-rays i{position:absolute;left:-2px;top:0;width:4px;height:44px;margin-top:-118px;border-radius:2px;background:#F2CF4A;opacity:.45;transform-origin:2px 118px}
+@keyframes pkCelIn{from{opacity:0}}
+@keyframes pkPop{from{transform:scale(0)}}
+@keyframes pkSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.pk-cel,.pk-cel-in,.pk-rays,.pk-line.anim line,.pk-board.cel .pk-c.win{animation:none}.pk-line.anim line{stroke-dashoffset:0}}
 .pk-c .X,.pk-ov .X{color:#1D2A4D}.pk-c .O,.pk-ov .O{color:#D04848}
 .pk-ov .pk-p .X{color:var(--ink,#1D2A4D)}
 .pk-c.last{background:#FFF3B0}.pk-c.win{background:#CDEFD8}
@@ -787,9 +805,11 @@ CH.close = function(){
 };
 CH.openThread = function(tid){
   if (!S) return;
-  if (tid && tid.startsWith("hra:")){ const id = tid.slice(4); if (!LIVE){ S.pending = tid; return; } const g = S.games[id]; CH.openThread(g && g.vlakno ? g.vlakno : "vsichni"); pkOpen(id); return; }
-  for (const k of ["px", "sh"]){ const pf = HG[k].pref; if (tid && tid.startsWith(pf)){ const id = tid.slice(pf.length), g = hgGames(k)[id]; if (!LIVE || !g){ S.pending = tid; return; } CH.openThread(g.vlakno || "vsichni"); (k === "px" ? pxOpen : shOpen)(id); return; } }
-  if (tid && tid.startsWith("lode:")){ const id = tid.slice(5); const g = (S.lodeG || {})[id]; if (!LIVE || !g){ S.pending = tid; return; } CH.openThread(g.vlakno || "vsichni"); ldoOpen(id); return; }
+  // hra z notifikace: zavřít jinou otevřenou hru, otevřít vlákno a nad ním hru (dokud se hry nenačtou, počkat)
+  const closeGames = () => { if ($("pkOv")) pkClose(); if ($("ldOv")) ldClose(); if ($("pxOv")) pxClose(); if ($("shOv")) shClose(); };
+  if (tid && tid.startsWith("hra:")){ const id = tid.slice(4), g = S.games[id]; if (!LIVE || !g){ S.pending = tid; return; } closeGames(); CH.openThread(g.vlakno || "vsichni"); pkOpen(id); return; }
+  for (const k of ["px", "sh"]){ const pf = HG[k].pref; if (tid && tid.startsWith(pf)){ const id = tid.slice(pf.length), g = hgGames(k)[id]; if (!LIVE || !g){ S.pending = tid; return; } closeGames(); CH.openThread(g.vlakno || "vsichni"); (k === "px" ? pxOpen : shOpen)(id); return; } }
+  if (tid && tid.startsWith("lode:")){ const id = tid.slice(5); const g = (S.lodeG || {})[id]; if (!LIVE || !g){ S.pending = tid; return; } closeGames(); CH.openThread(g.vlakno || "vsichni"); ldoOpen(id); return; }
   if (!LIVE || (!thread(tid) && !tid.startsWith("dm_"))){ S.pending = tid; if (LIVE) CH.open(); return; }
   if (!S.open){ S.open = true; $("chRoot").hidden = false; layout(); if (S.fit) S.fit(); }
   if (S.tid !== tid){ S.reply = null; S.edit = null; S.search = ""; S.searchOn = false; S.firstScroll = true; S.err = ""; clearStage(); S.newBelow = 0; }
@@ -1790,7 +1810,7 @@ function pkOpenAI(){
   if (g.pocet === 0 && g.ty === "o"){ pkAIstep(g); pkAIsave(g); }
   pkMount(); pkRender();
 }
-function pkClose(){ const v = $("pkOv"); if (v) v.remove(); presStop(); S.pkId = null; S.pkSel = null; hraBeat(); if (S.open && S.view === "list") renderList(); }
+function pkClose(){ const v = $("pkOv"); if (v) v.remove(); document.querySelectorAll(".pk-cel").forEach(x => x.remove()); presStop(); S.pkId = null; S.pkSel = null; hraBeat(); if (S.open && S.view === "list") renderList(); }
 function pkMount(){
   if ($("pkOv")) return;
   const v = document.createElement("div"); v.className = "pk-ov" + (O.desk ? " desk" : ""); v.id = "pkOv";
@@ -1817,6 +1837,30 @@ function pkMount(){
 function pkCur(){ return S.pkId === "ai" ? S.pkAI : S.games && S.games[S.pkId]; }
 function pkCanMove(g){ return !S.pkBusy && g.stav === "hraje" && (S.pkId === "ai" ? true : pkMyTurn(g)); }
 function pkDo(i){ if (S.pkId === "ai") pkAImove(i); else pkMove(S.pkId, i); }
+/* vítězná pětice: čára přes kameny (u obou hráčů) + oslava s pohárem jen u vítěze, jednou na hru */
+function pkCelLoad(){ try { return JSON.parse(localStorage.getItem("pkCel") || "[]"); } catch (e){ return []; } }
+function pkLineSVG(g, ai){
+  const w = (g.vyhra || []).map(Number).sort((a, b) => a - b); if (g.stav !== "konec" || w.length < 5) return "";
+  const P = i => [i % PN + .5, Math.floor(i / PN) + .5], a = P(w[0]), b = P(w[w.length - 1]), dx = (b[0] - a[0]) * .1, dy = (b[1] - a[1]) * .1;
+  const won = ai ? g.vitez === "ty" : String(g.vitez) === String(O.me);
+  const key = (ai ? "ai" : S.pkId) + ":" + w.join("."), fresh = !pkCelLoad().includes(key);
+  if (fresh) setTimeout(() => pkCelebrate(key, won), 0);
+  return `<svg class="pk-line${won ? " won" : ""}${fresh ? " anim" : ""}" viewBox="0 0 ${PN} ${PN}" preserveAspectRatio="none" aria-hidden="true"><line x1="${a[0] - dx}" y1="${a[1] - dy}" x2="${b[0] + dx}" y2="${b[1] + dy}" pathLength="1"/></svg>`;
+}
+function pkFreshWin(g, ai){
+  const w = (g.vyhra || []).map(Number).sort((a, b) => a - b); if (g.stav !== "konec" || w.length < 5) return false;
+  return (ai ? g.vitez === "ty" : String(g.vitez) === String(O.me)) && !pkCelLoad().includes((ai ? "ai" : S.pkId) + ":" + w.join("."));
+}
+function pkCelebrate(key, won){
+  const L = pkCelLoad(); if (L.includes(key)) return;
+  L.push(key); try { localStorage.setItem("pkCel", JSON.stringify(L.slice(-60))); } catch (e){}
+  const v = $("pkOv"); if (!v || !won) return;
+  const d = document.createElement("div"); d.className = "pk-cel";
+  d.innerHTML = `<div class="pk-cel-in"><div class="pk-rays">${Array.from({length:12}, (_, i) => `<i style="transform:rotate(${i * 30}deg)"></i>`).join("")}</div>
+    <svg class="pk-tro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4v3h-4z"/></svg><b>Vyhrál jsi!</b></div>`;
+  const off = () => { d.classList.add("off"); setTimeout(() => d.remove(), 450); };
+  d.addEventListener("click", off); document.body.appendChild(d); setTimeout(off, 3200);
+}
 function pkRender(){
   const v = $("pkOv"); if (!v) return;
   const ai = S.pkId === "ai", g = pkCur();
@@ -1844,7 +1888,7 @@ function pkRender(){
   v.innerHTML = `<div class="pk-in"><div class="pk-top"><button type="button" class="pk-back" data-pkx aria-label="Zavřít hru">‹</button><b>${ai ? "Piškvorky · počítač" : "Piškvorky"}</b><span class="pk-n">tah ${g.pocet || 0}</span></div>
     <div class="pk-pl">${left}${right}</div>${ai ? "" : presHTML(peer, "pisk:" + S.pkId)}
     <p class="pk-st${(ai ? g.vitez === "ty" : String(g.vitez) === me) ? " win" : ""}">${esc(st)}</p>
-    <div class="pk-board${can ? " can" : ""}">${cells}</div>
+    <div class="pk-board${can ? " can" : ""}${pkFreshWin(g, ai) ? " cel" : ""}">${cells}${pkLineSVG(g, ai)}</div>
     <p class="pk-cap">${cap}</p>
     <div class="pk-btns">${btns}</div></div>`;
 }
