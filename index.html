@@ -650,7 +650,7 @@ button.cal-day{cursor:pointer}
 .u2pp{display:flex;flex-wrap:wrap;gap:5px}
 .u2p{display:inline-flex;align-items:center;gap:4px;font-size:14px;font-weight:600;padding:3px 8px;border-radius:8px;background:rgba(29,42,77,.07)}
 .card.night .u2p{background:rgba(255,255,255,.14)}
-.u2p.st{background:#2E9E5B;color:#fff}
+.u2p.st,.card.night .u2p.st,:root.ui2 .card .u2p.st{background:#2E9E5B;color:#fff}
 .u2p.none{font-weight:500;font-style:italic;opacity:.7}
 .u2p .pname{all:unset;cursor:pointer}
 .u2p.me{box-shadow:inset 0 0 0 2px currentColor}
@@ -771,7 +771,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.33</span>
+      <span class="ver" id="verDiag">v5.34</span>
     </div>
   </div>
 </header>
@@ -885,8 +885,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.33"></script>
-<script src="sluzby-chat.js?v=5.33"></script>
+<script src="sluzby-core.js?v=5.34"></script>
+<script src="sluzby-chat.js?v=5.34"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
