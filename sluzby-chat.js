@@ -466,6 +466,8 @@ const STYLE = `
 .adr-sug button{display:block;width:100%;text-align:left;border:0;border-top:1px solid var(--line,#E2E5EA);background:none;color:inherit;font:inherit;padding:10px 12px;cursor:pointer}
 .adr-sug button:first-child{border-top:0}
 .adr-sug small{display:block;opacity:.65;font-size:12.5px}
+.adr-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.adr-row>div{display:flex;flex-direction:column;gap:6px;min-width:0}
 .adr-hint{margin:2px 0 0;font-size:13px;opacity:.75}
 .adr-hint[hidden]{display:none}
 .adr-casti{display:flex;flex-wrap:wrap;gap:6px}
@@ -3028,54 +3030,61 @@ function adrHTML(a){
 function openAdrSheet(){
   closeSheet();
   const s = document.createElement("div"); s.className = "ch-sheet pq adr";
-  let sel = null, items = [], ctl = null, tmr = null;
+  let ul = null, items = [], ctl = null, tmr = null, geo = null, gctl = null, gtmr = null;
   s.innerHTML = `<div role="dialog" aria-label="Adresa do zprávy"><h3>${ADR_ICO} Adresa do zprávy</h3>
-    <label class="adr-l" for="adrQ">Ulice a číslo, nebo místní část</label>
-    <div class="adr-q"><input type="text" id="adrQ" autocomplete="off" placeholder="např. Stařeckého 2"><div class="adr-sug" id="adrSug" hidden></div></div><p class="adr-hint" id="adrHint" hidden></p>
+    <label class="adr-l" for="adrQ">Ulice nebo místní část</label>
+    <div class="adr-q"><input type="text" id="adrQ" autocomplete="off" placeholder="např. Stařeckého"><div class="adr-sug" id="adrSug" hidden></div></div><p class="adr-hint" id="adrHint" hidden></p>
     <div class="adr-casti">${ADR_CASTI.map(c => `<button type="button" data-adrc="${esc(c)}">${esc(c)}</button>`).join("")}</div>
-    <label class="adr-l" for="adrP">Patro</label>
-    <select id="adrP">${ADR_PATRA.map(p => `<option value="${esc(p)}">${p || "—"}</option>`).join("")}</select>
+    <div class="adr-row"><div><label class="adr-l" for="adrN">Číslo popisné</label><input type="text" id="adrN" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="např. 2"></div>
+      <div><label class="adr-l" for="adrP">Patro</label><select id="adrP">${ADR_PATRA.map(p => `<option value="${esc(p)}">${p || "—"}</option>`).join("")}</select></div></div>
     <p class="adr-pv" id="adrPv" hidden></p>
     <p class="pq-err" id="adrErr" hidden></p>
     <div class="pq-btns"><button type="button" class="pq-b sec" data-adr="x">Zrušit</button><button type="button" class="pq-b" data-adr="ok">Vložit do zprávy</button></div></div>`;
-  const q = s.querySelector("#adrQ"), sug = s.querySelector("#adrSug"), pv = s.querySelector("#adrPv"), err = s.querySelector("#adrErr");
-  const sErr = m => { const h = s.querySelector("#adrHint"); if (h){ h.textContent = m; h.hidden = !m; } };
-  const showPv = () => { const t = sel ? sel.adresa : q.value.trim(); pv.hidden = !t; pv.innerHTML = t ? `${ADR_ICO}<span>${esc(t)}${s.querySelector("#adrP").value ? " · " + esc(s.querySelector("#adrP").value) : ""}${sel ? "" : " <small>(bez ověření)</small>"}</span>` : ""; };
-  const draw = () => {
-    sug.hidden = !items.length;
-    sug.innerHTML = items.map((it, i) => `<button type="button" data-adri="${i}"><b>${esc(it.name)}</b><small>${esc(it.location || "")}</small></button>`).join("");
+  const $s = sel => s.querySelector(sel), q = $s("#adrQ"), num = $s("#adrN"), sug = $s("#adrSug"), pv = $s("#adrPv"), err = $s("#adrErr");
+  const sErr = m => { const h = $s("#adrHint"); h.textContent = m; h.hidden = !m; };
+  const api = (v, signal) => fetch(`https://api.mapy.cz/v1/suggest?lang=cs&limit=15&locality=${encodeURIComponent("BOX(16.52,49.30,16.78,49.45)")}&query=${encodeURIComponent(v)}&apikey=${MAPY_KEY}`, {signal})
+    .then(r => r.ok ? r.json() : r.text().then(t => Promise.reject(new Error(r.status + " " + t.slice(0, 80)))));
+  const full = () => { const u = q.value.trim().replace(/,?\s*blansko\s*$/i, ""), n = num.value.trim(); return u ? `${u}${n ? " " + n : ""}, Blansko` : ""; };
+  const showPv = () => {
+    const t = full(), pt = $s("#adrP").value; pv.hidden = !t;
+    pv.innerHTML = t ? `${ADR_ICO}<span>${esc(t)}${pt ? " · " + esc(pt) : ""} <small>${geo ? "✓ ověřeno" : num.value.trim() ? "hledám…" : ""}</small></span>` : "";
   };
+  const draw = () => { sug.hidden = !items.length; sug.innerHTML = items.map((it, i) => `<button type="button" data-adri="${i}"><b>${esc(it.name)}</b><small>${esc(it.location || "")}</small></button>`).join(""); };
+  // našeptávání ulic a místních částí
   const look = () => {
-    const v = q.value.trim(); if (ctl) ctl.abort();
-    if (v.length < 2){ items = []; draw(); return; }
+    const v = q.value.trim().replace(/,?\s*blansko\s*$/i, ""); if (ctl) ctl.abort();
+    if (v.length < 2 || (ul && ul === v)){ items = []; draw(); return; }
     ctl = new AbortController();
-    // jen území Blanska včetně místních částí (obdélník), typy se filtrují až tady
-    const u = `https://api.mapy.cz/v1/suggest?lang=cs&limit=15&locality=${encodeURIComponent("BOX(16.52,49.30,16.78,49.45)")}&query=${encodeURIComponent(v.replace(/,?\s*blansko\s*$/i, ""))}&apikey=${MAPY_KEY}`;
-    fetch(u, {signal:ctl.signal}).then(r => r.ok ? r.json() : r.text().then(t => Promise.reject(new Error(r.status + " " + t.slice(0, 80))))).then(j => {
-      items = (j.items || []).filter(it => /^regional\.(address|street|municipality_part)$/.test(it.type)).slice(0, 8).map(it => ({
-        name:it.name, location:it.location, typ:it.type, lat:it.position && it.position.lat, lon:it.position && it.position.lon}));
-      sErr(items.length ? "" : "Našeptávač nic nenašel – adresu jde vložit i tak, jak je napsaná.");
-      draw();
+    api(v, ctl.signal).then(j => {
+      items = (j.items || []).filter(it => /^regional\.(street|municipality_part)$/.test(it.type)).slice(0, 8).map(it => ({name:it.name, location:it.location}));
+      sErr(items.length ? "" : "Ulici jsem nenašel – adresu jde vložit i tak, jak je napsaná."); draw();
     }).catch(e => { if (e && e.name === "AbortError") return; items = []; draw(); sErr("Našeptávač adres nefunguje (" + (e && e.message || "chyba sítě") + ")."); });
   };
-  q.addEventListener("input", () => { sel = null; showPv(); clearTimeout(tmr); tmr = setTimeout(look, 250); });
-  s.querySelector("#adrP").addEventListener("change", showPv);
+  // ověření celé adresy (ulice + číslo) kvůli mapce
+  const geoLook = () => {
+    geo = null; if (gctl) gctl.abort(); const u = q.value.trim().replace(/,?\s*blansko\s*$/i, ""), n = num.value.trim(); showPv();
+    if (!u || !n) return;
+    gctl = new AbortController();
+    api(`${u} ${n}`, gctl.signal).then(j => {
+      const nn = n.toLowerCase(), it = (j.items || []).find(x => x.type === "regional.address" && x.name.toLowerCase().split(/[\s/]+/).includes(nn.split("/")[0]))
+        || (j.items || []).find(x => x.type === "regional.address");
+      geo = it && it.position ? {lat:it.position.lat, lon:it.position.lon} : null; showPv();
+    }).catch(() => { geo = null; showPv(); });
+  };
+  q.addEventListener("input", () => { ul = null; geo = null; err.hidden = true; showPv(); clearTimeout(tmr); tmr = setTimeout(look, 250); clearTimeout(gtmr); gtmr = setTimeout(geoLook, 500); });
+  num.addEventListener("input", () => { err.hidden = true; geo = null; showPv(); clearTimeout(gtmr); gtmr = setTimeout(geoLook, 400); });
+  $s("#adrP").addEventListener("change", showPv);
+  const pick = name => { ul = name; q.value = name; items = []; draw(); sErr(""); showPv(); num.focus(); geoLook(); };
   s.addEventListener("click", e => {
     if (e.target === s){ closeSheet(); return; }
-    const c = e.target.closest("[data-adrc]"); if (c){ q.value = c.dataset.adrc + " "; sel = null; q.focus(); showPv(); look(); return; }
-    const it = e.target.closest("[data-adri]");
-    if (it){
-      const x = items[+it.dataset.adri]; items = []; draw();
-      if (x.typ !== "regional.address"){ q.value = x.name + " "; sel = null; q.focus(); showPv(); err.textContent = "Doplň číslo popisné."; err.hidden = false; look(); return; }
-      const loc = /Blansko/i.test(x.name) ? "" : ", Blansko";
-      sel = {adresa:x.name + loc, lat:x.lat, lon:x.lon}; q.value = sel.adresa; err.hidden = true; showPv(); return;
-    }
+    const c = e.target.closest("[data-adrc]"); if (c){ pick(c.dataset.adrc); return; }
+    const it = e.target.closest("[data-adri]"); if (it){ pick(items[+it.dataset.adri].name); return; }
     const b = e.target.closest("[data-adr]"); if (!b) return;
     if (b.dataset.adr === "x"){ closeSheet(); return; }
-    const t = q.value.trim(); if (!t){ err.textContent = "Napiš adresu."; err.hidden = false; return; }
-    const a = sel && sel.adresa === t ? {...sel} : {adresa:/blansko/i.test(t) ? t : t + ", Blansko"};
-    const pt = s.querySelector("#adrP").value; if (pt) a.patro = pt;
-    if (a.lat == null){ delete a.lat; delete a.lon; }
+    const t = full(); if (!t){ err.textContent = "Napiš ulici nebo vyber místní část."; err.hidden = false; q.focus(); return; }
+    if (!num.value.trim()){ err.textContent = "Doplň číslo popisné."; err.hidden = false; num.focus(); return; }
+    const a = {adresa:t}, pt = $s("#adrP").value; if (pt) a.patro = pt;
+    if (geo){ a.lat = geo.lat; a.lon = geo.lon; }
     a._t = S.tid; S.adr = a; closeSheet(); renderBar(); const ta = $("chText"); if (ta) ta.focus();
   });
   document.body.appendChild(s);
