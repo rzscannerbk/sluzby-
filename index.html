@@ -612,7 +612,7 @@ button.cal-day{cursor:pointer}
 .note-id{font-size:14px;color:var(--ink2);margin-top:12px}
 </style>
 <style>
-/* ===== nový vzhled (zkušebně, jen pro 1048): html.ui2 ===== */
+/* ===== nový vzhled (výchozí, přepínač v menu): html.ui2 ===== */
 .top .bl,.top .i2{display:none}
 :root.ui2{--now:#1E63C6;--pink:#E7A6C0}
 /* spodní lišta: stejné ikony s popisky */
@@ -766,13 +766,14 @@ button.cal-day{cursor:pointer}
       </div>
     </div>
     <div class="push" id="ui2Row" hidden>
-      <label class="chk" style="margin-top:0"><input type="checkbox" id="ui2Chk"> Nový vzhled (zkušební)</label>
+      <label class="chk" style="margin-top:0"><input type="checkbox" id="ui2Chk"> Nový vzhled</label>
+      <p class="pinfo" style="margin:4px 0 0">Vypnutím se vrátíš k původnímu vzhledu.</p>
     </div>
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.35</span>
+      <span class="ver" id="verDiag">v5.36</span>
     </div>
   </div>
 </header>
@@ -886,8 +887,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.35"></script>
-<script src="sluzby-chat.js?v=5.35"></script>
+<script src="sluzby-core.js?v=5.36"></script>
+<script src="sluzby-chat.js?v=5.36"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1040,7 +1041,7 @@ const track = document.getElementById("track");
 const titleEl = document.getElementById("title");
 const subEl = document.getElementById("sub");
 
-/* ===== nový vzhled (zkušebně) – zapíná se jen pro služební číslo 1048, přepínač v menu ===== */
+/* ===== nový vzhled – výchozí pro všechny, v menu jde přepnout zpět na původní ===== */
 const UI2 = () => document.documentElement.classList.contains("ui2");
 const U2_MAP = [[/#E07C7C/gi, "#D04848"], [/#B23A3A/gi, "#D04848"], [/#C03A3A/gi, "#D04848"], [/#2E7D4F/gi, "#2E9E5B"], [/#3A9A4C/gi, "#2E9E5B"], [/#E8A0B6/gi, "#E7A6C0"], [/#E7A3BE/gi, "#E7A6C0"]];
 const U2_RE = /#E07C7C|#B23A3A|#C03A3A|#2E7D4F|#3A9A4C|#E8A0B6|#E7A3BE/i;
@@ -1070,7 +1071,7 @@ function ui2Set(on){
   if (on && !GROUPS.length) ui2Skeleton();
 }
 function ui2Apply(){
-  const allow = SELF_NO === "1048", row = document.getElementById("ui2Row");
+  const allow = !!SELF_NO, row = document.getElementById("ui2Row");
   if (row) row.hidden = !allow;
   let pref = "1"; try { pref = localStorage.getItem("ui2pref") || "1"; } catch (e){}
   ui2Set(allow && pref !== "0");
@@ -1526,7 +1527,7 @@ function chatStart(){
   SluzbyChat.mountMe(document.getElementById("menuAv"));
 }
 document.getElementById("btnChat").addEventListener("click", () => { if (window.SluzbyChat) SluzbyChat.open(); });
-document.getElementById("ui2Chk").addEventListener("change", e => { try { localStorage.setItem("ui2pref", e.target.checked ? "1" : "0"); } catch (er){} ui2Set(e.target.checked && SELF_NO === "1048"); });
+document.getElementById("ui2Chk").addEventListener("change", e => { try { localStorage.setItem("ui2pref", e.target.checked ? "1" : "0"); } catch (er){} ui2Set(e.target.checked && !!SELF_NO); });
 function stop(){
   if (window.SluzbyChat) SluzbyChat.stop();
   document.getElementById("btnChat").hidden = true;
