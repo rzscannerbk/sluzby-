@@ -558,7 +558,8 @@ button.cal-day{cursor:pointer}
 .badge{position:absolute;top:-7px;right:-7px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#D04848;color:#fff;font:600 12px/19px var(--f-body);text-align:center}
 .badge[hidden]{display:none}
 .tag.sw{border-style:dashed}
-.swi{font-size:17px;line-height:1;opacity:.75;margin:0 1px 0 3px}
+.swi{display:inline-flex;vertical-align:-.15em;line-height:1;opacity:.75;margin:0 1px 0 3px}
+.swi svg{width:1.05em;height:1.05em}
 .swap-open{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--fsab) + 16px);z-index:31;height:48px;display:flex;align-items:center;font-family:var(--f-cond);font-weight:700;font-size:19px;padding:0 28px;border:0;border-radius:999px;background:var(--hl);color:var(--hl-ink);box-shadow:0 6px 18px rgba(0,0,0,.3);cursor:pointer}
 .ask{position:fixed;inset:0;z-index:60;background:rgba(10,14,25,.5);display:flex;align-items:center;justify-content:center;padding:20px;animation:fullIn .14s ease-out}
 .ask>div{width:min(420px,100%);background:var(--sheet);color:var(--ink);border-radius:16px;padding:18px 18px 16px;box-shadow:0 14px 40px rgba(0,0,0,.35)}
@@ -621,7 +622,7 @@ button.cal-day{cursor:pointer}
 .mp-t td .c-pn{background:linear-gradient(to bottom,#3A9AD9 0 50%,#4B3F9E 50% 100%);color:#fff}
 .mp-t td .c-a{background:#E7A3BE;color:#5A1F38;font-size:11px}
 .mp-t td .st::after{content:"";position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;background:#2E9E5B;box-shadow:0 0 0 1.5px #fff}
-.mp-t td .sw::before{content:"⇄";position:absolute;bottom:1px;left:2px;font-size:9px;line-height:1}
+.mp-t td .sw::before{content:"";position:absolute;bottom:2px;left:2px;width:10px;height:10px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8h13l-3.5-3.5M20 16H7l3.5 3.5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8h13l-3.5-3.5M20 16H7l3.5 3.5'/%3E%3C/svg%3E") center/contain no-repeat}
 .mp-t td button small{font-size:9.5px;font-weight:600;opacity:.9;font-family:var(--f-body)}
 .mp-t tfoot th,.mp-t tfoot td{position:sticky;bottom:0;background:var(--sheet);font-size:12px;color:var(--ink2);height:26px}
 .mp-t tfoot tr:first-child th,.mp-t tfoot tr:first-child td{bottom:26px}
@@ -731,7 +732,7 @@ button.cal-day{cursor:pointer}
 .u2p .pname{all:unset;cursor:pointer}
 .u2p.me{box-shadow:inset 0 0 0 2px currentColor}
 .u2p .tag{font-size:11px;padding:0 4px}
-.u2p .swi{font-size:12px}
+.u2p .swi{font-size:15px;opacity:.85}
 .u2tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px;padding-top:9px;border-top:1px dashed rgba(29,42,77,.22)}
 .card.night .u2tags{border-color:rgba(255,255,255,.28)}
 :root.ui2 .u2tags.snote{background:none;border-left:0;border-radius:0;padding:9px 0 0;margin-top:9px;font-size:12.5px}
@@ -874,7 +875,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v6.11</span>
+      <span class="ver" id="verDiag">v6.13</span>
     </div>
   </div>
 </header>
@@ -903,7 +904,7 @@ button.cal-day{cursor:pointer}
   </div>
 </div>
 <div class="mplan" id="mplan" role="dialog" aria-modal="true" aria-labelledby="mpTitle" hidden>
-  <div class="mp-head"><div class="mp-nav"><button type="button" class="mp-arr" id="mpPrev" aria-label="Předchozí měsíc">‹</button><h2 id="mpTitle" style="flex:1;text-align:center">Plán služeb</h2><button type="button" class="mp-arr" id="mpNext" aria-label="Další měsíc">›</button></div><div class="mp-leg"><span><i class="k-d"></i>Denní</span><span><i class="k-n"></i>Noční</span><span><i class="k-p"></i>Porada</span><span><i class="mp-a"></i>Dovolená / ZdV</span><span><i class="mp-s"></i>Stálá</span><span>⇄ výměna</span></div></div>
+  <div class="mp-head"><div class="mp-nav"><button type="button" class="mp-arr" id="mpPrev" aria-label="Předchozí měsíc">‹</button><h2 id="mpTitle" style="flex:1;text-align:center">Plán služeb</h2><button type="button" class="mp-arr" id="mpNext" aria-label="Další měsíc">›</button></div><div class="mp-leg"><span><i class="k-d"></i>Denní</span><span><i class="k-n"></i>Noční</span><span><i class="k-p"></i>Porada</span><span><i class="mp-a"></i>Dovolená / ZdV</span><span><i class="mp-s"></i>Stálá</span><span><span class="swi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/></svg></span> výměna</span></div></div>
   <div class="mp-wrap" id="mpWrap"></div>
   <div class="mp-bar" id="mpBar" hidden></div>
   <p class="mp-hint" id="mpHint">Klepnutím na službu přejdeš na ni v plánu. <b>Podržením své služby</b> začneš výměnu.</p>
@@ -1009,8 +1010,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.11"></script>
-<script src="sluzby-chat.js?v=6.11"></script>
+<script src="sluzby-core.js?v=6.13"></script>
+<script src="sluzby-chat.js?v=6.13"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1103,7 +1104,7 @@ function person(p, base, ctx){
   const c = CODES[p.code], b = CODES[base];
   const tag = c && b && (c.e[0] !== b.e[0] || c.e[1] !== b.e[1]) ? ` <span class="tag">do ${tPlain(c.e)}</span>` : "";
   const sw = ctx && (ctx.notes || NOTES)[`${ctx.d}|${ctx.k}|${p.name}`];
-  return `${nameBtn(p.name)}${tag}${sw ? ` <span class="swi" aria-hidden="true">⇄</span> <span class="tag sw">${esc(sw)}</span>` : ""}`;
+  return `${nameBtn(p.name)}${tag}${sw ? ` <span class="swi" aria-hidden="true">${SWI_IC}</span> <span class="tag sw">${esc(sw)}</span>` : ""}`;
 }
 
 /* ---------- počasí v Blansku (Open-Meteo, bez klíče) – ikona, teploty a srážky za dobu služby ---------- */
@@ -1283,6 +1284,8 @@ function ui2Skeleton(){
 function ui2SplashOff(){ const sp = document.getElementById("ui2splash"); if (sp && !sp.classList.contains("out")){ sp.classList.add("out"); setTimeout(() => sp.remove(), 350); } }
 function isoWeek(d){ const t = new Date(d.getFullYear(), d.getMonth(), d.getDate()); t.setDate(t.getDate() + 3 - (t.getDay() + 6) % 7); const w1 = new Date(t.getFullYear(), 0, 4); return 1 + Math.round(((t - w1) / 864e5 - 3 + (w1.getDay() + 6) % 7) / 7); }
 // kompaktní karta služby: typ + datum, čas + počasí, lidé jako štítky, doplňky dole jako barevné štítky
+// ikona výměny – stejná jako ve spodní liště
+const SWI_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/></svg>';
 function shortNm(n){ const p = String(n).split(" "); return p.length > 1 ? `${p[0]} ${p[1].charAt(0)}.` : n; }
 // v kartách jen příjmení; při stejném příjmení (Tóth O. / Tóth P.) i iniciála jména
 let SUR_DUP = new Set(), SUR_SRC = null;
@@ -1294,7 +1297,7 @@ function person2(p, base, ctx, stala){
   const c = CODES[p.code], b = CODES[base];
   const tag = c && b && (c.e[0] !== b.e[0] || c.e[1] !== b.e[1]) ? ` <span class="tag">do ${tPlain(c.e)}</span>` : "";
   const sw = ctx && (ctx.notes || NOTES)[`${ctx.d}|${ctx.k}|${p.name}`];
-  return `<span class="u2p${stala ? " st" : ""}${p.name === ME ? " me" : ""}"><button type="button" class="pname" data-name="${esc(p.name)}" title="${esc(p.name)}"><span class="nm-s">${esc(surNm(p.name))}</span><span class="nm-f">${esc(p.name)}</span></button>${tag}${sw ? ` <span class="swi" aria-hidden="true">⇄</span><span class="tag sw">${esc(sw)}</span>` : ""}</span>`;
+  return `<span class="u2p${stala ? " st" : ""}${p.name === ME ? " me" : ""}"><button type="button" class="pname" data-name="${esc(p.name)}" title="${esc(p.name)}"><span class="nm-s">${esc(surNm(p.name))}</span><span class="nm-f">${esc(p.name)}</span></button>${tag}${sw ? ` <span class="swi" aria-hidden="true">${SWI_IC}</span><span class="tag sw">${esc(sw)}</span>` : ""}</span>`;
 }
 function cardHTML2(kind, g, slot, now){
   const base = baseCode(slot, kind);
@@ -2804,7 +2807,7 @@ function reqText(r){
   if (r.admin && r.typ === "presun") return `Přesun služby: <b>${esc(od.jmeno)}</b> ${fmtS(r.mesic, od)} → ${fmtS(r.mesic, za)} (${esc(za.kod || "")}).`;
   if (r.admin){
     return r.typ === "vymena"
-      ? `<b>${esc(od.jmeno)}</b> ${fmtS(r.mesic, od)} ⇄ <b>${esc(za.jmeno)}</b> ${fmtS(r.mesic, za)}.`
+      ? `<b>${esc(od.jmeno)}</b> ${fmtS(r.mesic, od)} <span class="swi" aria-hidden="true">${SWI_IC}</span> <b>${esc(za.jmeno)}</b> ${fmtS(r.mesic, za)}.`
       : `Služba ${fmtS(r.mesic, od)} převedena: <b>${esc(od.jmeno)}</b> → <b>${esc(za.jmeno)}</b>.`;
   }
   if (r.typ === "volno") return `<b>${esc(od.jmeno)}</b> žádá o ${VOLNO_ACC[r.druh] || "volno"}: ${volnoDays(r.mesic, r)}.`;
@@ -3773,7 +3776,7 @@ async function mpxSend(btn){
     await batch.commit();
     MPX = null; mpRedraw();
     const h = document.getElementById("mpHint");
-    h.innerHTML = `<b style="color:#2E9E5B">Žádost odeslána.</b> Najdeš ji ve Výměnách ⇄ v Moje žádosti.`;
+    h.innerHTML = `<b style="color:#2E9E5B">Žádost odeslána.</b> Najdeš ji ve Výměnách v Moje žádosti.`;
     setTimeout(() => { if (!MPX) h.innerHTML = `Klepnutím na službu přejdeš na ni v plánu. <b>Podržením své služby</b> začneš výměnu.`; }, 6000);
   } catch (err){
     MPX.msg = `<p class="e">${esc(err.code === "permission-denied" ? "Žádost nejde uložit – chybí oprávnění." : "Odeslání se nepovedlo.")}</p>`;
@@ -3784,7 +3787,7 @@ async function mpxSend(btn){
 async function mpxAll(btn){
   const id = MPX.mid, mine = MPX.mine, C = mpCtx(id);
   if (PENDING.some(r => r.odCislo === SELF_NO && r.mesic === id && r.od && r.od.den === mine.den && r.od.kind === mine.kind && (r.stav === "ceka" || r.stav === "navrh"))){
-    MPX.msg = `<p class="e">Na tuhle službu už máš otevřenou žádost – najdeš ji ve Výměnách ⇄.</p>`; mpRedraw(); return; }
+    MPX.msg = `<p class="e">Na tuhle službu už máš otevřenou žádost – najdeš ji ve Výměnách.</p>`; mpRedraw(); return; }
   const kdo = Object.entries(C ? C.T : {}).filter(([n, a]) => n !== SELF && OFFICERS[n] && !(a[mine.den - 1] || ".").split("+").some(p => kindOf(p) === mine.kind)).map(([n]) => n);
   const body = `<div class="ask-row"><i>NABÍZÍŠ</i><span>→ ${fmtS(id, mine)}</span></div>
     <p style="margin:8px 0 0;font-size:14px">Nabídku dostane <b>${kdo.length}</b> ${kdo.length === 1 ? "kolega" : kdo.length >= 2 && kdo.length <= 4 ? "kolegové" : "kolegů"} – všichni kromě těch, kdo mají ${mine.den}. ${C.m + 1}. také ${mine.kind === "N" ? "noční" : "denní"} službu. Službu převezme ten, kdo ji vezme první.</p>${/\*$/.test(mine.kod) ? `<p style="margin:6px 0 0;font-size:14px">Kdo nabídku vezme, převezme i stálou službu.</p>` : ""}`;
@@ -3795,7 +3798,7 @@ async function mpxAll(btn){
       od:{jmeno:SELF, cislo:SELF_NO, ...mine}, za:null, pozn:"", vytvoreno:firebase.firestore.FieldValue.serverTimestamp(), vyrizeno:null});
     MPX = null; mpRedraw();
     const h = document.getElementById("mpHint");
-    h.innerHTML = `<b style="color:#2E9E5B">Nabídka odeslána všem.</b> Najdeš ji ve Výměnách ⇄ v Moje žádosti.`;
+    h.innerHTML = `<b style="color:#2E9E5B">Nabídka odeslána všem.</b> Najdeš ji ve Výměnách v Moje žádosti.`;
     setTimeout(() => { if (!MPX) h.innerHTML = `Klepnutím na službu přejdeš na ni v plánu. <b>Podržením své služby</b> začneš výměnu.`; }, 6000);
   } catch (err){
     btn.disabled = false;

@@ -491,6 +491,13 @@ const STYLE = `
 .hl-in button{flex:none;width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:inherit}
 .hl-pin{border:1.5px solid rgba(127,127,127,.6);background:transparent}
 .hl-send{border:0;background:#E3E7EF;color:#151A26 !important}
+.adr-sg{display:flex;align-items:center;gap:9px;margin:0 0 7px;padding:8px 8px 8px 11px;border-radius:14px;background:rgba(47,111,219,.14);border:1.5px solid #3D6FD8;font-size:14px}
+.adr-sg>svg{width:20px;height:20px;flex:none;color:#D9A400}
+.adr-sg div{flex:1;min-width:0;line-height:1.3}
+.adr-sg small{display:block;opacity:.7;font-size:12px}
+.adr-sg-ok{flex:none;border:0;border-radius:10px;background:#2F6FDB;color:#fff;font:inherit;font-weight:700;font-size:13.5px;padding:8px 11px;cursor:pointer;white-space:nowrap}
+.adr-sg-x{flex:none;border:0;background:none;color:inherit;opacity:.6;font-size:16px;padding:4px;cursor:pointer}
+.hl-bar .adr-sg{margin:8px 0 0}
 .adr-pz{display:flex;flex-direction:column;gap:6px;min-width:0}
 .adr-pz b{display:flex;align-items:center;height:44px;padding:0 11px;border:1.5px solid var(--line,#C9CED8);border-radius:10px;font-size:16px;font-weight:600}
 .adr-patra{display:flex;flex-wrap:wrap;gap:6px;padding:4px;margin:-2px -4px 0;border-radius:12px;transition:background .3s}
@@ -1005,6 +1012,11 @@ function renderThread(){
   const ta = $("chText");
   if (ta){
     ta.addEventListener("input", () => { grow(ta); typingPing(); });
+    S.adrSug = null;
+    if (adrOn(thread(S.tid))){
+      const tid = S.tid;
+      S.adrW = adrWatch(ta, a => { if (S.tid !== tid) return; const had = !!S.adrSug; S.adrSug = a && !S.adr ? {...a, _t:tid} : null; if (had || S.adrSug) renderBar(); });
+    }
     // po vysunutí klávesnice zůstane vidět poslední zpráva
     ta.addEventListener("focus", () => { [120, 350, 700].forEach(t => setTimeout(stickBottom, t)); });
     ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && (O.desk || window.matchMedia("(hover:hover)").matches)){ e.preventDefault(); send(); } });
@@ -1155,6 +1167,7 @@ function renderBar(){
   else if (S.reply) b.innerHTML = `<div class="ch-bar"><span>${ic(ICO.reply, 16)} <b>${esc(S.reply.jmeno)}:</b> ${esc(S.reply.text || "📷 Fotka")}</span><button type="button" data-chcancel aria-label="Zrušit odpověď">✕</button></div>`;
   else b.innerHTML = "";
   if (S.adr && S.adr._t !== S.tid) S.adr = null;
+  if (!S.adr && S.adrSug && S.adrSug._t === S.tid) b.innerHTML += adrSugHTML(S.adrSug);
   if (S.adr) b.innerHTML += `<div class="ch-bar adr">${ADR_ICO}<span><b>${esc(S.adr.adresa)}</b>${S.adr.patro ? ` · ${esc(S.adr.patro)}` : ""}<small>Dopiš text a odešli – ve zprávě bude tlačítko Navigovat</small></span><button type="button" data-chadrx aria-label="Odebrat adresu">✕</button></div>`;
 }
 function showErr(msg){ const e = $("chErr"); if (e){ e.textContent = msg; e.hidden = !msg; } }
@@ -1203,7 +1216,7 @@ async function send(){
     sendPhotos(files, text); return;
   }
   const text = ta.value.trim(), adr = S.adr; if (!text && !adr) return;
-  S.sending = true; showErr(""); S.adr = null;
+  S.sending = true; showErr(""); S.adr = null; S.adrSug = null; if (S.adrW) S.adrW.reset();
   // pole se vyprázdní hned (zpráva se ve vlákně objeví okamžitě jako „Odesílá se…“), při chybě se text vrátí
   const edit = S.edit, reply = S.reply;
   ta.value = ""; grow(ta); S.edit = null; S.reply = null; renderBar();
@@ -1521,6 +1534,8 @@ function bind(root){
     if (c("[data-chpoll]")){ openPollSheet(); return; }
     if (c("[data-chmap]")){ openAdrSheet(); return; }
     if (c("[data-chadrx]")){ S.adr = null; renderBar(); return; }
+    if (c("[data-sgok]") && S.adrSug){ const {_t, ...a} = S.adrSug; S.adr = {...a, _t:S.tid}; S.adrSug = null; renderBar(); return; }
+    if (c("[data-sgx]")){ const a = S.adrSug; S.adrSug = null; if (S.adrW) S.adrW.dismiss(a); renderBar(); return; }
     const ul = c("[data-chul]"); if (ul){ ulOpen(ul.dataset.chul); return; }
     const uln = c("[data-chuln]"); if (uln){ const nx = ulNext(+uln.dataset.chuln); if (nx) ulOpen(nx); return; }
     const sb = c("[data-chsend]"); if (sb){ if (sb.dataset.tt){ delete sb.dataset.tt; return; } send(); return; }
@@ -1641,7 +1656,6 @@ CH.adminHTML = function(){
                   pocet, posledni, stav hraje|konec, vitez, vyhra[], vzdal, jmena{č:jméno}, vlakno, vytvoreno, zmeneno
    Výzva = zpráva v soukromém vlákně s polem hra:<id>; karta ve vlákně se kreslí z dokumentu hry.
    Hra proti počítači běží jen v telefonu (localStorage). */
-// zatím jen pro správce (Juračka 1048) – pro všechny stačí vrátit true
 var PK_ON = () => !!O; // hry vidí každý, kdo má povolený chat
 const PN = 15, PNN = PN * PN, PK_EMPTY = ".".repeat(PNN);
 const PK_ICO = (n, sw) => `<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M12 2.5v19M2.5 12h19" stroke-width="${sw ? 1.4 : 1.2}" opacity=".55"/><path d="M4.6 4.6l3.8 3.8M8.4 4.6l-3.8 3.8" stroke-width="${sw ? 2.2 : 2}"/><circle cx="17.5" cy="17.5" r="2.4" stroke-width="${sw ? 2.2 : 2}"/></svg>`;
@@ -3045,14 +3059,77 @@ function shHubHTML(){
 
 /* ================= adresa do zprávy (hlídky) =================
    Našeptávač Mapy.com (stejný klíč jako RZ scanner), náhled mapy z Mapy.com, klepnutí otevře navigaci v Google Mapách.
-   Zpráva: adresa{adresa, patro, lat, lon}. Zatím zkušebně jen pro 1048. */
+   Zpráva: adresa{adresa, patro, lat, lon}. */
 const MAPY_KEY = "nY-91216wSSQ5waRO4ABMmtDldTuDGTPzp8kd8WcsQM";
 const ADR_CASTI = ["Horní Lhota", "Dolní Lhota", "Olešná", "Hořice", "Klepačov", "Lažánky", "Obůrka", "Těchov"];
 const ADR_PATRA = ["", "suterén", "přízemí", "1. patro", "2. patro", "3. patro", "4. patro", "5. patro", "6. patro", "7. patro", "8. patro", "podkroví"];
 const ADR_ICO = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>';
-const adrOn = t => !!t && t.typ === "hlidka" && String(O.me) === "1048";
+const adrOn = t => !!t && t.typ === "hlidka";
 const adrNav = a => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(a.adresa)}&travelmode=driving&dir_action=navigate`;
 const adrImg = a => `https://api.mapy.cz/v1/static/map?lon=${a.lon}&lat=${a.lat}&zoom=16&width=320&height=130&scale=2&mapset=basic&markers=${encodeURIComponent(`color:red;size:normal;${a.lon},${a.lat}`)}&apikey=${MAPY_KEY}`;
+/* adresa rozpoznaná z psaného textu („ulici sladkovského číslo 5 první patro“) – ověří se přes Mapy.com */
+const ADR_CACHE = new Map();
+const noDia = x => String(x).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const ADR_SKIP = /^(ulice|ulici|ul\.?|cislo|c\.?|c|cp\.?|c\.p\.?|na|v|ve|do|od|u|k|ke|z|ze|pod|nad|po|pred|za|dum|domu|byt|bytu|cast|casti|obec|mistni)$/;
+function adrPatro(text){
+  const t = noDia(text);
+  if (/\bpodkrov/.test(t)) return "podkroví";
+  if (/\bsuteren|\bsklep/.test(t)) return "suterén";
+  if (/\bprizem/.test(t)) return "přízemí";
+  const W = {prvni:1, druhe:2, druhy:2, treti:3, ctvrte:4, ctvrty:4, pate:5, paty:5, seste:6, sedme:7, osme:8};
+  let m = t.match(/\b(\d{1,2})\s*\.?\s*(patr|p\.)/); if (m && +m[1] >= 1 && +m[1] <= 12) return `${+m[1]}. patro`;
+  m = t.match(/\b(prvni|druhe|druhy|treti|ctvrte|ctvrty|pate|paty|seste|sedme|osme)\s+(patr|nadzem)/); if (m) return `${W[m[1]]}. patro`;
+  return "";
+}
+function adrCands(text){
+  const out = [], re = /(\d{1,4}[a-z]?(?:\/\d{1,4}[a-z]?)?)(?!\d)(?![:.,]\d)(?![a-z]{2})(?!\s*(?::|h\b|hod|min|km|kc|let|lidi|osob|aut|vozid|patr|\.\s*patr))/gi, raw = String(text);
+  let m;
+  while ((m = re.exec(raw))){
+    if (raw[m.index - 1] === ":" || /\d/.test(raw[m.index - 1] || "")) continue;
+    const words = raw.slice(0, m.index).split(/[\s,;]+/).filter(Boolean), keep = [];
+    for (let i = words.length - 1; i >= 0 && keep.length < 3; i--){
+      const w = words[i].replace(/[()"„“]/g, "");
+      if (ADR_SKIP.test(noDia(w))){ if (keep.length) break; continue; }
+      if (!/^\p{L}[\p{L}.\-]*$/u.test(w)) break;
+      keep.unshift(w);
+    }
+    for (let k = keep.length; k >= 1; k--) out.push({ulice:keep.slice(-k).join(" "), cislo:m[1]});
+  }
+  return out.slice(0, 6);
+}
+async function adrDetect(text){
+  const c = adrCands(text); if (!c.length) return null;
+  for (const x of c){
+    const key = noDia(`${x.ulice} ${x.cislo}`);
+    let hit = ADR_CACHE.get(key);
+    if (hit === undefined){
+      try {
+        const r = await fetch(`https://api.mapy.cz/v1/suggest?lang=cs&limit=5&type=regional.address&locality=${encodeURIComponent("BOX(16.52,49.30,16.78,49.45)")}&query=${encodeURIComponent(x.ulice + " " + x.cislo)}&apikey=${MAPY_KEY}`);
+        const j = r.ok ? await r.json() : {items:[]}, u = noDia(x.ulice), cn = noDia(x.cislo);
+        const it = (j.items || []).find(i => { const n = noDia(i.name); return n.split(/[\s/]+/).includes(cn.split("/")[0]) && n.includes(u.slice(0, Math.max(4, u.length - 3))); });
+        hit = it ? {adresa:`${it.name}, Blansko`, lat:it.position && it.position.lat, lon:it.position && it.position.lon} : null;
+      } catch (e){ hit = null; }
+      ADR_CACHE.set(key, hit);
+    }
+    if (hit){ const p = adrPatro(text), a = {...hit}; if (p) a.patro = p; return a; }
+  }
+  return null;
+}
+// napojení na textové pole: po chvíli bez psaní zkusí najít adresu; cb(a|null)
+function adrWatch(ta, cb){
+  let tmr = null, last = "", no = new Set();
+  ta.addEventListener("input", () => {
+    clearTimeout(tmr);
+    tmr = setTimeout(async () => {
+      const v = ta.value.trim(); if (v === last) return; last = v;
+      if (v.length < 6){ cb(null); return; }
+      const a = await adrDetect(v); if (ta.value.trim() !== v) return;
+      cb(a && !no.has(a.adresa) ? a : null);
+    }, 700);
+  });
+  return {dismiss:a => { if (a) no.add(a.adresa); cb(null); }, reset:() => { last = ""; no.clear(); }};
+}
+const adrSugHTML = a => `<div class="adr-sg">${ADR_ICO}<div><b>${esc(a.adresa)}</b>${a.patro ? ` · ${esc(a.patro)}` : ""}<small>Našel jsem adresu v textu</small></div><button type="button" class="adr-sg-ok" data-sgok>+ Navigace</button><button type="button" class="adr-sg-x" data-sgx aria-label="Nepřidávat">✕</button></div>`;
 function adrHTML(a){
   const nav = esc(adrNav(a));
   return `<div class="ch-adr">${a.lat != null ? `<a class="adr-map" href="${nav}" target="_blank" rel="noopener" aria-label="Otevřít v Google Mapách"><img src="${esc(adrImg(a))}" alt="" loading="lazy" onerror="this.parentNode.remove()"></a>` : ""}
@@ -3134,8 +3211,8 @@ function openAdrSheet(onPick){
 }
 
 /* ================= chat hlídky v kartě služby =================
-   Poslední 3 zprávy, rychlá odpověď a adresa; „Celý chat“ otevře vlákno. Zkušebně jen 1048. */
-const HL_ON = () => !!O && String(O.me) === "1048";
+   Poslední 3 zprávy, rychlá odpověď a adresa; „Celý chat“ otevře vlákno. */
+const HL_ON = () => !!O;
 const HL_IC = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>';
 const novTxt = n => `${n} ${n === 1 ? "nová" : n < 5 ? "nové" : "nových"}`;
 CH.hlidkaInfo = function(datum, kind){
@@ -3170,7 +3247,8 @@ CH.cardChat = function(el, tid){
       return `<div class="hl-m${mine ? " mine" : ""}${nw ? " new" : ""}">${mine ? "" : `<b>${esc(surname(m.jmeno || nameOf(m.od)))}</b>`}<div>${hlBody(m)}</div><small>${m.at ? hm(ms(m.at)) : "…"}</small></div>`;
     }).join("") : `<p class="hl-empty">Zatím žádné zprávy.</p>`;
   };
-  const drawBar = () => { if (bar) bar.innerHTML = adr ? `<div class="ch-bar adr">${ADR_ICO}<span><b>${esc(adr.adresa)}</b>${adr.patro ? ` · ${esc(adr.patro)}` : ""}</span><button type="button" data-hladrx aria-label="Odebrat adresu">✕</button></div>` : ""; };
+  let sug = null, aw = null;
+  const drawBar = () => { if (bar) bar.innerHTML = !adr && sug ? adrSugHTML(sug) : adr ? `<div class="ch-bar adr">${ADR_ICO}<span><b>${esc(adr.adresa)}</b>${adr.patro ? ` · ${esc(adr.patro)}` : ""}</span><button type="button" data-hladrx aria-label="Odebrat adresu">✕</button></div>` : ""; };
   const unsub = tref(tid).collection("zpravy").orderBy("at").limitToLast(3).onSnapshot(snap => {
     msgs = snap.docs.map(d => ({id:d.id, ...d.data({serverTimestamps:"estimate"})})); draw();
   }, () => { box.innerHTML = `<p class="hl-empty">Chat se nepodařilo načíst.</p>`; });
@@ -3178,7 +3256,7 @@ CH.cardChat = function(el, tid){
     if (!ta || busy) return;
     const text = ta.value.trim(); if (!text && !adr) return;
     busy = true; const data = {text}, a = adr; if (a) data.adresa = a;
-    ta.value = ""; adr = null; drawBar(); ta.style.height = ""; ta.blur();
+    ta.value = ""; adr = null; sug = null; if (aw) aw.reset(); drawBar(); ta.style.height = ""; ta.blur();
     try { await writeMsg(data, tid); }
     catch (e){ ta.value = text; adr = a; drawBar(); toast(e.code === "permission-denied" ? "Odeslání zamítnuto pravidly Firestore." : "Zprávu se nepodařilo odeslat."); }
     finally { busy = false; }
@@ -3188,9 +3266,12 @@ CH.cardChat = function(el, tid){
     if (e.target.closest("[data-hlall]")){ CH.openThread(tid); return; }
     if (e.target.closest("[data-hlpin]")){ openAdrSheet(a => { adr = a; drawBar(); if (ta) ta.focus(); }); return; }
     if (e.target.closest("[data-hladrx]")){ adr = null; drawBar(); return; }
+    if (e.target.closest("[data-sgok]") && sug){ adr = sug; sug = null; drawBar(); return; }
+    if (e.target.closest("[data-sgx]")){ const a = sug; sug = null; if (aw) aw.dismiss(a); drawBar(); return; }
     if (e.target.closest("[data-hlsend]")) send();
   });
   if (ta) ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 120) + "px"; });
+  if (ta && !ro) aw = adrWatch(ta, a => { const had = !!sug; sug = a && !adr ? a : null; if (had || sug) drawBar(); });
   el._hlDraw = draw;
   return () => {
     unsub();
