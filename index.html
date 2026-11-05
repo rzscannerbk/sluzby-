@@ -659,7 +659,7 @@ button.cal-day{cursor:pointer}
 .u2tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px;padding-top:9px;border-top:1px dashed rgba(29,42,77,.22)}
 .card.night .u2tags{border-color:rgba(255,255,255,.28)}
 :root.ui2 .u2tags.snote{background:none;border-left:0;border-radius:0;padding:9px 0 0;margin-top:9px;font-size:12.5px}
-.u2t,.u2tags p{margin:0;display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;line-height:1.3;padding:3px 9px;border-radius:999px;background:var(--sheet);color:var(--ink);border:1px solid var(--line)}
+.u2t,.u2tags p{margin:0;display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;line-height:1.3;padding:3px 9px;border-radius:12px;background:var(--sheet);color:var(--ink);border:1px solid var(--line)}
 .u2t .ik,.u2tags p .ik{width:14px;height:14px;flex:none}
 .u2t.abs{background:#FBE7EF;border-color:#E7A6C0;color:#7A2E4C}
 .u2t.ak{background:#E6EEFA;border-color:#A9C3EC;color:#14468F}
@@ -717,7 +717,7 @@ button.cal-day{cursor:pointer}
 
 </style>
 <style>
-/* TEST (jen 1048): zavírací kroužek v rohu + zavírání swipem od levého okraje */
+/* zavírací kroužek v rohu + zavírání swipem od levého okraje (od v6.00 pro všechny) */
 :root.x3{--xb:calc(max(var(--fsab) - 14px, 0px) + 14px)}
 :root.x3 .full-close,:root.x3.tall-fix .full-close,:root.x3 .ch-root:not(.desk) .ch-list > .ch-h .ch-x{right:14px;bottom:var(--xb)}
 :root.x3 .note-open,:root.x3.tall-fix .note-open{left:14px;bottom:var(--xb)}
@@ -728,6 +728,16 @@ button.cal-day{cursor:pointer}
 :root.x3 .mplan:has(#mpBar:not([hidden])) .full-close{top:calc(env(safe-area-inset-top,0px) + 8px);bottom:auto;width:40px;height:40px;font-size:18px}
 .x3-sw{transition:transform .2s ease-out}
 .x3-mv{box-shadow:-10px 0 28px rgba(0,0,0,.22)}
+.nov{position:fixed;inset:0;z-index:200;background:rgba(10,16,34,.55);display:flex;align-items:center;justify-content:center;padding:20px;animation:fullIn .2s ease-out}
+.nov-in{background:var(--sheet);color:var(--ink);border-radius:20px;max-width:380px;width:100%;padding:22px 20px 18px;box-shadow:0 18px 50px rgba(0,0,0,.4)}
+.nov-v{display:inline-block;font-family:var(--f-cond);font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;background:var(--ink);color:var(--paper);padding:3px 10px;border-radius:99px}
+.nov h2{font-family:var(--f-cond);font-size:26px;margin:10px 0 12px;line-height:1.1}
+.nov-ill{display:block;margin:0 auto 14px;width:100%;max-width:240px;height:auto}
+.nov ul{margin:0 0 16px;padding:0;list-style:none}
+.nov li{position:relative;padding:0 0 10px 22px;font-size:15px;line-height:1.4}
+.nov li::before{content:"";position:absolute;left:4px;top:7px;width:8px;height:8px;border-radius:50%;background:var(--now,#2F6FDB)}
+.nov-red{margin:0 0 16px;padding:10px 12px;border-radius:12px;background:rgba(214,48,49,.1);color:#D63031;font-weight:700;font-size:15px;line-height:1.4}
+.nov button{width:100%;height:48px;border:0;border-radius:14px;background:var(--ink);color:var(--paper);font-family:var(--f-cond);font-weight:700;font-size:19px;cursor:pointer}
 :root.x3 .ch-root:not(.two).x3-peek .ch-list{display:block;position:absolute;inset:0;z-index:0}
 :root.x3 .ch-root.x3-peek .ch-thread{z-index:1}
 </style>
@@ -788,7 +798,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.39</span>
+      <span class="ver" id="verDiag">v6.00</span>
     </div>
   </div>
 </header>
@@ -902,8 +912,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.39"></script>
-<script src="sluzby-chat.js?v=5.39"></script>
+<script src="sluzby-core.js?v=6.00"></script>
+<script src="sluzby-chat.js?v=6.00"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1085,7 +1095,30 @@ function ui2Set(on){
   if (was !== on && GROUPS.length) render();
   if (on && !GROUPS.length) ui2Skeleton();
 }
-function x3Apply(){ document.documentElement.classList.toggle("x3", SELF_NO === "1048"); }
+function x3Apply(){ document.documentElement.classList.toggle("x3", !!SELF_NO); }
+/* okno „Co je nového“ – jednou po startu nové verze */
+const NOV_VER = "6.00";
+function novinky(){
+  if (!SELF_NO || document.getElementById("nov")) return;
+  try { if (localStorage.getItem("novinky") === NOV_VER) return; } catch (e){ return; }
+  setTimeout(() => {
+    if (document.getElementById("nov")) return;
+    const d = document.createElement("div"); d.className = "nov"; d.id = "nov";
+    d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-labelledby", "novT");
+    d.innerHTML = `<div class="nov-in"><span class="nov-v">Verze ${NOV_VER}</span><h2 id="novT">Zavírání swipem</h2>
+      <svg class="nov-ill" viewBox="0 0 240 150" aria-hidden="true"><rect x="70" y="6" width="100" height="138" rx="16" fill="none" stroke="currentColor" stroke-width="3"/><rect x="104" y="18" width="62" height="114" rx="8" fill="currentColor" opacity=".12"/><rect x="78" y="18" width="24" height="114" rx="6" fill="currentColor" opacity=".05"/><path d="M76 76h70" stroke="#2F6FDB" stroke-width="4" stroke-linecap="round"/><path d="M136 66l12 10-12 10" fill="none" stroke="#2F6FDB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="76" cy="76" r="8" fill="#2F6FDB" opacity=".35"/><circle cx="150" cy="122" r="9" fill="currentColor"/><path d="M147 119l6 6M153 119l-6 6" stroke="var(--sheet)" stroke-width="2" stroke-linecap="round"/></svg>
+      <ul><li>Obrazovky jako kalendář, celý plán, výměny nebo chat zavřeš <b>tažením prstu od levého okraje displeje doprava</b>.</li>
+      <li>V otevřené konverzaci se swipem vrátíš na seznam chatů, ze hry nebo úlohy zpět do chatu.</li>
+      <li>Krátký tah se vrátí a nic nezavře – stačí táhnout aspoň do třetiny šířky.</li>
+      <li>Zavírací kroužek ✕ je teď všude stejně v pravém dolním rohu.</li></ul>
+      <p class="nov-red">Od verze 7.00 bude aplikace přecházet z testovacího režimu do měsíčně placené verze 😜🤣</p>
+      <button type="button" data-novok>Rozumím</button></div>`;
+    const ok = () => { try { localStorage.setItem("novinky", NOV_VER); } catch (e){} d.remove(); };
+    d.addEventListener("click", e => { if (e.target === d || e.target.closest("[data-novok]")) ok(); });
+    document.body.appendChild(d);
+    const b = d.querySelector("[data-novok]"); if (b) b.focus();
+  }, 900);
+}
 /* swipe od levého okraje = zavřít horní obrazovku (stejně jako ✕ / šipka zpět) */
 (function(){
   const EDGE = 22, SEL = ".pk-ov .pk-back, .ch-back, .ch-root:not(.desk) .ch-list > .ch-h .ch-x, .full-close, .ch-vx";
@@ -2420,7 +2453,7 @@ function resolveSelf(){
   SELF = SELF_NO ? (Object.keys(OFFICERS).find(n => String(OFFICERS[n]) === SELF_NO) || null) : null;
   if (SELF && !ME){ ME = SELF; }
   updateSelfLabel();
-  ui2Apply(); x3Apply();
+  ui2Apply(); x3Apply(); novinky();
 }
 function updateSelfLabel(){
   document.getElementById("admBtn").hidden = !isAdminUI();
