@@ -3012,7 +3012,7 @@ function shHubHTML(){
 /* ================= adresa do zprávy (hlídky) =================
    Našeptávač Mapy.com (stejný klíč jako RZ scanner), náhled mapy z Mapy.com, klepnutí otevře navigaci v Google Mapách.
    Zpráva: adresa{adresa, patro, lat, lon}. Zatím zkušebně jen pro 1048. */
-const MAPY_KEY = "91216wSSQ5waRO4ABMmtDldTuDGTPzp8kd8WcsQM";
+const MAPY_KEY = "nY-91216wSSQ5waRO4ABMmtDldTuDGTPzp8kd8WcsQM";
 const ADR_CASTI = ["Horní Lhota", "Dolní Lhota", "Olešná", "Hořice", "Klepačov", "Lažánky", "Obůrka", "Těchov"];
 const ADR_PATRA = ["", "suterén", "přízemí", "1. patro", "2. patro", "3. patro", "4. patro", "5. patro", "6. patro", "7. patro", "8. patro", "podkroví"];
 const ADR_ICO = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>';
