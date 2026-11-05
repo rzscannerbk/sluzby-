@@ -668,7 +668,8 @@ button.cal-day{cursor:pointer}
 .u2tags p[data-snk]{cursor:pointer}
 /* pravá osa */
 :root.ui2 .tile{border:0;border-radius:12px;transition:transform .2s,background-color .2s,opacity .2s}
-:root.ui2 .tile.we{box-shadow:none;background:transparent;border:1.5px solid var(--line)}
+:root.ui2 .tile.we{box-shadow:none}
+:root.ui2 .tile.we:not(.my-d):not(.my-n):not(.my-dn){background:transparent;border:1.5px solid var(--line)}
 :root.ui2 .tile.past{opacity:.42}
 :root.ui2 .tile.today{outline:0;box-shadow:0 0 0 2.5px var(--ink)}
 :root.ui2 .tile.today::after{content:"";position:absolute;bottom:5px;left:50%;margin-left:-3px;width:6px;height:6px;border-radius:50%;background:currentColor}
@@ -771,7 +772,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.34</span>
+      <span class="ver" id="verDiag">v5.35</span>
     </div>
   </div>
 </header>
@@ -885,8 +886,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.34"></script>
-<script src="sluzby-chat.js?v=5.34"></script>
+<script src="sluzby-core.js?v=5.35"></script>
+<script src="sluzby-chat.js?v=5.35"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
