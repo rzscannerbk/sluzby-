@@ -512,7 +512,10 @@ button.cal-day{cursor:pointer}
 .ukp .when{margin:0 0 12px;color:var(--ink2);font-weight:600}
 .ukp .tk{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;padding:12px;border-radius:14px;background:var(--paper);border:1.5px solid var(--line);margin-bottom:8px;font:inherit;color:var(--ink);cursor:pointer}
 .ukp .tk i{width:22px;height:22px;border-radius:6px;border:2px solid #2F6FDB;flex:none;margin-top:1px}
-.ukp .tk span{display:block;font-size:16px;line-height:1.35}
+.ukp .tk span{display:block;flex:1;min-width:0;font-size:16px;line-height:1.35;font-family:var(--f-body);font-weight:500}
+.nov.ukp .tk{height:auto;min-height:48px;align-items:center;font-family:var(--f-body)}
+.ukp .tk i{margin-top:0}
+.ukp .tk small{font-weight:600;font-size:14px}
 .ukp .tk small{display:block;color:var(--ink2);font-size:13px;margin-top:2px}
 .ukp .bb{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 .ukp .bb button{height:48px;border-radius:14px;font-family:var(--f-cond);font-weight:700;font-size:18px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
@@ -860,7 +863,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v6.02</span>
+      <span class="ver" id="verDiag">v6.03</span>
     </div>
   </div>
 </header>
@@ -995,8 +998,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.02"></script>
-<script src="sluzby-chat.js?v=6.02"></script>
+<script src="sluzby-core.js?v=6.03"></script>
+<script src="sluzby-chat.js?v=6.03"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
