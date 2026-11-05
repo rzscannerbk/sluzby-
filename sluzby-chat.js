@@ -468,6 +468,37 @@ const STYLE = `
 .adr-sug small{display:block;opacity:.65;font-size:12.5px}
 .adr-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .adr-row>div{display:flex;flex-direction:column;gap:6px;min-width:0}
+.hl-card{margin-top:14px;padding-top:12px;border-top:1px dashed rgba(127,127,127,.45);cursor:default}
+.hl-h{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14.5px;text-transform:uppercase;letter-spacing:.05em}
+.hl-h em{font-style:normal;background:#D63031;color:#fff;border-radius:10px;padding:1px 8px;font-size:12px;letter-spacing:0;text-transform:none}
+.hl-h em[hidden]{display:none}
+.hl-h button{margin-left:auto;border:0;background:none;color:inherit;font:inherit;font-size:14px;font-weight:700;text-transform:none;letter-spacing:0;opacity:.85;cursor:pointer;padding:4px 0}
+.hl-ms{display:flex;flex-direction:column;gap:7px;margin-top:8px}
+.hl-m{max-width:88%;padding:7px 11px;border-radius:12px;background:rgba(0,0,0,.2);font-size:15px;line-height:1.35;overflow-wrap:anywhere}
+.hl-m.mine{align-self:flex-end;background:rgba(255,255,255,.85);color:#151A26}
+.hl-m.new{box-shadow:inset 3px 0 0 #F2CF4A}
+.hl-m b{display:block;font-size:12.5px;opacity:.75;margin-bottom:1px}
+.hl-m small{display:block;text-align:right;font-size:11.5px;opacity:.6}
+.hl-m a{color:inherit}
+.hl-del,.hl-empty{opacity:.65;font-style:italic;margin:0;font-size:14px}
+.hl-ro{opacity:.65;font-size:13.5px;margin:8px 0 0}
+.hl-adr{display:flex;align-items:center;gap:8px;margin:2px 0 3px}
+.hl-adr b{flex:1;font-size:15px;opacity:1;margin:0}
+.hl-adr a{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:10px;background:#2F6FDB;color:#fff !important;font-weight:700;font-size:13.5px;text-decoration:none;white-space:nowrap}
+.hl-bar .ch-bar{margin:8px 0 0}
+.hl-in{display:flex;gap:8px;align-items:flex-end;margin-top:10px}
+.hl-in textarea{flex:1;min-width:0;min-height:42px;max-height:120px;resize:none;border-radius:21px;border:1.5px solid rgba(127,127,127,.5);background:rgba(0,0,0,.15);color:inherit;font:inherit;font-size:16px;padding:9px 14px;box-sizing:border-box;-webkit-user-select:text;user-select:text}
+.hl-in button{flex:none;width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:inherit}
+.hl-pin{border:1.5px solid rgba(127,127,127,.6);background:transparent}
+.hl-send{border:0;background:#E3E7EF;color:#151A26 !important}
+.adr-pz{display:flex;flex-direction:column;gap:6px;min-width:0}
+.adr-pz b{display:flex;align-items:center;height:44px;padding:0 11px;border:1.5px solid var(--line,#C9CED8);border-radius:10px;font-size:16px;font-weight:600}
+.adr-patra{display:flex;flex-wrap:wrap;gap:6px;padding:4px;margin:-2px -4px 0;border-radius:12px;transition:background .3s}
+.adr-patra.hi{background:rgba(47,111,219,.16)}
+.adr-patra button{font:inherit;font-size:14.5px;font-weight:600;padding:7px 11px;border-radius:10px;border:1.5px solid var(--line,#C9CED8);background:transparent;color:inherit;cursor:pointer}
+.adr-patra button.on{background:var(--ink,#1D2A4D);color:var(--paper,#fff);border-color:var(--ink,#1D2A4D)}
+:root[data-theme="dark"] .adr-patra button.on{background:#E3E7EF;color:#151A26}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .adr-patra button.on{background:#E3E7EF;color:#151A26}}
 .adr-hint{margin:2px 0 0;font-size:13px;opacity:.75}
 .adr-hint[hidden]{display:none}
 .adr-casti{display:flex;flex-wrap:wrap;gap:6px}
@@ -768,7 +799,7 @@ function afterThreads(){
   renderList();
   if (S.tid) { renderHead(); renderMsgs(false); markSeen(); }
 }
-function updBadge(){ if (O && O.onBadge) O.onBadge(LIVE ? badgeCount() : 0); }
+function updBadge(){ if (O && O.onBadge) O.onBadge(LIVE ? badgeCount() : 0); if (O && O.onHlidky) O.onHlidky(); }
 /* ---------- vlastní fotka (kroužek vedle jména v menu) ---------- */
 let MOUNTS = [];
 function renderMe(){
@@ -1176,6 +1207,7 @@ async function send(){
   // pole se vyprázdní hned (zpráva se ve vlákně objeví okamžitě jako „Odesílá se…“), při chybě se text vrátí
   const edit = S.edit, reply = S.reply;
   ta.value = ""; grow(ta); S.edit = null; S.reply = null; renderBar();
+  if (adr) ta.blur(); // zpráva s adresou: zavřít klávesnici, ať je vidět mapka a Navigovat
   try { localStorage.removeItem("chDraft_" + S.tid); } catch(e){}
   S.atBottom = true; stickBottom();
   try {
@@ -3027,7 +3059,7 @@ function adrHTML(a){
     <b>${esc(a.adresa || "")}</b>${a.patro ? `<i>${esc(a.patro)}</i>` : ""}
     <a class="adr-nav" href="${nav}" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l8 19-8-4-8 4z"/></svg> Navigovat</a></div>`;
 }
-function openAdrSheet(){
+function openAdrSheet(onPick){
   closeSheet();
   const s = document.createElement("div"); s.className = "ch-sheet pq adr";
   let ul = null, items = [], ctl = null, tmr = null, geo = null, gctl = null, gtmr = null;
@@ -3036,17 +3068,19 @@ function openAdrSheet(){
     <div class="adr-q"><input type="text" id="adrQ" autocomplete="off" placeholder="např. Stařeckého"><div class="adr-sug" id="adrSug" hidden></div></div><p class="adr-hint" id="adrHint" hidden></p>
     <div class="adr-casti">${ADR_CASTI.map(c => `<button type="button" data-adrc="${esc(c)}">${esc(c)}</button>`).join("")}</div>
     <div class="adr-row"><div><label class="adr-l" for="adrN">Číslo popisné</label><input type="text" id="adrN" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="např. 2"></div>
-      <div><label class="adr-l" for="adrP">Patro</label><select id="adrP">${ADR_PATRA.map(p => `<option value="${esc(p)}">${p || "—"}</option>`).join("")}</select></div></div>
+      <div class="adr-pz"><span class="adr-l">Patro</span><b id="adrPz">—</b></div></div>
+    <div class="adr-patra" id="adrPa">${ADR_PATRA.filter(Boolean).map(p => `<button type="button" data-adrp="${esc(p)}">${esc(p.replace(" patro", ""))}</button>`).join("")}</div>
     <p class="adr-pv" id="adrPv" hidden></p>
     <p class="pq-err" id="adrErr" hidden></p>
     <div class="pq-btns"><button type="button" class="pq-b sec" data-adr="x">Zrušit</button><button type="button" class="pq-b" data-adr="ok">Vložit do zprávy</button></div></div>`;
+  let patro = "";
   const $s = sel => s.querySelector(sel), q = $s("#adrQ"), num = $s("#adrN"), sug = $s("#adrSug"), pv = $s("#adrPv"), err = $s("#adrErr");
   const sErr = m => { const h = $s("#adrHint"); h.textContent = m; h.hidden = !m; };
   const api = (v, signal) => fetch(`https://api.mapy.cz/v1/suggest?lang=cs&limit=15&locality=${encodeURIComponent("BOX(16.52,49.30,16.78,49.45)")}&query=${encodeURIComponent(v)}&apikey=${MAPY_KEY}`, {signal})
     .then(r => r.ok ? r.json() : r.text().then(t => Promise.reject(new Error(r.status + " " + t.slice(0, 80)))));
   const full = () => { const u = q.value.trim().replace(/,?\s*blansko\s*$/i, ""), n = num.value.trim(); return u ? `${u}${n ? " " + n : ""}, Blansko` : ""; };
   const showPv = () => {
-    const t = full(), pt = $s("#adrP").value; pv.hidden = !t;
+    const t = full(), pt = patro; pv.hidden = !t;
     pv.innerHTML = t ? `${ADR_ICO}<span>${esc(t)}${pt ? " · " + esc(pt) : ""} <small>${geo ? "✓ ověřeno" : num.value.trim() ? "hledám…" : ""}</small></span>` : "";
   };
   const draw = () => { sug.hidden = !items.length; sug.innerHTML = items.map((it, i) => `<button type="button" data-adri="${i}"><b>${esc(it.name)}</b><small>${esc(it.location || "")}</small></button>`).join(""); };
@@ -3073,23 +3107,98 @@ function openAdrSheet(){
   };
   q.addEventListener("input", () => { ul = null; geo = null; err.hidden = true; showPv(); clearTimeout(tmr); tmr = setTimeout(look, 250); clearTimeout(gtmr); gtmr = setTimeout(geoLook, 500); });
   num.addEventListener("input", () => { err.hidden = true; geo = null; showPv(); clearTimeout(gtmr); gtmr = setTimeout(geoLook, 400); });
-  $s("#adrP").addEventListener("change", showPv);
+  // po dopsání čísla (Hotovo na klávesnici nebo chvíle bez psaní) zavřít klávesnici a ukázat výběr patra
+  let ntmr = null;
+  const toPatro = () => { if (document.activeElement === num && num.value.trim()){ num.blur(); } $s("#adrPa").classList.add("hi"); $s("#adrPa").scrollIntoView({block:"nearest", behavior:"smooth"}); };
+  num.addEventListener("input", () => { clearTimeout(ntmr); if (num.value.trim()) ntmr = setTimeout(toPatro, 1400); });
+  num.addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); clearTimeout(ntmr); toPatro(); } });
+  num.addEventListener("blur", () => { clearTimeout(ntmr); if (num.value.trim()) $s("#adrPa").classList.add("hi"); });
   const pick = name => { ul = name; q.value = name; items = []; draw(); sErr(""); showPv(); num.focus(); geoLook(); };
   s.addEventListener("click", e => {
     if (e.target === s){ closeSheet(); return; }
     const c = e.target.closest("[data-adrc]"); if (c){ pick(c.dataset.adrc); return; }
     const it = e.target.closest("[data-adri]"); if (it){ pick(items[+it.dataset.adri].name); return; }
+    const pp = e.target.closest("[data-adrp]");
+    if (pp){ patro = patro === pp.dataset.adrp ? "" : pp.dataset.adrp; s.querySelectorAll("[data-adrp]").forEach(x => x.classList.toggle("on", x.dataset.adrp === patro)); $s("#adrPz").textContent = patro || "—"; $s("#adrPa").classList.remove("hi"); showPv(); return; }
     const b = e.target.closest("[data-adr]"); if (!b) return;
     if (b.dataset.adr === "x"){ closeSheet(); return; }
     const t = full(); if (!t){ err.textContent = "Napiš ulici nebo vyber místní část."; err.hidden = false; q.focus(); return; }
     if (!num.value.trim()){ err.textContent = "Doplň číslo popisné."; err.hidden = false; num.focus(); return; }
-    const a = {adresa:t}, pt = $s("#adrP").value; if (pt) a.patro = pt;
+    const a = {adresa:t}, pt = patro; if (pt) a.patro = pt;
     if (geo){ a.lat = geo.lat; a.lon = geo.lon; }
+    if (onPick){ closeSheet(); onPick(a); return; }
     a._t = S.tid; S.adr = a; closeSheet(); renderBar(); const ta = $("chText"); if (ta) ta.focus();
   });
   document.body.appendChild(s);
   q.focus(); // hned v klepnutí – jinak iPhone neotevře klávesnici
 }
+
+/* ================= chat hlídky v kartě služby =================
+   Poslední 3 zprávy, rychlá odpověď a adresa; „Celý chat“ otevře vlákno. Zkušebně jen 1048. */
+const HL_ON = () => !!O && String(O.me) === "1048";
+const HL_IC = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>';
+const novTxt = n => `${n} ${n === 1 ? "nová" : n < 5 ? "nové" : "nových"}`;
+CH.hlidkaInfo = function(datum, kind){
+  if (!S || !LIVE || !HL_ON()) return null;
+  const tid = `h_${datum}_${kind}`, t = S.threads[tid];
+  if (!t || t.typ !== "hlidka" || hState(t) === "skryte") return null;
+  return {tid, unread:isMuted(t) ? 0 : unreadOf(t), archiv:hState(t) === "archiv"};
+};
+function hlBody(m){
+  if (m.smazano) return `<i class="hl-del">Zpráva byla smazána</i>`;
+  let h = "";
+  if (m.adresa) h += `<span class="hl-adr"><b>${esc(String(m.adresa.adresa || "").replace(/, Blansko$/, ""))}${m.adresa.patro ? " · " + esc(m.adresa.patro) : ""}</b><a href="${esc(adrNav(m.adresa))}" target="_blank" rel="noopener"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l8 19-8-4-8 4z"/></svg> Navigovat</a></span>`;
+  if (m.anketa) return h + `📊 ${esc(m.anketa.otazka || "Anketa")}`;
+  if (m.hra || m.lode || m.pexeso || m.sachy) return h + "🎮 Hra";
+  if (m.image) h += m.text ? "📷 " : "📷 Fotka";
+  return h + (m.text ? linkify(m.text) : "");
+}
+CH.cardChat = function(el, tid){
+  const t0 = S && S.threads[tid]; if (!t0 || !HL_ON()){ el.innerHTML = ""; return () => {}; }
+  const ro = hState(t0) === "archiv", opened = Date.now();
+  let msgs = [], adr = null, busy = false;
+  el.classList.add("hl-card");
+  el.innerHTML = `<div class="hl-h">${HL_IC}<span>Chat hlídky</span><em hidden></em><button type="button" data-hlall>Celý chat ›</button></div>
+    <div class="hl-ms"><p class="hl-empty">Načítám…</p></div>
+    ${ro ? `<p class="hl-ro">Archiv hlídky – jen ke čtení.</p>` : `<div class="hl-bar"></div><div class="hl-in"><button type="button" class="hl-pin" data-hlpin aria-label="Vložit adresu">${ADR_ICO}</button><textarea rows="1" maxlength="2000" placeholder="Zpráva hlídce…"></textarea><button type="button" class="hl-send" data-hlsend aria-label="Odeslat"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 20.5 21 12 3 3.5l2.4 7.1L14 12l-8.6 1.4z"/></svg></button></div>`}`;
+  const box = el.querySelector(".hl-ms"), em = el.querySelector(".hl-h em"), ta = el.querySelector("textarea"), bar = el.querySelector(".hl-bar");
+  const draw = () => {
+    const t = S.threads[tid] || t0, un = unreadOf(t);
+    em.hidden = !un; em.textContent = un ? novTxt(un) : "";
+    box.innerHTML = msgs.length ? msgs.map((m, i) => {
+      const mine = String(m.od) === String(O.me), nw = !mine && i >= msgs.length - un;
+      return `<div class="hl-m${mine ? " mine" : ""}${nw ? " new" : ""}">${mine ? "" : `<b>${esc(surname(m.jmeno || nameOf(m.od)))}</b>`}<div>${hlBody(m)}</div><small>${m.at ? hm(ms(m.at)) : "…"}</small></div>`;
+    }).join("") : `<p class="hl-empty">Zatím žádné zprávy.</p>`;
+  };
+  const drawBar = () => { if (bar) bar.innerHTML = adr ? `<div class="ch-bar adr">${ADR_ICO}<span><b>${esc(adr.adresa)}</b>${adr.patro ? ` · ${esc(adr.patro)}` : ""}</span><button type="button" data-hladrx aria-label="Odebrat adresu">✕</button></div>` : ""; };
+  const unsub = tref(tid).collection("zpravy").orderBy("at").limitToLast(3).onSnapshot(snap => {
+    msgs = snap.docs.map(d => ({id:d.id, ...d.data({serverTimestamps:"estimate"})})); draw();
+  }, () => { box.innerHTML = `<p class="hl-empty">Chat se nepodařilo načíst.</p>`; });
+  const send = async () => {
+    if (!ta || busy) return;
+    const text = ta.value.trim(); if (!text && !adr) return;
+    busy = true; const data = {text}, a = adr; if (a) data.adresa = a;
+    ta.value = ""; adr = null; drawBar(); ta.style.height = ""; ta.blur();
+    try { await writeMsg(data, tid); }
+    catch (e){ ta.value = text; adr = a; drawBar(); toast(e.code === "permission-denied" ? "Odeslání zamítnuto pravidly Firestore." : "Zprávu se nepodařilo odeslat."); }
+    finally { busy = false; }
+  };
+  el.addEventListener("click", e => {
+    e.stopPropagation();
+    if (e.target.closest("[data-hlall]")){ CH.openThread(tid); return; }
+    if (e.target.closest("[data-hlpin]")){ openAdrSheet(a => { adr = a; drawBar(); if (ta) ta.focus(); }); return; }
+    if (e.target.closest("[data-hladrx]")){ adr = null; drawBar(); return; }
+    if (e.target.closest("[data-hlsend]")) send();
+  });
+  if (ta) ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 120) + "px"; });
+  el._hlDraw = draw;
+  return () => {
+    unsub();
+    // zprávy viděné v kartě = přečtené (když byla karta otevřená aspoň chvíli)
+    const t = S && S.threads[tid];
+    if (t && Date.now() - opened > 1500 && unreadOf(t)) tref(tid).set({videno:{[O.me]:t.pocet || 0}, lastSeen:{[O.me]:FV().serverTimestamp()}}, {merge:true}).catch(() => {});
+  };
+};
 
 /* ================= ankety ve vlákně =================
    Zpráva s polem anketa{otazka, moznosti[], vice}; hlasy{č:[indexy]} – každý mění jen svůj hlas, autor může anketu ukončit (uzavreno). */

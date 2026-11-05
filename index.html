@@ -476,6 +476,8 @@ button.cal-day{cursor:pointer}
 .sn-rem button.on{border-color:#2F6FDB;background:#E6EEFA;color:#14468F}
 .sn-hint{margin:8px 0 0;font-size:12.5px;color:var(--ink2)}
 .sn-err{margin:8px 0 0;font-size:13.5px;color:#C0392B;font-weight:600}
+#fullBody .hl-new{display:none}
+.hl-new{display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:4px 10px;border-radius:10px;background:rgba(214,48,49,.16);border:1px solid rgba(214,48,49,.5);font-size:13.5px;font-weight:700}
 .f-bar{position:fixed;left:14px;right:72px;bottom:calc(var(--fsab) + 16px);z-index:31;display:flex;gap:8px;align-items:center}
 :root.x3 .f-bar{bottom:var(--xb)}
 .f-bar button{height:48px;flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:5px;padding:0 6px;border-radius:24px;border:1.5px solid var(--ink);background:var(--sheet);color:var(--ink);font-family:var(--f-cond);font-weight:700;font-size:16px;letter-spacing:-.01em;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,.18);cursor:pointer}
@@ -872,7 +874,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v6.09</span>
+      <span class="ver" id="verDiag">v6.11</span>
     </div>
   </div>
 </header>
@@ -1007,8 +1009,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.09"></script>
-<script src="sluzby-chat.js?v=6.09"></script>
+<script src="sluzby-core.js?v=6.11"></script>
+<script src="sluzby-chat.js?v=6.11"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1432,6 +1434,7 @@ function render(){
   active = -1; update();
   if (fullRef) fillFull();
   if (calName) fillCal();
+  hlBadges();
 }
 
 /* ---------- synchronizace sloupců ---------- */
@@ -1728,7 +1731,8 @@ function chatStart(){
   SluzbyChat.init({db, firebase, me:SELF_NO, meName:() => SELF || SELF_EMAIL, officers:() => OFFICERS, isAdmin:isAdminUI(), now:getNow, kolize:sluzbaVDobeAkce,
     onAllowed: ok => { document.getElementById("btnChat").hidden = !ok; },
     onBadge: n => { const b = document.getElementById("chatBadge"); b.hidden = !n; b.textContent = n > 99 ? "99+" : n; },
-    onAdminChange: () => { if (!adm.hidden && ADM.tab === "uziv") renderAdm(); }});
+    onAdminChange: () => { if (!adm.hidden && ADM.tab === "uziv") renderAdm(); },
+    onHlidky: () => hlBadges()});
   SluzbyChat.mountMe(document.getElementById("menuAv"));
 }
 document.getElementById("btnChat").addEventListener("click", () => { if (window.SluzbyChat) SluzbyChat.open(); });
@@ -1761,6 +1765,7 @@ function fillFull(){
   if (!card){ closeFull(); return; }
   fullBody.innerHTML = card.outerHTML;
   const c = fullBody.firstElementChild; c.removeAttribute("tabindex");
+  hlMount(c);
   const mine = myShiftIn(GROUPS[fullRef.g], fullRef.k);
   if (mine && !SELF_NO){
     const b = document.createElement("button");
@@ -1800,8 +1805,32 @@ function openFull(card){
   full.scrollTop = 0;
   document.getElementById("fullClose").focus();
 }
+/* chat hlídky v otevřené kartě (modul chatu); při překreslení karty se přenese, aby se neztratil rozepsaný text */
+let HLC = null;
+function hlMount(c){
+  const g = GROUPS[fullRef.g], info = window.SluzbyChat && SluzbyChat.hlidkaInfo && g && !g.prev ? SluzbyChat.hlidkaInfo(isoD(g.date), fullRef.k) : null;
+  if (!info){ hlStop(); return; }
+  const at = c.querySelector(".u2tags") || c.querySelector(".u2pp") || c.lastElementChild;
+  if (HLC && HLC.tid === info.tid){ at.after(HLC.el); return; }
+  hlStop();
+  const el = document.createElement("div"); at.after(el);
+  HLC = {tid:info.tid, el, stop:SluzbyChat.cardChat(el, info.tid)};
+}
+function hlStop(){ if (HLC){ try { HLC.stop(); } catch (e){} HLC.el.remove(); HLC = null; } }
+// štítek „nová zpráva v chatu hlídky“ v kartách timeline
+function hlBadges(){
+  if (!window.SluzbyChat || !SluzbyChat.hlidkaInfo) return;
+  left.querySelectorAll(".card[data-k][data-start]").forEach(c => {
+    const info = SluzbyChat.hlidkaInfo(isoD(new Date(+c.dataset.start)), c.dataset.k), n = info ? info.unread : 0;
+    let b = c.querySelector(".hl-new");
+    if (!n){ if (b) b.remove(); return; }
+    if (!b){ b = document.createElement("span"); b.className = "hl-new"; c.appendChild(b); }
+    b.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg> ${n} ${n === 1 ? "nová zpráva" : n < 5 ? "nové zprávy" : "nových zpráv"} v chatu hlídky`;
+  });
+  if (HLC && HLC.el._hlDraw) HLC.el._hlDraw();
+}
 function closeFull(){
-  closeSnote(); closeSnoteMenu();
+  closeSnote(); closeSnoteMenu(); hlStop();
   full.hidden = true; fullRef = null; fullBody.innerHTML = "";
   if (fullReturn && document.contains(fullReturn)) fullReturn.focus({preventScroll:true});
   fullReturn = null;
