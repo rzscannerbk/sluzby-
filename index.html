@@ -785,7 +785,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.37</span>
+      <span class="ver" id="verDiag">v5.38</span>
     </div>
   </div>
 </header>
@@ -899,8 +899,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.37"></script>
-<script src="sluzby-chat.js?v=5.37"></script>
+<script src="sluzby-core.js?v=5.38"></script>
+<script src="sluzby-chat.js?v=5.38"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1099,7 +1099,7 @@ function x3Apply(){ document.documentElement.classList.toggle("x3", SELF_NO === 
     if (!document.documentElement.classList.contains("x3") || e.touches.length !== 1) return;
     const t = e.touches[0]; if (t.clientX > EDGE) return;
     const b = target(); if (!b) return;
-    const box = b.closest(".pk-ov, .ch-view, .ch-th, .ch-root, .mplan, .full") || b.parentElement;
+    const box = b.closest(".pk-ov, .ch-view, .ch-thread, .ch-root, .mplan, .full") || b.parentElement;
     st = {x:t.clientX, y:t.clientY, b, box, on:false};
   }, {passive:true});
   document.addEventListener("touchmove", e => {
@@ -1113,8 +1113,13 @@ function x3Apply(){ document.documentElement.classList.toggle("x3", SELF_NO === 
     e.preventDefault();
     st.dx = Math.max(0, dx); st.box.style.transform = `translateX(${st.dx}px)`;
   }, {passive:false});
-  const end = () => {
+  let block = 0;
+  // po swipu spolknout „duchový“ klik od prstu (iOS) – jinak by klepl na to, co je pod ním
+  document.addEventListener("click", e => { if (e.isTrusted && Date.now() < block){ e.preventDefault(); e.stopPropagation(); } }, true);
+  const end = e => {
     if (!st || !st.on){ st = null; return; }
+    if (e && e.cancelable) e.preventDefault();
+    block = Date.now() + 400;
     const {box, b, dx = 0} = st; st = null;
     box.classList.add("x3-sw");
     if (dx > Math.min(110, innerWidth * .28)){
@@ -1125,8 +1130,8 @@ function x3Apply(){ document.documentElement.classList.toggle("x3", SELF_NO === 
       setTimeout(() => box.classList.remove("x3-sw"), 220);
     }
   };
-  document.addEventListener("touchend", end, {passive:true});
-  document.addEventListener("touchcancel", end, {passive:true});
+  document.addEventListener("touchend", end, {passive:false});
+  document.addEventListener("touchcancel", end, {passive:false});
 })();
 function ui2Apply(){
   const allow = !!SELF_NO, row = document.getElementById("ui2Row");
