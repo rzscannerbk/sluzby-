@@ -860,7 +860,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v6.01</span>
+      <span class="ver" id="verDiag">v6.02</span>
     </div>
   </div>
 </header>
@@ -995,8 +995,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.01"></script>
-<script src="sluzby-chat.js?v=6.01"></script>
+<script src="sluzby-core.js?v=6.02"></script>
+<script src="sluzby-chat.js?v=6.02"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1865,13 +1865,15 @@ let MY_VOLP = [], MY_NOTES = {}, MY_SNOTES = {}, unsubNotes = null, noteDay = nu
 // poznámky ke službě: dřív jeden text, nově seznam textů
 // položka je text, nebo {t, od, do} (poznámka s časem)
 const hmTxt = x => String(x || "").replace(/^0(\d)/, "$1");
-const snStr = x => x && typeof x === "object" ? `${x.t || ""}${x.od ? ` · ${hmTxt(x.od)}–${hmTxt(x.do)}` : ""}` : String(x);
+// stejný začátek i konec = jen jeden čas
+const casTxt = (od, d) => !od ? "" : !d || d === od ? hmTxt(od) : `${hmTxt(od)}–${hmTxt(d)}`;
+const snStr = x => x && typeof x === "object" ? `${x.t || ""}${x.od ? ` · ${casTxt(x.od, x.do)}` : ""}` : String(x);
 const snRaw = key => { const v = MY_SNOTES[key]; return Array.isArray(v) ? v.filter(Boolean) : v ? [String(v)] : []; };
 const snotesOf = key => snRaw(key).map(snStr);
 /* úkoly: poznamky/{č}.ukoly[id] = {k:"RRRR-MM-DD|D/N", t, od, do, upo, vl, at, hotovo, poslano} */
 let UK_OPEN_T = null, MY_UKOLY = {}, UK_SEL = null, UK_LATER = new Set(), UK_SHOWN = new Set(), UK_OPEN = null, UK_READY = false;
 const ukolyOf = key => Object.entries(MY_UKOLY).filter(([, u]) => u && u.k === key).map(([id, u]) => ({id, ...u})).sort((a, b) => (a.od || "99").localeCompare(b.od || "99") || (a.vytvoreno || 0) - (b.vytvoreno || 0));
-const ukCas = u => u.od ? `${hmTxt(u.od)}–${hmTxt(u.do)}` : "";
+const ukCas = u => casTxt(u.od, u.do);
 function ukDate(k){ const [y, m, d] = k.split("|")[0].split("-").map(Number); return new Date(y, m - 1, d); }
 function ukKdy(k){ const d = ukDate(k), kd = k.split("|")[1]; return `${DOW[d.getDay()]} ${d.getDate()}. ${d.getMonth() + 1}. ${kd === "N" ? "noční" : "denní"}`; }
 const UPO_TXT = {den:"den předem v 18:00", rano:"v den ráno v 6:00", hod:"hodinu předem"};
@@ -1976,7 +1978,7 @@ function openSnote(key, date, kind, idx, mode, ukId){
   const src = task ? u : obj, st = kind === "N" ? 19 : 7;
   $i("snCas").checked = !!(src && src.od);
   $i("snOd").value = src && src.od ? src.od : `${pad2(st)}:00`;
-  $i("snDo").value = src && src.do ? src.do : `${pad2(st + 1)}:00`;
+  $i("snDo").value = src && src.do ? src.do : `${pad2(st)}:00`;
   $i("snUpo").checked = task ? (u ? !!u.upo : true) : false;
   snUpoSel = u && u.upo ? u.upo : "den";
   const def = new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1, 18, 0), va = u && u.upo === "vlastni" && u.at ? new Date(u.at) : def;
@@ -2105,6 +2107,8 @@ async function saveNote(del){
 document.getElementById("noteSave").addEventListener("click", () => saveNote(false));
 document.getElementById("snoteSave").addEventListener("click", () => saveSnote(false));
 ["snCas", "snUpo"].forEach(id => $i(id).addEventListener("change", snSync));
+// po výběru „Od“ začne „Do“ na stejném čase
+$i("snOd").addEventListener("change", () => { if ($i("snOd").value) $i("snDo").value = $i("snOd").value; });
 $i("snRem").addEventListener("click", e => { const b = e.target.closest("[data-upo]"); if (!b) return; snUpoSel = b.dataset.upo; snSync(); });
 async function saveUkol(del, text, cas, od, doT){
   const FV = firebase.firestore.FieldValue, id = snoteUk || ("u" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)), old = snoteUk ? MY_UKOLY[snoteUk] : null;
