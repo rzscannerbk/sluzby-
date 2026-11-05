@@ -391,7 +391,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v6.00</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v6.01</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -402,8 +402,8 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.00"></script>
-<script src="sluzby-chat.js?v=6.00"></script>
+<script src="sluzby-core.js?v=6.01"></script>
+<script src="sluzby-chat.js?v=6.01"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -421,7 +421,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v6.00";
+const DESK_VER = "desktop v6.01";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:"", day:null, codes:[], st:{}, mvDay:null, mvKod:null};
@@ -438,7 +438,8 @@ let SELF = null, SELF_NO = null, SELF_EMAIL = "", OFFICERS = {}, ME = "";
 let PENDING = [], MY_OD = [], MY_ZA = [], MY_VOLP = [], MY_SNOTES = {};
 // poznámky ke službě – stejný záznam jako v mobilu: poznamky/{číslo}.sluzby["RRRR-MM-DD|D/N"] = [texty]
 const snKey = (y, m, d, k) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}|${k}`;
-const snotesOf = key => { const v = MY_SNOTES[key]; return Array.isArray(v) ? v.filter(Boolean) : v ? [String(v)] : []; };
+// položka je text, nebo {t, od, do} – poznámka s časem z mobilu (tady se zobrazí jako text)
+const snotesOf = key => { const v = MY_SNOTES[key]; return (Array.isArray(v) ? v.filter(Boolean) : v ? [String(v)] : []).map(x => x && typeof x === "object" ? `${x.t || ""}${x.od ? ` · ${x.od}–${x.do}` : ""}` : String(x)); };
 async function writeSnotes(key, list){
   const FV = firebase.firestore.FieldValue;
   await db.collection("poznamky").doc(SELF_NO).set(list.length ? {sluzby:{[key]:list}, upraveno:FV.serverTimestamp()} : {sluzby:{[key]:FV.delete()}}, {merge:true});

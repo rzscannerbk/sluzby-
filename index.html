@@ -431,6 +431,14 @@ button.cal-day{cursor:pointer}
 :root[data-theme="dark"] .notes li button{background:#4A2A2E}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .notes li button{background:#4A2A2E}}
 .notes li b{display:block;font-size:13px;color:#B23A3A;margin-bottom:2px}
+.notes .uk-list li button{background:#E6EEFA;border-left-color:#5B8DEF}
+.notes .uk-list li b{color:#14468F}
+.notes .uk-list li button.done{opacity:.6;text-decoration:line-through}
+.notes .uk-list small{display:flex;align-items:center;gap:4px;margin-top:3px;font-size:12.5px;color:#14468F;font-weight:600}
+.notes .uk-list .ik{width:13px;height:13px}
+:root[data-theme="dark"] .notes .uk-list li button{background:#1C2C47}
+:root[data-theme="dark"] .notes .uk-list li b,:root[data-theme="dark"] .notes .uk-list small{color:#BCD3F5}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .notes .uk-list li button{background:#1C2C47}:root:not([data-theme="light"]) .notes .uk-list li b,:root:not([data-theme="light"]) .notes .uk-list small{color:#BCD3F5}}
 .note-ed{margin-top:16px;padding:12px;border:1.5px solid #E07C7C;border-radius:12px}
 .note-ed[hidden]{display:none}
 .note-ed label{display:block;font-weight:600;margin-bottom:6px}
@@ -455,6 +463,60 @@ button.cal-day{cursor:pointer}
 .snote-menu .sm-text{margin:0 0 10px;font-size:15px;white-space:pre-wrap;max-height:30vh;overflow:auto;color:var(--ink2)}
 .snote-ed{position:fixed;left:12px;right:12px;bottom:calc(var(--fsab) + 76px);z-index:33;background:var(--sheet);color:var(--ink);border:1.5px solid #E07C7C;border-radius:14px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 .snote-ed[hidden]{display:none}
+.snote-ed{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.snote-ed.task{border-color:#5B8DEF}
+.snote-ed .sn-chk{display:flex;align-items:center;gap:10px;margin:12px 0 0;font-weight:600}
+.sn-chk input{width:22px;height:22px;margin:0;accent-color:var(--ink);flex:none}
+.sn-times{display:flex;gap:10px;margin:10px 0 0}
+.sn-times[hidden],.sn-rem[hidden],#snUpoBox[hidden],.sn-hint[hidden],.sn-err[hidden]{display:none}
+.snote-ed .sn-times label{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;margin:0;font-size:12.5px;font-weight:600;color:var(--ink2)}
+.sn-times input{width:100%;box-sizing:border-box;height:44px;padding:0 10px;border:1.5px solid var(--ink);border-radius:10px;background:var(--paper);color:var(--ink);font:inherit;font-size:18px;font-weight:700;-webkit-appearance:none;appearance:none;min-width:0}
+.sn-rem{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0}
+.sn-rem button{font:inherit;font-size:14px;font-weight:600;padding:7px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer}
+.sn-rem button.on{border-color:#2F6FDB;background:#E6EEFA;color:#14468F}
+.sn-hint{margin:8px 0 0;font-size:12.5px;color:var(--ink2)}
+.sn-err{margin:8px 0 0;font-size:13.5px;color:#C0392B;font-weight:600}
+.f-bar{position:fixed;left:14px;right:72px;bottom:calc(var(--fsab) + 16px);z-index:31;display:flex;gap:8px;align-items:center}
+:root.x3 .f-bar{bottom:var(--xb)}
+.f-bar button{height:48px;flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:5px;padding:0 6px;border-radius:24px;border:1.5px solid var(--ink);background:var(--sheet);color:var(--ink);font-family:var(--f-cond);font-weight:700;font-size:16px;letter-spacing:-.01em;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,.18);cursor:pointer}
+.f-bar button.wide{flex:1.25 1 0}
+.f-bar button .ik{width:18px;height:18px;flex:none}
+.f-bar button.dark{background:var(--ink);color:var(--paper)}
+.full.is-night .f-bar button{border-color:var(--night-ink)}
+.full.is-night .f-bar button.dark{background:var(--night-ink);color:var(--night)}
+#fullBody:has(.f-bar){padding-bottom:70px}
+.u2tags p.uk,.snote p.uk{background:#E6EEFA;border-color:#A9C3EC;color:#14468F;cursor:pointer}
+.u2tags p.uk.done,.snote p.uk.done{opacity:.6;text-decoration:line-through}
+.u2tags p .ik.bell{width:13px;height:13px}
+.snote.uks{background:rgba(91,141,239,.14);border-left-color:#5B8DEF}
+.snote.uks b{color:#14468F}
+.snote.uks p{display:block;margin:2px 0;padding:0;background:none;border:0;border-radius:0}
+.snote.uks p .ik{width:15px;height:15px;vertical-align:-2px;margin-right:3px}
+.card.night .snote.uks b{color:#BCD3F5}
+.card.night .snote.uks p.uk{color:inherit}
+.uk-menu{position:fixed;left:12px;right:12px;bottom:calc(var(--fsab) + 76px);z-index:45;background:var(--sheet);color:var(--ink);border:1.5px solid #5B8DEF;border-radius:16px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.uk-menu[hidden]{display:none}
+.uk-toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 14px);z-index:300;background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:12px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:calc(100% - 32px);transition:opacity .4s}
+.uk-toast.off{opacity:0}
+.uk-h{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#14468F;text-transform:uppercase;letter-spacing:.04em}
+.uk-h .ik{width:16px;height:16px}
+.uk-t{margin:6px 0 2px;font-size:17px;font-weight:600;white-space:pre-wrap}
+.uk-menu small{display:block;color:var(--ink2);font-size:13.5px}
+.uk-menu small:empty,.uk-bl:empty{display:none}
+.uk-bl{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:13.5px;color:#14468F;font-weight:600}
+.uk-bl .ik{width:15px;height:15px}
+.uk-menu .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.uk-menu.done .uk-t{text-decoration:line-through;opacity:.7}
+.ukp .tag{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-cond);font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;background:#E6EEFA;color:#14468F;padding:4px 10px;border-radius:99px}
+.ukp .tag .ik{width:14px;height:14px}
+.ukp .when{margin:0 0 12px;color:var(--ink2);font-weight:600}
+.ukp .tk{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;padding:12px;border-radius:14px;background:var(--paper);border:1.5px solid var(--line);margin-bottom:8px;font:inherit;color:var(--ink);cursor:pointer}
+.ukp .tk i{width:22px;height:22px;border-radius:6px;border:2px solid #2F6FDB;flex:none;margin-top:1px}
+.ukp .tk span{display:block;font-size:16px;line-height:1.35}
+.ukp .tk small{display:block;color:var(--ink2);font-size:13px;margin-top:2px}
+.ukp .bb{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.ukp .bb button{height:48px;border-radius:14px;font-family:var(--f-cond);font-weight:700;font-size:18px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
+.ukp .bb button.p{background:var(--ink);color:var(--paper)}
 .snote-ed label{display:block;font-weight:600;margin-bottom:6px}
 .snote-ed textarea{width:100%;min-height:70px;max-height:40vh;font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1.5px solid var(--ink);border-radius:8px;padding:8px 10px;resize:vertical}
 
@@ -798,7 +860,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v6.00</span>
+      <span class="ver" id="verDiag">v6.01</span>
     </div>
   </div>
 </header>
@@ -887,10 +949,31 @@ button.cal-day{cursor:pointer}
 <div class="snote-ed" id="snoteEd" role="dialog" aria-labelledby="snoteLbl" hidden>
   <label for="snoteText" id="snoteLbl">Moje poznámka</label>
   <textarea id="snoteText" maxlength="500"></textarea>
+  <label class="sn-chk"><input type="checkbox" id="snCas"> Přidat čas</label>
+  <div class="sn-times" id="snTimes" hidden><label>Od<input type="time" id="snOd" step="300"></label><label>Do<input type="time" id="snDo" step="300"></label></div>
+  <div id="snUpoBox" hidden>
+    <label class="sn-chk"><input type="checkbox" id="snUpo"> Upozornit</label>
+    <div class="sn-rem" id="snRem" hidden><button type="button" data-upo="den">Den předem v 18:00</button><button type="button" data-upo="rano">V den ráno v 6:00</button><button type="button" data-upo="hod">Hodinu předem</button><button type="button" data-upo="vlastni">Vlastní</button></div>
+    <div class="sn-times" id="snVl" hidden><label>Den<input type="date" id="snVlD"></label><label>Čas<input type="time" id="snVlT" step="300"></label></div>
+    <p class="sn-hint" id="snHint" hidden>Přijde notifikace a po otevření aplikace i okno s připomínkou.</p>
+  </div>
+  <p class="sn-err" id="snErr" hidden></p>
   <div class="btns">
     <button type="button" class="btn" id="snoteSave">Uložit</button>
     <button type="button" class="btn sec btn-danger" id="snoteDel">Smazat</button>
     <button type="button" class="btn sec" id="snoteCancel">Zrušit</button>
+  </div>
+</div>
+<div class="uk-menu" id="ukMenu" role="dialog" aria-labelledby="ukMText" hidden>
+  <div class="uk-h" id="ukMHead"></div>
+  <p class="uk-t" id="ukMText"></p>
+  <small id="ukMTime"></small>
+  <div class="uk-bl" id="ukMBell"></div>
+  <div class="btns">
+    <button type="button" class="btn" id="ukDone">Splněno ✓</button>
+    <button type="button" class="btn sec" id="ukEdit">Upravit</button>
+    <button type="button" class="btn sec btn-danger" id="ukDel">Smazat</button>
+    <button type="button" class="btn sec" id="ukClose">Zavřít</button>
   </div>
 </div>
 <div class="snote-menu" id="snoteMenu" role="dialog" aria-label="Poznámka" hidden>
@@ -912,8 +995,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.00"></script>
-<script src="sluzby-chat.js?v=6.00"></script>
+<script src="sluzby-core.js?v=6.01"></script>
+<script src="sluzby-chat.js?v=6.01"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1208,7 +1291,8 @@ function cardHTML2(kind, g, slot, now){
   }
   if (slot.note) tags.push(`<span class="u2t ev">${esc(slot.note)}</span>`);
   const snKey = shiftNoteKey(g.date, kind), sn = snotesOf(snKey);
-  const notes = sn.map((t, i) => `<p data-snk="${snKey}" data-sni="${i}">${ikona("poznamka")} ${esc(t)}</p>`).join("");
+  const notes = sn.map((t, i) => `<p data-snk="${snKey}" data-sni="${i}">${ikona("poznamka")} ${esc(t)}</p>`).join("")
+    + ukolyOf(snKey).map(u => `<p class="uk${u.hotovo ? " done" : ""}" data-uk="${esc(u.id)}">${ikona("ukol")} ${esc(u.t)}${u.od ? " · " + esc(ukCas(u)) : ""}${u.upo && !u.hotovo ? ikona("zvonek", "bell") : ""}</p>`).join("");
   return `<article class="card u2 ${kind === "D" ? "day" : "night"} ${st}" tabindex="0" data-k="${kind}" data-start="${win[0].getTime()}" data-end="${win[1].getTime()}">
     <div class="u2h"><span class="u2k">${kind === "D" ? "Denní" : "Noční"}${live}</span><span class="u2d">${DOW[g.date.getDay()]} ${g.date.getDate()}. ${g.date.getMonth() + 1}.</span></div>
     <div class="u2tm"><span class="time">${tPlain(c.s)}–${tPlain(c.e)}</span><span class="lbl-wx"><span class="wx">${wxHTML(win, kind)}</span></span></div>
@@ -1252,6 +1336,8 @@ function cardHTML(kind, g, slot, now){
   if (slot.note) aside += `<div class="aside"><p>${esc(slot.note)}</p></div>`;
   const snKey = shiftNoteKey(g.date, kind), sn = snotesOf(snKey);
   if (sn.length) aside += `<div class="snote"><b>${sn.length > 1 ? "Moje poznámky" : "Moje poznámka"}</b>${sn.map((t, i) => `<p data-snk="${snKey}" data-sni="${i}">${esc(t)}</p>`).join("")}</div>`;
+  const uks = ukolyOf(snKey);
+  if (uks.length) aside += `<div class="snote uks"><b>${uks.length > 1 ? "Moje úkoly" : "Můj úkol"}</b>${uks.map(u => `<p class="uk${u.hotovo ? " done" : ""}" data-uk="${esc(u.id)}">${ikona("ukol")} ${esc(u.t)}${u.od ? " · " + esc(ukCas(u)) : ""}${u.upo && !u.hotovo ? ikona("zvonek") : ""}</p>`).join("")}</div>`;
   return `<article class="card ${kind==="D"?"day":"night"} ${st}" tabindex="0" data-k="${kind}" data-start="${win[0].getTime()}" data-end="${win[1].getTime()}">
     <h2>${title}${chip}${live}</h2><span class="when">${when}</span>
     <div class="time">${t2(c.s)} – ${t2(c.e)}</div>${st === "now" ? progressHTML(win, now) : ""}
@@ -1312,7 +1398,8 @@ function render(){
     // vlevo nahoře: akce, na kterou jdu, a moje poznámka ke dni nebo ke službě
     if (!g.prev){
       const k = akceKey(d), hasN = !!(MY_NOTES[k] || snotesOf(k + "|D").length || snotesOf(k + "|N").length);
-      const ic = (akceOn(d).length ? ikona("kalendar") : "") + (hasN ? ikona("poznamka") : "");
+      const hasU = ukolyOf(k + "|D").concat(ukolyOf(k + "|N")).some(u => !u.hotovo);
+      const ic = (akceOn(d).length ? ikona("kalendar") : "") + (hasN ? ikona("poznamka") : "") + (hasU ? ikona("ukol") : "");
       if (ic) marks += `<span class="akm" aria-hidden="true">${ic}</span>`;
     }
     const ev = g.prev ? g.prevName : "";
@@ -1657,13 +1744,25 @@ function fillFull(){
   fullBody.innerHTML = card.outerHTML;
   const c = fullBody.firstElementChild; c.removeAttribute("tabindex");
   const mine = myShiftIn(GROUPS[fullRef.g], fullRef.k);
-  if (mine){
+  if (mine && !SELF_NO){
     const b = document.createElement("button");
     b.type = "button"; b.className = "swap-open"; b.textContent = "Výměna";
     b.addEventListener("click", () => openSwp(mine));
     fullBody.appendChild(b);
   }
   if (SELF_NO){
+    const g = GROUPS[fullRef.g], key = shiftNoteKey(g.date, fullRef.k), kd = fullRef.k;
+    const bar = document.createElement("div"); bar.className = "f-bar";
+    bar.innerHTML = `<button type="button" class="wide" data-fb="n">${ikona("poznamka")}Poznámka</button><button type="button" data-fb="u">${ikona("ukol")}Úkol</button>${mine ? `<button type="button" class="dark" data-fb="v">Výměna</button>` : ""}`;
+    bar.addEventListener("click", e => {
+      const b = e.target.closest("[data-fb]"); if (!b) return;
+      if (b.dataset.fb === "n") openSnote(key, g.date, kd, -1);
+      else if (b.dataset.fb === "u") openSnote(key, g.date, kd, -1, "task");
+      else openSwp(mine);
+    });
+    fullBody.appendChild(bar);
+  }
+  if (false){
     const g = GROUPS[fullRef.g], key = shiftNoteKey(g.date, fullRef.k);
     const n = document.createElement("button");
     n.type = "button"; n.className = "note-open"; n.setAttribute("aria-label", "Přidat poznámku ke službě");
@@ -1764,7 +1863,36 @@ function fillCal(){
 /* ---------- osobní poznámky ke dnům (jen ve vlastním kalendáři) ---------- */
 let MY_VOLP = [], MY_NOTES = {}, MY_SNOTES = {}, unsubNotes = null, noteDay = null, snoteRef = null, snoteIdx = -1, snoteDate = null, snoteKind = null;
 // poznámky ke službě: dřív jeden text, nově seznam textů
-const snotesOf = key => { const v = MY_SNOTES[key]; return Array.isArray(v) ? v.filter(Boolean) : v ? [String(v)] : []; };
+// položka je text, nebo {t, od, do} (poznámka s časem)
+const hmTxt = x => String(x || "").replace(/^0(\d)/, "$1");
+const snStr = x => x && typeof x === "object" ? `${x.t || ""}${x.od ? ` · ${hmTxt(x.od)}–${hmTxt(x.do)}` : ""}` : String(x);
+const snRaw = key => { const v = MY_SNOTES[key]; return Array.isArray(v) ? v.filter(Boolean) : v ? [String(v)] : []; };
+const snotesOf = key => snRaw(key).map(snStr);
+/* úkoly: poznamky/{č}.ukoly[id] = {k:"RRRR-MM-DD|D/N", t, od, do, upo, vl, at, hotovo, poslano} */
+let UK_OPEN_T = null, MY_UKOLY = {}, UK_SEL = null, UK_LATER = new Set(), UK_SHOWN = new Set(), UK_OPEN = null, UK_READY = false;
+const ukolyOf = key => Object.entries(MY_UKOLY).filter(([, u]) => u && u.k === key).map(([id, u]) => ({id, ...u})).sort((a, b) => (a.od || "99").localeCompare(b.od || "99") || (a.vytvoreno || 0) - (b.vytvoreno || 0));
+const ukCas = u => u.od ? `${hmTxt(u.od)}–${hmTxt(u.do)}` : "";
+function ukDate(k){ const [y, m, d] = k.split("|")[0].split("-").map(Number); return new Date(y, m - 1, d); }
+function ukKdy(k){ const d = ukDate(k), kd = k.split("|")[1]; return `${DOW[d.getDay()]} ${d.getDate()}. ${d.getMonth() + 1}. ${kd === "N" ? "noční" : "denní"}`; }
+const UPO_TXT = {den:"den předem v 18:00", rano:"v den ráno v 6:00", hod:"hodinu předem"};
+function ukUpoTxt(u){
+  if (!u.upo) return "";
+  if (u.upo === "vlastni" && u.at){ const t = new Date(u.at); return `${DOW[t.getDay()]} ${t.getDate()}. ${t.getMonth() + 1}. v ${t.getHours()}:${String(t.getMinutes()).padStart(2, "0")}`; }
+  return UPO_TXT[u.upo] || "";
+}
+// čas připomínky (ms) – noční služba: čas před polednem patří do dalšího dne
+function ukAt(k, od, upo, vl){
+  const d = ukDate(k), kd = k.split("|")[1], y = d.getFullYear(), m = d.getMonth(), dd = d.getDate();
+  if (upo === "den") return new Date(y, m, dd - 1, 18, 0).getTime();
+  if (upo === "rano") return new Date(y, m, dd, 6, 0).getTime();
+  if (upo === "hod"){
+    let h = kd === "N" ? 19 : 7, mi = 0, plus = 0;
+    if (od){ [h, mi] = od.split(":").map(Number); if (kd === "N" && h < 12) plus = 1; }
+    return new Date(y, m, dd + plus, h - 1, mi).getTime();
+  }
+  if (upo === "vlastni" && vl && vl.d && vl.t){ const [Y, M, D] = vl.d.split("-").map(Number), [H, Mi] = vl.t.split(":").map(Number); return new Date(Y, M - 1, D, H, Mi).getTime(); }
+  return null;
+}
 function shiftNoteKey(date, kind){ return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}|${kind}`; }
 const noteKey = d => `${YEAR}-${String(MONTH+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
 const noteDate = d => { const x = new Date(YEAR, MONTH, d); return `${DOW[x.getDay()]} ${d}. ${MONTH+1}.`; };
@@ -1773,6 +1901,9 @@ function startNotes(){
   unsubNotes = db.collection("poznamky").doc(SELF_NO).onSnapshot(s => {
     MY_NOTES = (s.exists && s.data().dny) || {};
     MY_SNOTES = (s.exists && s.data().sluzby) || {};
+    MY_UKOLY = (s.exists && s.data().ukoly) || {};
+    if (UK_SEL && !document.getElementById("ukMenu").hidden) fillUkMenu();
+    if (!UK_READY || UK_OPEN){ UK_READY = true; setTimeout(ukCheck, 50); } // připomínka jen po spuštění / návratu do aplikace
     MY_VOLP = volLoad(s.exists ? s.data() : {});
     MY_PRANI = (s.exists && s.data().prani) || {};
     if (calName) fillCal();
@@ -1821,20 +1952,44 @@ function sluzbaVDobeAkce(ak){
   const x = found[0], hm = t => `${t.getHours()}:${String(t.getMinutes()).padStart(2, "0")}`;
   return `V tu dobu máš službu (${x.lbl.replace(/^\d+\. /, "")} ${hm(x.s)}–${hm(x.e)}). Domluv si výměnu.`;
 }
-function stopNotes(){ if (unsubNotes){ unsubNotes(); unsubNotes = null; } MY_NOTES = {}; MY_SNOTES = {}; stopAkce(); }
+function stopNotes(){ if (unsubNotes){ unsubNotes(); unsubNotes = null; } MY_NOTES = {}; MY_SNOTES = {}; MY_UKOLY = {}; UK_READY = false; stopAkce(); }
 /* poznámka ke konkrétní službě – vidí ji jen autor */
-function openSnote(key, date, kind, idx){
-  snoteRef = key; snoteIdx = idx;
+let snoteMode = "note", snoteUk = null, snUpoSel = "den";
+const $i = id => document.getElementById(id);
+function snSync(){
+  $i("snTimes").hidden = !$i("snCas").checked;
+  const task = snoteMode === "task", upo = task && $i("snUpo").checked;
+  $i("snUpoBox").hidden = !task; $i("snRem").hidden = !upo; $i("snHint").hidden = !upo;
+  $i("snVl").hidden = !(upo && snUpoSel === "vlastni");
+  $i("snRem").querySelectorAll("[data-upo]").forEach(b => b.classList.toggle("on", b.dataset.upo === snUpoSel));
+  $i("snErr").hidden = true; fitSnote();
+}
+const pad2 = n => String(n).padStart(2, "0");
+const isoD = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+function openSnote(key, date, kind, idx, mode, ukId){
+  snoteRef = key; snoteIdx = idx; snoteMode = mode || "note"; snoteUk = ukId || null;
   const kdy = `${kind === "N" ? "noční" : "denní"} ${DOW[date.getDay()]} ${date.getDate()}. ${date.getMonth()+1}.`;
-  document.getElementById("snoteLbl").textContent = `${idx >= 0 ? "Úprava poznámky" : "Nová poznámka"} – ${kdy}`;
-  const t = document.getElementById("snoteText"); t.value = idx >= 0 ? (snotesOf(key)[idx] || "") : "";
-  document.getElementById("snoteDel").hidden = idx < 0;
-  document.getElementById("snoteEd").hidden = false;
+  const task = snoteMode === "task", u = task && ukId ? MY_UKOLY[ukId] : null, raw = !task && idx >= 0 ? snRaw(key)[idx] : null, obj = raw && typeof raw === "object" ? raw : null;
+  $i("snoteLbl").textContent = `${task ? (u ? "Úprava úkolu" : "Nový úkol") : idx >= 0 ? "Úprava poznámky" : "Nová poznámka"} – ${kdy}`;
+  $i("snoteEd").classList.toggle("task", task);
+  const t = $i("snoteText"); t.value = task ? (u ? u.t || "" : "") : raw == null ? "" : obj ? obj.t || "" : String(raw);
+  const src = task ? u : obj, st = kind === "N" ? 19 : 7;
+  $i("snCas").checked = !!(src && src.od);
+  $i("snOd").value = src && src.od ? src.od : `${pad2(st)}:00`;
+  $i("snDo").value = src && src.do ? src.do : `${pad2(st + 1)}:00`;
+  $i("snUpo").checked = task ? (u ? !!u.upo : true) : false;
+  snUpoSel = u && u.upo ? u.upo : "den";
+  const def = new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1, 18, 0), va = u && u.upo === "vlastni" && u.at ? new Date(u.at) : def;
+  $i("snVlD").value = isoD(va); $i("snVlT").value = `${pad2(va.getHours())}:${pad2(va.getMinutes())}`;
+  $i("snoteDel").hidden = task ? !u : idx < 0;
+  closeUkMenu();
+  $i("snoteEd").hidden = false;
+  snSync();
   fitSnote();
   try { t.focus({preventScroll:true}); } catch (e){ t.focus(); } // synchronně v klepnutí – jinak iOS klávesnici nevysune
   t.setSelectionRange(t.value.length, t.value.length);
 }
-function closeSnote(){ const ed = document.getElementById("snoteEd"); ed.hidden = true; ed.style.top = ed.style.bottom = ""; snoteRef = null; snoteIdx = -1; }
+function closeSnote(){ const ed = document.getElementById("snoteEd"); ed.hidden = true; ed.style.top = ed.style.bottom = ed.style.maxHeight = ""; snoteRef = null; snoteIdx = -1; snoteUk = null; }
 // okno poznámky drží nad klávesnicí (iPhone klávesnice stránku nezmenší, jen překryje spodní část)
 // okno poznámky je při psaní ukotvené nahoře ve viditelné části obrazovky – klávesnice ho nezakryje,
 // ať iOS zmenší stránku, nebo ji jen překryje a posune
@@ -1848,6 +2003,7 @@ function fitSnote(){
   const visH = vv ? vv.height : window.innerHeight, t = document.getElementById("snoteText");
   const room = visH - (ed.offsetHeight - t.offsetHeight) - 30;
   t.style.maxHeight = room > 60 ? room + "px" : "";
+  ed.style.maxHeight = Math.max(160, visH - 20) + "px";
 }
 if (window.visualViewport){ visualViewport.addEventListener("resize", fitSnote); visualViewport.addEventListener("scroll", fitSnote); }
 document.getElementById("snoteText").addEventListener("focus", () => [60, 250, 500].forEach(t => setTimeout(fitSnote, t)));
@@ -1856,11 +2012,15 @@ async function writeSnotes(key, list){
   const FV = firebase.firestore.FieldValue;
   await db.collection("poznamky").doc(SELF_NO).set(list.length ? {sluzby:{[key]: list}, upraveno:FV.serverTimestamp()} : {sluzby:{[key]: FV.delete()}}, {merge:true});
 }
+function snErr(m){ const e = $i("snErr"); e.textContent = m; e.hidden = false; fitSnote(); }
 async function saveSnote(del){
   if (!snoteRef) return;
-  const text = document.getElementById("snoteText").value.trim(), list = snotesOf(snoteRef);
-  if (snoteIdx >= 0){ if (del || !text) list.splice(snoteIdx, 1); else list[snoteIdx] = text; }
-  else if (text) list.push(text);
+  const text = $i("snoteText").value.trim(), cas = $i("snCas").checked, od = $i("snOd").value, doT = $i("snDo").value;
+  if (!del && cas && (!od || !doT)) return snErr("Vyplň čas od i do.");
+  if (snoteMode === "task") return saveUkol(del, text, cas, od, doT);
+  const list = snRaw(snoteRef), item = cas ? {t:text, od, do:doT} : text;
+  if (snoteIdx >= 0){ if (del || !text) list.splice(snoteIdx, 1); else list[snoteIdx] = item; }
+  else if (text) list.push(item);
   else { closeSnote(); return; }
   try { await writeSnotes(snoteRef, list); closeSnote(); }
   catch (err){ alert("Poznámku se nepodařilo uložit."); }
@@ -1894,7 +2054,7 @@ document.getElementById("snoteEdit").addEventListener("click", () => {
 });
 document.getElementById("snoteRemove").addEventListener("click", async () => {
   const sel = snoteSel; if (!sel) return;
-  const list = snotesOf(sel.key); list.splice(sel.idx, 1);
+  const list = snRaw(sel.key); list.splice(sel.idx, 1);
   try { await writeSnotes(sel.key, list); closeSnoteMenu(); }
   catch (err){ alert("Poznámku se nepodařilo smazat."); }
 });
@@ -1913,7 +2073,10 @@ function renderNotes(){
   }).join("")}</ul>` : "") + (sk.length ? `<h3>Poznámky ke službám</h3><ul>${sk.map(k => {
     const d = +k.slice(8, 10), kd = k.slice(-1);
     return `<li><button type="button" data-day="${d}" data-kind="${kd}" class="sn-go"><b>${noteDate(d)} ${kd === "N" ? "noční" : "denní"}</b>${snotesOf(k).map(esc).join("<br>")}</button></li>`;
-  }).join("")}</ul>` : "");
+  }).join("")}</ul>` : "") + (() => {
+    const uk = Object.entries(MY_UKOLY).map(([id, u]) => ({id, ...u})).filter(u => u.k && u.k.startsWith(pref)).sort((a, b) => a.k.localeCompare(b.k) || (a.od || "").localeCompare(b.od || ""));
+    return uk.length ? `<h3>Úkoly</h3><ul class="uk-list">${uk.map(u => `<li><button type="button" data-uk="${esc(u.id)}" class="${u.hotovo ? "done" : ""}"><b>${esc(ukKdy(u.k))}${u.od ? " · " + esc(ukCas(u)) : ""}</b>${esc(u.t)}${u.upo && !u.hotovo ? ` <small>${ikona("zvonek")} ${esc(ukUpoTxt(u))}</small>` : ""}</button></li>`).join("")}</ul>` : "";
+  })();
 }
 function openNote(d){
   if (calName !== SELF || !SELF_NO) return;
@@ -1941,6 +2104,96 @@ async function saveNote(del){
 }
 document.getElementById("noteSave").addEventListener("click", () => saveNote(false));
 document.getElementById("snoteSave").addEventListener("click", () => saveSnote(false));
+["snCas", "snUpo"].forEach(id => $i(id).addEventListener("change", snSync));
+$i("snRem").addEventListener("click", e => { const b = e.target.closest("[data-upo]"); if (!b) return; snUpoSel = b.dataset.upo; snSync(); });
+async function saveUkol(del, text, cas, od, doT){
+  const FV = firebase.firestore.FieldValue, id = snoteUk || ("u" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)), old = snoteUk ? MY_UKOLY[snoteUk] : null;
+  const ref = db.collection("poznamky").doc(SELF_NO);
+  try {
+    if (del || (!text && old)){ await ref.set({ukoly:{[id]: FV.delete()}}, {merge:true}); closeSnote(); return; }
+    if (!text) return snErr("Napiš, co je potřeba udělat.");
+    const upo = $i("snUpo").checked ? snUpoSel : null, vl = upo === "vlastni" ? {d:$i("snVlD").value, t:$i("snVlT").value} : null;
+    if (upo === "vlastni" && (!vl.d || !vl.t)) return snErr("Vyber den a čas upozornění.");
+    const at = upo ? ukAt(snoteRef, cas ? od : null, upo, vl) : null;
+    const u = {k:snoteRef, t:text, hotovo:old ? !!old.hotovo : false, vytvoreno:old && old.vytvoreno || Date.now()};
+    if (cas){ u.od = od; u.do = doT; }
+    if (upo){ u.upo = upo; u.at = at; u.poslano = !!(old && old.poslano && old.at === at) || at < getNow().getTime() - 6 * 36e5; }
+    // update nahradí celý úkol (i odebraný čas); dokument ještě neexistuje → vytvořit
+    try { await ref.update({[`ukoly.${id}`]: u, upraveno:FV.serverTimestamp()}); }
+    catch (er){ if (er && er.code === "not-found") await ref.set({ukoly:{[id]: u}, upraveno:FV.serverTimestamp()}, {merge:true}); else throw er; }
+    closeSnote(); UK_SHOWN.add(id);
+    if (upo && at < getNow().getTime() && !u.hotovo) ukToast("Čas upozornění už minul – připomínka se ukáže v aplikaci.");
+  } catch (err){ alert("Úkol se nepodařilo uložit."); }
+}
+/* okno úkolu: Splněno / Upravit / Smazat */
+function ukToast(m){
+  const t = document.createElement("div"); t.className = "uk-toast"; t.textContent = m; document.body.appendChild(t);
+  setTimeout(() => t.classList.add("off"), 2600); setTimeout(() => t.remove(), 3100);
+}
+function openUkMenu(id){
+  if (!MY_UKOLY[id]){ ukToast("Úkol už neexistuje."); return; }
+  UK_SEL = id; closeSnote(); closeSnoteMenu(); fillUkMenu(); $i("ukMenu").hidden = false;
+}
+function fillUkMenu(){
+  const u = MY_UKOLY[UK_SEL]; if (!u){ closeUkMenu(); return; }
+  $i("ukMHead").innerHTML = `${ikona("ukol")} Úkol · ${esc(ukKdy(u.k))}`;
+  $i("ukMText").textContent = u.t || "";
+  $i("ukMTime").textContent = ukCas(u);
+  $i("ukMBell").innerHTML = u.upo ? `${ikona("zvonek")} Upozornit ${esc(ukUpoTxt(u))}` : "";
+  $i("ukDone").textContent = u.hotovo ? "Vrátit jako nesplněný" : "Splněno ✓";
+  $i("ukMenu").classList.toggle("done", !!u.hotovo);
+}
+function closeUkMenu(){ const m = $i("ukMenu"); if (m) m.hidden = true; UK_SEL = null; }
+$i("ukClose").addEventListener("click", closeUkMenu);
+$i("ukDone").addEventListener("click", async () => {
+  const id = UK_SEL, u = MY_UKOLY[id]; if (!u) return;
+  try { await db.collection("poznamky").doc(SELF_NO).update({[`ukoly.${id}.hotovo`]: !u.hotovo}); if (!u.hotovo) closeUkMenu(); }
+  catch (e){ alert("Nepodařilo se uložit."); }
+});
+$i("ukEdit").addEventListener("click", () => { const id = UK_SEL, u = MY_UKOLY[id]; if (!u) return; closeUkMenu(); openSnote(u.k, ukDate(u.k), u.k.split("|")[1], -1, "task", id); });
+$i("ukDel").addEventListener("click", async () => {
+  const id = UK_SEL; if (!id || !confirm("Smazat úkol?")) return;
+  try { await db.collection("poznamky").doc(SELF_NO).set({ukoly:{[id]: firebase.firestore.FieldValue.delete()}}, {merge:true}); closeUkMenu(); }
+  catch (e){ alert("Úkol se nepodařilo smazat."); }
+});
+// klepnutí na úkol kdekoli (karta, detail, kalendář) otevře okno úkolu
+document.addEventListener("click", e => { const p = e.target.closest("[data-uk]"); if (!p) return; e.preventDefault(); e.stopPropagation(); openUkMenu(p.dataset.uk); }, true);
+/* připomínka po otevření aplikace: úkoly s upozorněním, jejichž čas už nastal (a den úkolu ještě neskončil) */
+function ukDue(){
+  const now = getNow().getTime();
+  return Object.entries(MY_UKOLY).map(([id, u]) => ({id, ...u})).filter(u => u.upo && !u.hotovo && u.at && u.at <= now
+    && ukDate(u.k).getTime() + (u.k.endsWith("|N") ? 2 : 1) * 864e5 > now && !UK_LATER.has(u.id) && !UK_SHOWN.has(u.id))
+    .sort((a, b) => a.k.localeCompare(b.k) || (a.od || "").localeCompare(b.od || ""));
+}
+function ukCheck(){
+  if (!UK_READY || !SELF_NO) return;
+  if (UK_OPEN){
+    const id = UK_OPEN;
+    if (!MY_UKOLY[id]){ if (!UK_OPEN_T) UK_OPEN_T = setTimeout(() => { UK_OPEN = null; ukToast("Úkol už neexistuje."); }, 8000); return; } // počkat na data
+    UK_OPEN = null; clearTimeout(UK_OPEN_T); UK_OPEN_T = null; UK_SHOWN.add(id); openUkMenu(id); return;
+  }
+  if (document.getElementById("nov") || document.getElementById("ukPop") || document.getElementById("ui2splash")){ setTimeout(ukCheck, 800); return; }
+  const due = ukDue(); if (!due.length) return;
+  due.forEach(u => UK_SHOWN.add(u.id));
+  const nw = getNow(), zitra = isoD(new Date(nw.getFullYear(), nw.getMonth(), nw.getDate() + 1)), dnes = isoD(nw);
+  const kdy = k => k.startsWith(zitra) ? "Zítra" : k.startsWith(dnes) ? "Dnes" : "";
+  const one = due.length === 1, u0 = due[0], kd0 = kdy(u0.k);
+  const d = document.createElement("div"); d.className = "nov ukp"; d.id = "ukPop";
+  d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-labelledby", "ukPopT");
+  d.innerHTML = `<div class="nov-in"><span class="tag">${ikona("zvonek")} Připomínka</span>
+    <h2 id="ukPopT">${one ? (kd0 ? `${kd0} tě čeká úkol` : "Čeká tě úkol") : `Čekají tě úkoly (${due.length})`}</h2>
+    ${one ? `<p class="when">${esc(ukKdy(u0.k))} služba</p>` : ""}
+    ${due.map(u => `<button type="button" class="tk" data-ukpo="${esc(u.id)}"><i></i><span>${esc(u.t)}<small>${one ? esc(ukCas(u)) : esc(ukKdy(u.k)) + (u.od ? " · " + esc(ukCas(u)) : "")}</small></span></button>`).join("")}
+    <div class="bb">${one ? `<button type="button" class="p" data-ukpo="${esc(u0.id)}">Otevřít úkol</button>` : ""}<button type="button" data-ukpl>Připomenout později</button></div></div>`;
+  d.addEventListener("click", e => {
+    const o = e.target.closest("[data-ukpo]");
+    if (o){ d.remove(); openUkMenu(o.dataset.ukpo); return; }
+    if (e.target.closest("[data-ukpl]") || e.target === d){ due.forEach(u => { UK_LATER.add(u.id); UK_SHOWN.delete(u.id); }); d.remove(); }
+  });
+  document.body.appendChild(d);
+}
+// návrat do aplikace z pozadí: znovu zkontrolovat (odložené „později“ se ukážou při dalším spuštění)
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") setTimeout(ukCheck, 400); });
 document.getElementById("snoteDel").addEventListener("click", () => saveSnote(true));
 document.getElementById("snoteCancel").addEventListener("click", closeSnote);
 document.getElementById("noteDel").addEventListener("click", () => saveNote(true));
@@ -2628,6 +2881,7 @@ function closeVym(){ vym.hidden = true; }
 let OPEN_REQ = new URLSearchParams(location.search).get("open"), OPEN_T = new URLSearchParams(location.search).get("t");
 if (OPEN_REQ){ try { history.replaceState(null, "", location.pathname); } catch (e) {} }
 function openFromPush(what, t){
+  if (what === "ukol"){ UK_OPEN = t; if (!full.hidden) closeFull(); if (!cal.hidden) closeCal(); setTimeout(ukCheck, 50); return; }
   if (what !== "vymeny" && what !== "chat") return;
   if (!SELF){ OPEN_REQ = what; OPEN_T = t; return; } // ještě není načtený strážník – otevře se po načtení
   OPEN_REQ = null; OPEN_T = null;
@@ -3298,7 +3552,8 @@ const mpShift = (mid, k) => { const [y, m] = ymOf(mid), t = new Date(y, m + k, 1
 function mpMarks(y, m, d){
   const dt = new Date(y, m, d), k = akceKey(dt);
   const n = !!(MY_NOTES[k] || snotesOf(k + "|D").length || snotesOf(k + "|N").length);
-  return (akceOn(dt).length ? ikona("kalendar") : "") + (n ? ikona("poznamka") : "");
+  const u = ukolyOf(k + "|D").concat(ukolyOf(k + "|N")).some(x => !x.hotovo);
+  return (akceOn(dt).length ? ikona("kalendar") : "") + (n ? ikona("poznamka") : "") + (u ? ikona("ukol") : "");
 }
 function mpHTML(){
   const C = mpCtx(), YEAR = C.y, MONTH = C.m, NOTES = C.notes;
