@@ -712,7 +712,16 @@ button.cal-day{cursor:pointer}
 .card.u2 .prog{margin:0 0 8px}
 .card.u2 .prog .bar{height:6px}
 .card.u2.now .prog .bar{height:7px}
-.u2pp{display:flex;flex-wrap:wrap;gap:5px}
+.u2pp{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.u2pp .u2p{min-width:0;flex-wrap:wrap;row-gap:2px}
+.u2pp .u2p.st,.u2pp .u2p.none{grid-column:1 / -1;justify-self:start}
+.u2pp .pname{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.u2p .nm-f{display:none}
+#fullBody .u2p .nm-f{display:inline}
+#fullBody .u2p .nm-s{display:none}
+.group .u2p .tag.sw{display:none}
+#fullBody .u2pp{gap:8px}
+#fullBody .u2pp .u2p{font-size:16px;padding:6px 10px}
 .u2p{display:inline-flex;align-items:center;gap:4px;font-size:14px;font-weight:600;padding:3px 8px;border-radius:8px;background:rgba(29,42,77,.07)}
 .card.night .u2p{background:rgba(255,255,255,.14)}
 .u2p.st,.card.night .u2p.st,:root.ui2 .card .u2p.st{background:#2E9E5B;color:#fff}
@@ -863,7 +872,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v6.04</span>
+      <span class="ver" id="verDiag">v6.06</span>
     </div>
   </div>
 </header>
@@ -998,8 +1007,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.04"></script>
-<script src="sluzby-chat.js?v=6.04"></script>
+<script src="sluzby-core.js?v=6.06"></script>
+<script src="sluzby-chat.js?v=6.06"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1273,11 +1282,17 @@ function ui2SplashOff(){ const sp = document.getElementById("ui2splash"); if (sp
 function isoWeek(d){ const t = new Date(d.getFullYear(), d.getMonth(), d.getDate()); t.setDate(t.getDate() + 3 - (t.getDay() + 6) % 7); const w1 = new Date(t.getFullYear(), 0, 4); return 1 + Math.round(((t - w1) / 864e5 - 3 + (w1.getDay() + 6) % 7) / 7); }
 // kompaktní karta služby: typ + datum, čas + počasí, lidé jako štítky, doplňky dole jako barevné štítky
 function shortNm(n){ const p = String(n).split(" "); return p.length > 1 ? `${p[0]} ${p[1].charAt(0)}.` : n; }
+// v kartách jen příjmení; při stejném příjmení (Tóth O. / Tóth P.) i iniciála jména
+let SUR_DUP = new Set(), SUR_SRC = null;
+function surNm(n){
+  if (SUR_SRC !== OFFICERS){ SUR_SRC = OFFICERS; const c = {}; Object.keys(OFFICERS || {}).forEach(k => { const s = k.split(" ")[0]; c[s] = (c[s] || 0) + 1; }); SUR_DUP = new Set(Object.keys(c).filter(s => c[s] > 1)); }
+  const p = String(n).split(" "); return p.length > 1 && SUR_DUP.has(p[0]) ? `${p[0]} ${p[1].charAt(0)}.` : p[0];
+}
 function person2(p, base, ctx, stala){
   const c = CODES[p.code], b = CODES[base];
   const tag = c && b && (c.e[0] !== b.e[0] || c.e[1] !== b.e[1]) ? ` <span class="tag">do ${tPlain(c.e)}</span>` : "";
   const sw = ctx && (ctx.notes || NOTES)[`${ctx.d}|${ctx.k}|${p.name}`];
-  return `<span class="u2p${stala ? " st" : ""}${p.name === ME ? " me" : ""}"><button type="button" class="pname" data-name="${esc(p.name)}" title="${esc(p.name)}">${esc(shortNm(p.name))}</button>${tag}${sw ? ` <span class="swi" aria-hidden="true">⇄</span><span class="tag sw">${esc(sw)}</span>` : ""}</span>`;
+  return `<span class="u2p${stala ? " st" : ""}${p.name === ME ? " me" : ""}"><button type="button" class="pname" data-name="${esc(p.name)}" title="${esc(p.name)}"><span class="nm-s">${esc(surNm(p.name))}</span><span class="nm-f">${esc(p.name)}</span></button>${tag}${sw ? ` <span class="swi" aria-hidden="true">⇄</span><span class="tag sw">${esc(sw)}</span>` : ""}</span>`;
 }
 function cardHTML2(kind, g, slot, now){
   const base = baseCode(slot, kind);
