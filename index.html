@@ -611,8 +611,113 @@ button.cal-day{cursor:pointer}
 .empty-s{color:var(--ink2);font-size:14px;margin:0}
 .note-id{font-size:14px;color:var(--ink2);margin-top:12px}
 </style>
+<style>
+/* ===== nový vzhled (zkušebně, jen pro 1048): html.ui2 ===== */
+.top .bl,.top .i2{display:none}
+:root.ui2{--now:#1E63C6;--pink:#E7A6C0}
+/* spodní lišta: stejné ikony s popisky */
+:root.ui2 .top{gap:2px;padding:6px 4px max(6px, calc(var(--sab) - 14px));border-top:1px solid var(--line);background:var(--sheet)}
+:root.ui2 .top .bl{display:block;font:600 10.5px/1 var(--f-body);color:var(--ink2);margin-top:3px}
+:root.ui2 .top .i2{display:inline-flex}
+:root.ui2 .top .i1{display:none}
+:root.ui2 .btn-swap,:root.ui2 .btn-menu,:root.ui2 .btn-now{width:58px;height:46px;flex-direction:column;border:0;background:transparent;color:var(--ink);border-radius:10px;margin:0}
+:root.ui2 .btn-swap svg,:root.ui2 .btn-menu svg,:root.ui2 .btn-now svg,:root.ui2 .top .ik{width:24px;height:24px}
+:root.ui2 .btn-now{color:var(--now)}:root.ui2 .btn-now .bl{color:var(--now)}
+:root.ui2 .badge{top:-2px;right:8px;min-width:18px;height:18px;font-size:11px;line-height:18px;border:2px solid var(--sheet);box-sizing:content-box}
+:root.ui2 .top .mnav button{font-size:22px}
+:root.ui2 .top h1{font-size:18px}
+/* karty služeb – kompaktní */
+:root.ui2 .card.u2{padding:10px 13px 12px;border-radius:14px;border:0}
+:root.ui2 .card.u2.day{background:var(--day)}
+:root.ui2 .card.u2.now{box-shadow:0 0 0 3px var(--now),0 8px 22px rgba(30,99,198,.25)}
+:root.ui2 .card.u2.night.now{box-shadow:0 0 0 3px var(--now-n),0 8px 22px rgba(110,140,255,.35)}
+:root.ui2 .card.u2::after{display:none}
+.u2h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.u2k{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.8;display:flex;align-items:center;gap:6px}
+.u2d{font-family:var(--f-cond);font-weight:600;font-size:18px;opacity:.85;white-space:nowrap}
+.card.u2 .live{margin:0;font-size:10.5px;padding:2px 8px 2px 6px}
+.u2tm{display:flex;align-items:center;gap:10px;margin:2px 0 6px}
+.card.u2 .time{margin:0;font-size:28px;white-space:nowrap;letter-spacing:-.4px}
+.card.u2 .lbl-wx .wx{gap:3px;font-size:13.5px}
+.card.u2 .lbl-wx .wxi .ik{width:20px;height:20px}
+.card.u2 .lbl-wx .wxp{font-size:12px}.card.u2 .lbl-wx .wxp .ik{width:12px;height:12px}
+.u2tm{min-width:0;flex-wrap:wrap;row-gap:2px}
+.u2p.me{text-decoration:none;font-weight:700}
+.card.u2 .lbl-wx{margin-left:auto;display:flex}
+.card.u2 .prog{margin:0 0 8px}
+.card.u2 .prog .bar{height:6px}
+.card.u2.now .prog .bar{height:7px}
+.u2pp{display:flex;flex-wrap:wrap;gap:5px}
+.u2p{display:inline-flex;align-items:center;gap:4px;font-size:14px;font-weight:600;padding:3px 8px;border-radius:8px;background:rgba(29,42,77,.07)}
+.card.night .u2p{background:rgba(255,255,255,.14)}
+.u2p.st{background:#2E9E5B;color:#fff}
+.u2p.none{font-weight:500;font-style:italic;opacity:.7}
+.u2p .pname{all:unset;cursor:pointer}
+.u2p.me{box-shadow:inset 0 0 0 2px currentColor}
+.u2p .tag{font-size:11px;padding:0 4px}
+.u2p .swi{font-size:12px}
+.u2tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px;padding-top:9px;border-top:1px dashed rgba(29,42,77,.22)}
+.card.night .u2tags{border-color:rgba(255,255,255,.28)}
+:root.ui2 .u2tags.snote{background:none;border-left:0;border-radius:0;padding:9px 0 0;margin-top:9px;font-size:12.5px}
+.u2t,.u2tags p{margin:0;display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;line-height:1.3;padding:3px 9px;border-radius:999px;background:var(--sheet);color:var(--ink);border:1px solid var(--line)}
+.u2t .ik,.u2tags p .ik{width:14px;height:14px;flex:none}
+.u2t.abs{background:#FBE7EF;border-color:#E7A6C0;color:#7A2E4C}
+.u2t.ak{background:#E6EEFA;border-color:#A9C3EC;color:#14468F}
+.u2t.por{background:#E3F1FA;border-color:#9CCBEA;color:#1A5579}
+.u2t.ev{background:var(--sheet)}
+.u2tags p[data-snk]{cursor:pointer}
+/* pravá osa */
+:root.ui2 .tile{border:0;border-radius:12px;transition:transform .2s,background-color .2s,opacity .2s}
+:root.ui2 .tile.we{box-shadow:none;background:transparent;border:1.5px solid var(--line)}
+:root.ui2 .tile.past{opacity:.42}
+:root.ui2 .tile.today{outline:0;box-shadow:0 0 0 2.5px var(--ink)}
+:root.ui2 .tile.today::after{content:"";position:absolute;bottom:5px;left:50%;margin-left:-3px;width:6px;height:6px;border-radius:50%;background:currentColor}
+:root.ui2 .tile.active{transform:scale(1.04);border:0}
+:root.ui2 .tile.active:not(.my-d):not(.my-n):not(.my-dn){box-shadow:0 0 0 2.5px var(--ink)}
+:root.ui2 .tile.my-d.active,:root.ui2 .tile.my-n.active,:root.ui2 .tile.my-dn.active{border:0;box-shadow:0 0 0 2px var(--paper),0 0 0 4.5px var(--ink)}
+:root.ui2 .tile[data-wk]::before{content:attr(data-wk);position:absolute;top:-13px;left:-6px;right:-6px;font:700 9px/1 var(--f-body);letter-spacing:.06em;color:var(--ink2);text-align:center;border-top:1.5px solid var(--line);padding-top:2px}
+:root.ui2 .marks{left:5px;right:auto;top:5px}
+:root.ui2 .marks i{border:0;width:7px;height:7px}
+:root.ui2 .akm{left:auto;right:4px;top:4px}
+/* načítání */
+.u2sk{background:linear-gradient(90deg,rgba(29,42,77,.07),rgba(29,42,77,.14),rgba(29,42,77,.07));background-size:200% 100%;border-radius:8px;animation:u2sk 1.4s linear infinite}
+@keyframes u2sk{0%{background-position:150% 0}100%{background-position:-50% 0}}
+.u2skc{background:var(--sheet);border-radius:14px;padding:12px 13px;margin:0 0 10px}
+.u2skt{height:58px;border-radius:12px;margin:0 0 14px}
+/* úvodní obrazovka */
+.u2-splash{position:fixed;inset:0;z-index:200;background:#1D2A4D;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .3s}
+.u2-splash.out{opacity:0;pointer-events:none}
+.u2-splash .ic{width:132px;height:132px;border-radius:30px;background:#25345E;display:flex;align-items:center;justify-content:center}
+.u2-splash b{font-family:var(--f-cond);font-size:32px}
+.u2-splash .ld{width:120px;height:4px;border-radius:2px;background:rgba(255,255,255,.15);overflow:hidden}
+.u2-splash .ld i{display:block;width:40%;height:100%;background:#F2D24A;animation:u2ld 1.1s ease-in-out infinite alternate}
+@keyframes u2ld{0%{transform:translateX(-40%)}100%{transform:translateX(190%)}}
+/* jemné animace */
+:root.ui2 .card{transition:box-shadow .2s,transform .15s}
+:root.ui2 .card:active{transform:scale(.99)}
+@media (prefers-reduced-motion: reduce){:root.ui2 .tile,:root.ui2 .card,.u2sk,.u2-splash .ld i{transition:none;animation:none}}
+/* tmavý režim – nové prvky */
+:root.ui2[data-theme="dark"] .u2t.abs{background:#3A2230;color:#F2C4D6;border-color:#7A3E58}
+:root.ui2[data-theme="dark"] .u2t.ak{background:#1C2C47;color:#BCD3F5;border-color:#34507E}
+:root.ui2[data-theme="dark"] .u2t.por{background:#18324A;color:#B9DCF2;border-color:#2F5878}
+:root.ui2[data-theme="dark"] .u2p{background:rgba(255,255,255,.08)}
+:root.ui2[data-theme="dark"] .u2sk{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,.11),rgba(255,255,255,.05));background-size:200% 100%}
+:root.ui2[data-theme="dark"] .pk-board,:root.ui2[data-theme="dark"] .pk-c{background:#1F2638;border-color:#2E3750}
+:root.ui2[data-theme="dark"] .pk-ov .X{color:#E4E8F1}
+@media (prefers-color-scheme: dark){
+  :root.ui2:not([data-theme="light"]) .u2t.abs{background:#3A2230;color:#F2C4D6;border-color:#7A3E58}
+  :root.ui2:not([data-theme="light"]) .u2t.ak{background:#1C2C47;color:#BCD3F5;border-color:#34507E}
+  :root.ui2:not([data-theme="light"]) .u2t.por{background:#18324A;color:#B9DCF2;border-color:#2F5878}
+  :root.ui2:not([data-theme="light"]) .u2p{background:rgba(255,255,255,.08)}
+  :root.ui2:not([data-theme="light"]) .u2sk{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,.11),rgba(255,255,255,.05));background-size:200% 100%}
+  :root.ui2:not([data-theme="light"]) .pk-board,:root.ui2:not([data-theme="light"]) .pk-c{background:#1F2638;border-color:#2E3750}
+  :root.ui2:not([data-theme="light"]) .pk-ov .X{color:#E4E8F1}
+}
+
+</style>
 </head>
 <body>
+<script>try{if(localStorage.getItem("ui2")==="1"){document.documentElement.classList.add("ui2");document.write('<div id="ui2splash" class="u2-splash"><div class="ic"><svg viewBox="0 0 24 24" width="88" height="88" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="15" rx="3"/><path d="M3.5 10h17"/><path d="M4 9.6V8.5a3 3 0 0 1 3-3h5v4.1z" fill="#F2D24A" stroke="none"/><path d="M12 5.5h5a3 3 0 0 1 3 3v1.1h-8z" fill="#8F84E0" stroke="none"/><path d="M8 3.5v4M16 3.5v4M8 14h3M8 17h6"/></svg></div><b>Služby MP Blansko</b><div class="ld"><i></i></div></div>');setTimeout(function(){var e=document.getElementById("ui2splash");if(e){e.classList.add("out");setTimeout(function(){e.remove()},350)}},5000);}}catch(e){}</script>
 <div class="gate" id="gate" hidden>
   <form id="loginForm" novalidate>
     <h1>Služby MP Blansko</h1>
@@ -628,8 +733,8 @@ button.cal-day{cursor:pointer}
 </div>
 
 <header class="top">
-  <button class="btn-swap" id="btnSwap" type="button" aria-label="Výměny služeb">⇄<span class="badge" id="swapBadge" hidden>0</span></button>
-  <button class="btn-swap btn-chat" id="btnChat" type="button" aria-label="Chat" hidden><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg><span class="badge" id="chatBadge" hidden>0</span></button>
+  <button class="btn-swap" id="btnSwap" type="button" aria-label="Výměny služeb"><span class="i1">⇄</span><span class="i2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/></svg></span><span class="bl">Výměny</span><span class="badge" id="swapBadge" hidden>0</span></button>
+  <button class="btn-swap btn-chat" id="btnChat" type="button" aria-label="Chat" hidden><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-5 4v-4H4z"/></svg><span class="bl">Chat</span><span class="badge" id="chatBadge" hidden>0</span></button>
   <div class="top-main">
     <div class="mnav">
       <button id="prevM" type="button" aria-label="Předchozí měsíc">‹</button>
@@ -639,9 +744,9 @@ button.cal-day{cursor:pointer}
     <p id="sub" role="status" hidden></p>
   </div>
   <button class="btn-menu" id="btnMenu" type="button" aria-label="Nastavení" aria-expanded="false" aria-controls="menu">
-    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+    <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg><span class="bl">Menu</span>
   </button>
-  <button class="btn-now" id="btnNow" type="button" aria-label="Teď – aktuální služba" title="Teď"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11.2 12 4l8.5 7.2M6 9.5V20h4.5v-5.5h3V20H18V9.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  <button class="btn-now" id="btnNow" type="button" aria-label="Teď – aktuální služba" title="Teď"><svg class="i1" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11.2 12 4l8.5 7.2M6 9.5V20h4.5v-5.5h3V20H18V9.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="i2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/></svg></span><span class="bl">Dnes</span></button>
   <div class="menu" id="menu" hidden>
     <label for="me">Zvýraznit strážníka</label>
     <select id="me"></select>
@@ -659,11 +764,14 @@ button.cal-day{cursor:pointer}
         <label class="chk"><input type="checkbox" id="pushPlan" checked> Nový nebo upravený plán</label>
       </div>
     </div>
+    <div class="push" id="ui2Row" hidden>
+      <label class="chk" style="margin-top:0"><input type="checkbox" id="ui2Chk"> Nový vzhled (zkušební)</label>
+    </div>
     <button class="btn-admin" id="admBtn" type="button" hidden>Administrace služeb</button>
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v5.32</span>
+      <span class="ver" id="verDiag">v5.33</span>
     </div>
   </div>
 </header>
@@ -777,8 +885,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=5.32"></script>
-<script src="sluzby-chat.js?v=5.32"></script>
+<script src="sluzby-core.js?v=5.33"></script>
+<script src="sluzby-chat.js?v=5.33"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -931,7 +1039,85 @@ const track = document.getElementById("track");
 const titleEl = document.getElementById("title");
 const subEl = document.getElementById("sub");
 
+/* ===== nový vzhled (zkušebně) – zapíná se jen pro služební číslo 1048, přepínač v menu ===== */
+const UI2 = () => document.documentElement.classList.contains("ui2");
+const U2_MAP = [[/#E07C7C/gi, "#D04848"], [/#B23A3A/gi, "#D04848"], [/#C03A3A/gi, "#D04848"], [/#2E7D4F/gi, "#2E9E5B"], [/#3A9A4C/gi, "#2E9E5B"], [/#E8A0B6/gi, "#E7A6C0"], [/#E7A3BE/gi, "#E7A6C0"]];
+const U2_RE = /#E07C7C|#B23A3A|#C03A3A|#2E7D4F|#3A9A4C|#E8A0B6|#E7A3BE/i;
+// jednotná paleta: pravidla se sjednocovanými barvami se zopakují s novou barvou (přebijí původní)
+function ui2Palette(on){
+  document.querySelectorAll("style[data-ui2pal]").forEach(s => s.remove());
+  if (!on) return;
+  const out = [];
+  const walk = (rules, wrap) => { for (const r of rules){
+    if (r.cssRules && r.media){ walk(r.cssRules, t => wrap(`@media ${r.media.mediaText}{${t}}`)); continue; }
+    if (r.selectorText && U2_RE.test(r.cssText)){ let t = r.cssText; U2_MAP.forEach(([a, b]) => { t = t.replace(a, b); }); out.push(wrap(t)); }
+  } };
+  for (const sh of document.styleSheets){ if (sh.ownerNode && sh.ownerNode.dataset && sh.ownerNode.dataset.ui2pal != null) continue; try { walk(sh.cssRules, t => t); } catch (e){} }
+  if (!out.length) return;
+  const s = document.createElement("style"); s.dataset.ui2pal = ""; s.textContent = out.join("\n"); document.head.appendChild(s);
+}
+let ui2PalT = null;
+new MutationObserver(ms => { if (!UI2()) return; if (ms.some(m => [...m.addedNodes].some(n => n.nodeName === "STYLE" && !(n.dataset && n.dataset.ui2pal != null)))){ clearTimeout(ui2PalT); ui2PalT = setTimeout(() => ui2Palette(true), 50); } })
+  .observe(document.head, {childList:true});
+function ui2Set(on){
+  const r = document.documentElement, was = r.classList.contains("ui2");
+  r.classList.toggle("ui2", on);
+  try { localStorage.setItem("ui2", on ? "1" : "0"); } catch (e){}
+  ui2Palette(on);
+  const ck = document.getElementById("ui2Chk"); if (ck) ck.checked = on;
+  if (was !== on && GROUPS.length) render();
+  if (on && !GROUPS.length) ui2Skeleton();
+}
+function ui2Apply(){
+  const allow = SELF_NO === "1048", row = document.getElementById("ui2Row");
+  if (row) row.hidden = !allow;
+  let pref = "1"; try { pref = localStorage.getItem("ui2pref") || "1"; } catch (e){}
+  ui2Set(allow && pref !== "0");
+}
+function ui2Skeleton(){
+  if (GROUPS.length) return;
+  const bl = (w, h, m) => `<div class="u2sk" style="width:${w};height:${h}px;${m || ""}"></div>`;
+  const card = n => `<div class="u2skc">${bl("38%", 12)}${bl("68%", 28, "margin:10px 0")}<div style="display:flex;gap:6px">${[64, 84, 72, 54].slice(0, n).map(w => bl(w + "px", 22)).join("")}</div></div>`;
+  left.innerHTML = card(4) + card(3) + card(4);
+  track.innerHTML = Array(9).fill(`<div class="u2sk u2skt"></div>`).join("");
+}
+function ui2SplashOff(){ const sp = document.getElementById("ui2splash"); if (sp && !sp.classList.contains("out")){ sp.classList.add("out"); setTimeout(() => sp.remove(), 350); } }
+function isoWeek(d){ const t = new Date(d.getFullYear(), d.getMonth(), d.getDate()); t.setDate(t.getDate() + 3 - (t.getDay() + 6) % 7); const w1 = new Date(t.getFullYear(), 0, 4); return 1 + Math.round(((t - w1) / 864e5 - 3 + (w1.getDay() + 6) % 7) / 7); }
+// kompaktní karta služby: typ + datum, čas + počasí, lidé jako štítky, doplňky dole jako barevné štítky
+function shortNm(n){ const p = String(n).split(" "); return p.length > 1 ? `${p[0]} ${p[1].charAt(0)}.` : n; }
+function person2(p, base, ctx, stala){
+  const c = CODES[p.code], b = CODES[base];
+  const tag = c && b && (c.e[0] !== b.e[0] || c.e[1] !== b.e[1]) ? ` <span class="tag">do ${tPlain(c.e)}</span>` : "";
+  const sw = ctx && (ctx.notes || NOTES)[`${ctx.d}|${ctx.k}|${p.name}`];
+  return `<span class="u2p${stala ? " st" : ""}${p.name === ME ? " me" : ""}"><button type="button" class="pname" data-name="${esc(p.name)}" title="${esc(p.name)}">${esc(shortNm(p.name))}</button>${tag}${sw ? ` <span class="swi" aria-hidden="true">⇄</span><span class="tag sw">${esc(sw)}</span>` : ""}</span>`;
+}
+function cardHTML2(kind, g, slot, now){
+  const base = baseCode(slot, kind);
+  const ctx = g.prev ? null : {d:g.date.getDate(), k:kind, notes:(MS[g.mid] || {}).notes};
+  const win = windowOf(g.date, base), st = stateOf(win, now), c = CODES[base];
+  const live = st === "now" ? `<span class="live">Probíhá</span>` : "";
+  const ppl = (slot.stala ? person2(slot.stala, base, ctx, true) : `<span class="u2p none">Stálá není v plánu</span>`) + slot.hl.map(p => person2(p, base, ctx)).join("");
+  const tags = [];
+  if (kind === "D"){
+    if (slot.ev) String(slot.ev).split(/\s*·\s*/).filter(Boolean).forEach(t => tags.push(`<span class="u2t ev">${esc(t)}</span>`));
+    if (slot.P && slot.P.length) [...new Set(slot.P.map(p => p.code))].forEach(cd => tags.push(`<span class="u2t por">${CODES[cd].label || "Porada"} ${tPlain(CODES[cd].s)}–${tPlain(CODES[cd].e)}: ${slot.P.filter(p => p.code === cd).map(p => esc(shortNm(p.name))).join(", ")}</span>`));
+    for (const [cd, names] of Object.entries(slot.A || {})) tags.push(`<span class="u2t abs">${CODES[cd].label}: ${names.map(n => esc(shortNm(n))).join(", ")}</span>`);
+    if (!g.prev) akceOn(g.date).forEach(a => tags.push(`<span class="u2t ak">${ikona("kalendar")} ${esc(a.nazev)} · ${esc(akceCas(a))}</span>`));
+  }
+  if (slot.note) tags.push(`<span class="u2t ev">${esc(slot.note)}</span>`);
+  const snKey = shiftNoteKey(g.date, kind), sn = snotesOf(snKey);
+  const notes = sn.map((t, i) => `<p data-snk="${snKey}" data-sni="${i}">${ikona("poznamka")} ${esc(t)}</p>`).join("");
+  return `<article class="card u2 ${kind === "D" ? "day" : "night"} ${st}" tabindex="0" data-k="${kind}" data-start="${win[0].getTime()}" data-end="${win[1].getTime()}">
+    <div class="u2h"><span class="u2k">${kind === "D" ? "Denní" : "Noční"}${live}</span><span class="u2d">${DOW[g.date.getDay()]} ${g.date.getDate()}. ${g.date.getMonth() + 1}.</span></div>
+    <div class="u2tm"><span class="time">${tPlain(c.s)}–${tPlain(c.e)}</span><span class="lbl-wx"><span class="wx">${wxHTML(win, kind)}</span></span></div>
+    ${st === "now" ? progressHTML(win, now) : ""}
+    <div class="u2pp">${ppl}</div>
+    ${tags.length || notes ? `<div class="u2tags snote">${tags.join("")}${notes}</div>` : ""}
+  </article>`;
+}
+
 function cardHTML(kind, g, slot, now){
+  if (UI2()) return cardHTML2(kind, g, slot, now);
   const base = baseCode(slot, kind);
   const ctx = g.prev ? null : {d:g.date.getDate(), k:kind, notes:(MS[g.mid] || {}).notes};
   const win = windowOf(g.date, base);
@@ -973,6 +1159,7 @@ function cardHTML(kind, g, slot, now){
 }
 
 function renderEmpty(head, text){
+  ui2SplashOff();
   GROUPS = []; L = [];
   track.innerHTML = "";
   track.style.transform = "";
@@ -988,6 +1175,7 @@ function endNote(){
 let RENDERED = []; // klíče skupin z posledního vykreslení – pro udržení pozice při přidání měsíce nad
 function render(){
   if (!GROUPS.length) return;
+  ui2SplashOff();
   const now = getNow();
   // kotva: skupina v ohnisku a posun od jejího začátku
   let anchor = null;
@@ -1027,7 +1215,8 @@ function render(){
     }
     const ev = g.prev ? g.prevName : "";
     const label = `${DOW_T[wd]} ${d.getDate()}. ${d.getMonth()+1}.${ev ? ", " + ev : g.day?.ev ? ", " + g.day.ev : ""}${!g.prev && akceOn(d).length ? ", akce: " + akceOn(d).map(a => a.nazev).join(", ") : ""}${!g.prev && (MY_NOTES[akceKey(d)] || snotesOf(akceKey(d) + "|D").length || snotesOf(akceKey(d) + "|N").length) ? ", máš poznámku" : ""}`;
-    return `<button type="button" class="${cls.join(" ")}" data-i="${i}" aria-label="${esc(label)}">${marks}
+    const wk = UI2() && wd === 1 && !g.prev ? ` data-wk="${isoWeek(d)}. TÝDEN"` : "";
+    return `<button type="button" class="${cls.join(" ")}" data-i="${i}"${wk} aria-label="${esc(label)}">${marks}
       <span class="dow">${DOW_T[wd]}</span><span class="dt">${d.getDate()}. ${d.getMonth()+1}.</span>${ev ? `<span class="ev">${esc(ev)}</span>` : ""}</button>`;
   }).join("");
   measure();
@@ -1336,13 +1525,14 @@ function chatStart(){
   SluzbyChat.mountMe(document.getElementById("menuAv"));
 }
 document.getElementById("btnChat").addEventListener("click", () => { if (window.SluzbyChat) SluzbyChat.open(); });
+document.getElementById("ui2Chk").addEventListener("change", e => { try { localStorage.setItem("ui2pref", e.target.checked ? "1" : "0"); } catch (er){} ui2Set(e.target.checked && SELF_NO === "1048"); });
 function stop(){
   if (window.SluzbyChat) SluzbyChat.stop();
   document.getElementById("btnChat").hidden = true;
   if (PRES){ PRES.stop(); PRES = null; }
   unwatchAll();
   if (unsubOfficers){ unsubOfficers(); unsubOfficers = null; }
-  stopSwaps(); stopNotes(); SELF = null; SELF_NO = null; updateSelfLabel();
+  stopSwaps(); stopNotes(); SELF = null; SELF_NO = null; updateSelfLabel(); ui2Set(false);
   PLAN = null; EFF = null; OFFICERS = {};
   renderEmpty("Odhlášeno", "Přihlas se pro zobrazení plánu.");
 }
@@ -2161,6 +2351,7 @@ function resolveSelf(){
   SELF = SELF_NO ? (Object.keys(OFFICERS).find(n => String(OFFICERS[n]) === SELF_NO) || null) : null;
   if (SELF && !ME){ ME = SELF; }
   updateSelfLabel();
+  ui2Apply();
 }
 function updateSelfLabel(){
   document.getElementById("admBtn").hidden = !isAdminUI();

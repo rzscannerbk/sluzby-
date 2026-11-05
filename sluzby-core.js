@@ -460,6 +460,7 @@ const IKONY = {
   snih:'<path d="M7 15h10.5a3.8 3.8 0 0 0 .6-7.55A5.7 5.7 0 0 0 6.6 8.4 3.3 3.3 0 0 0 7 15z"/><path d="M8 19h.01M12 18h.01M16 19h.01M10 21.5h.01M14 21.5h.01" stroke-width="2.6"/>',
   bourka:'<path d="M7 15h10.5a3.8 3.8 0 0 0 .6-7.55A5.7 5.7 0 0 0 6.6 8.4 3.3 3.3 0 0 0 7 15z"/><path d="M12.5 15l-2 3.5h3l-2 3.5"/>',
   mlha:'<path d="M4 8h16M3 12h13M6 16h15M4 20h12"/>',
+  chat:'<path d="M5 18.5V6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9z"/>',
   poznamka:'<path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5M8.5 12h7M8.5 16h5"/>'
 };
 function ikona(n, cls){ return IKONY[n] ? `<svg class="ik${cls ? " " + cls : ""}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IKONY[n]}</svg>` : ""; }

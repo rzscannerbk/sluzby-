@@ -460,6 +460,10 @@ const STYLE = `
 .pk-on i{width:8px;height:8px;border-radius:50%;background:#B8BFCC;flex:none}
 .pk-on:empty{visibility:hidden}
 .pk-on.on i{background:#2E9E5B}
+.ch-none.u2e{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:60px 30px;opacity:1}
+.ch-none.u2e .ik{width:52px;height:52px;opacity:.35}
+.ch-none.u2e b{font-size:17px}
+.ch-none.u2e span{opacity:.7;font-size:14px;max-width:260px}
 .pk-on.in{color:#2E9E5B;font-weight:600}.pk-on.in i{background:#2E9E5B;box-shadow:0 0 0 3px rgba(46,158,91,.25)}
 .pq-ak{display:flex;flex-direction:column;gap:8px}
 .pq-ak[hidden],#pqPl[hidden],.pq-tm[hidden]{display:none}
@@ -980,7 +984,9 @@ function renderMsgs(autoscroll, keepScroll){
   const q = norm(S.searchOn ? S.search.trim() : "");
   let html = "", lastDay = "", lastFrom = null, hits = 0;
   if (S.err) html += `<p class="ch-err">${esc(S.err)}</p>`;
-  if (!S.msgs.length) html += `<div class="ch-none">${t ? "Zatím žádné zprávy." : "Napiš první zprávu."}</div>`;
+  if (!S.msgs.length) html += document.documentElement.classList.contains("ui2")
+    ? `<div class="ch-none u2e">${typeof ikona === "function" ? ikona("chat") : ""}<b>Zatím žádné zprávy</b><span>${S.tid && S.tid.startsWith("dm_") ? "Napiš první zprávu, nebo kolegu vyzvi na hru ikonou vpravo nahoře." : "Napiš první zprávu."}</span></div>`
+    : `<div class="ch-none">${t ? "Zatím žádné zprávy." : "Napiš první zprávu."}</div>`;
   const lastMine = [...S.msgs].reverse().find(m => String(m.od) === String(O.me) && !m.smazano);
   // po sobě jdoucí fotky odeslané najednou (stejná „skupina“) se zobrazí jako jedna zpráva s mřížkou
   const items = [];
