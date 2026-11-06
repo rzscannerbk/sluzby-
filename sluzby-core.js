@@ -1,0 +1,497 @@
+// Služby MP Blansko – společné jádro pro mobilní (index.html) i desktopovou (desktop.html) verzi.
+// Jen čisté funkce a data bez práce se stránkou: kódy směn, plán po výměnách, kontroly výměn,
+// dlouhodobý plán a výpočty volna. Při změně zvyš verzi v sw.js.
+const COLLECTION = "planSluzeb";
+const MONTHS = ["leden","únor","březen","duben","květen","červen","červenec","srpen","září","říjen","listopad","prosinec"];
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const CODES = {
+  D12:{k:"D", s:[7,0],  e:[19,0]},
+  D8: {k:"D", s:[10,0], e:[18,0]},
+  N13:{k:"N", s:[19,0], e:[8,0]},
+  N12:{k:"N", s:[19,0], e:[7,0]},
+  Nz7:{k:"N", s:[19,0], e:[24,0]},
+  Nz8:{k:"N", s:[19,0], e:[24,0]},
+  Nk8:{k:"K", s:[0,0],  e:[8,0]},
+  Nk7:{k:"K", s:[0,0],  e:[7,0]},
+  D2: {k:"P", s:[8,0],  e:[10,0], label:"Porada"},
+  D4: {k:"P", s:[8,0],  e:[12,0], label:"Dopolední služba"},
+  D5: {k:"P", s:[8,0],  e:[13,0], label:"Porada a školení"},
+  DOV:{k:"A", label:"Dovolená"},
+  ZdV:{k:"A", label:"Zdravotní volno"}
+};
+const DOW = ["ne","po","út","st","čt","pá","so"];
+const DOW_FULL = ["neděle","pondělí","úterý","středa","čtvrtek","pátek","sobota"];
+const DOW_T = ["Ne","Po","Út","St","Čt","Pá","So"];
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const KIND_LBL = {D:"denní", N:"noční"};
+const kindOf = c => { c = c.replace(/\*$/, ""); return (c === "D12" || c === "D8") ? "D" : (c === "N12" || c === "N13" || c === "Nz7" || c === "Nz8") ? "N" : null; };
+const isP = c => { const d = CODES[String(c).replace(/\*$/, "")]; return !!d && d.k === "P"; };
+const isK = c => { const d = CODES[String(c).replace(/\*$/, "")]; return !!d && d.k === "K"; };
+const surname = n => String(n).split(" ")[0];
+// 4. pád pro štítek výměny „za …“ (za Hlaváčka, za Pavla Tótha…)
+const ZA_TVAR = {
+  "Hlaváček Michal":"Hlaváčka", "Šenk Kamil":"Šenka", "Tóth Pavel":"Pavla Tótha", "Sehnal Petr":"Sehnala",
+  "Přikryl Miroslav":"Přikryla", "Tóth Ondřej":"Ondřeje Tótha", "Menšík Jaroslav":"Menšíka", "Liška Michal":"Lišku",
+  "Havel Radek":"Havla", "Vašíček Zdeněk":"Vašíčka", "Grénar Martin":"Grénara", "Chalupa Martin":"Chalupu",
+  "Tesař Libor":"Tesaře", "Adámek Jaroslav":"Adámka", "Hofman Radek":"Hofmana", "Parolek Antonín":"Parolka",
+  "Juračka Lukáš":"Juračku", "Škvařil Libor":"Škvařila"
+};
+function zaTvar(n){
+  if (ZA_TVAR[n]) return ZA_TVAR[n];
+  const s = surname(n);                                   // náhradní pravidlo pro jména mimo seznam
+  if (/ek$/.test(s)) return s.slice(0, -2) + "ka";        // Dvořáček → Dvořáčka
+  if (/a$/.test(s)) return s.slice(0, -1) + "u";          // Svoboda → Svobodu
+  if (/[bcčdďfghjklmnňpqrřsštťvwxzž]$/i.test(s)) return s + "a"; // Novák → Nováka
+  return s;
+}
+
+/* --- efektivní plán = plán + přijaté výměny --- */
+// kódy v jednom dni seřadit podle začátku (ranní konec noci, porada, den, noc) – „D12+N13“, ne „N13+D12“
+const ordStart = p => { const c = CODES[String(p).replace(/\*$/, "")]; return c && c.s ? c.s[0] : 30; };
+function ordDay(tok){
+  if (!tok || tok === "." || tok.indexOf("+") < 0) return tok;
+  return tok.split("+").map((p, i) => [p, i]).sort((a, b) => ordStart(a[0]) - ordStart(b[0]) || a[1] - b[1]).map(x => x[0]).join("+");
+}
+function tokensOf(plan){
+  const T = {};
+  for (const [n, s] of Object.entries(plan || {})) T[n] = String(s).trim().split(/\s+/).map(ordDay);
+  return T;
+}
+function moveShift(T, from, to, den, kind, len){
+  const arr = T[from]; if (!arr) return false;
+  const parts = (arr[den-1] || ".") === "." ? [] : arr[den-1].split("+");
+  const i = parts.findIndex(p => kindOf(p) === kind); if (i < 0) return false;
+  const part = parts.splice(i, 1)[0];
+  arr[den-1] = parts.length ? parts.join("+") : ".";
+  if (!T[to]) T[to] = Array(len).fill(".");
+  const t = T[to][den-1] || ".";
+  T[to][den-1] = t === "." ? part : ordDay(t + "+" + part);
+  return true;
+}
+// přesun vlastní služby na jiný den (schvaluje správce): z od.den se služba odebere, na za.den přibude standardní D12 / N12
+function movePresun(T, r, len){
+  const arr = T[r.od.jmeno]; if (!arr) return false;
+  const parts = (arr[r.od.den-1] || ".") === "." ? [] : arr[r.od.den-1].split("+");
+  const i = parts.findIndex(p => kindOf(p) === r.od.kind); if (i < 0) return false;
+  parts.splice(i, 1); arr[r.od.den-1] = parts.length ? parts.join("+") : ".";
+  const t = arr[r.za.den-1] || ".";
+  arr[r.za.den-1] = t === "." ? r.za.kod : ordDay(t + "+" + r.za.kod);
+  return true;
+}
+// dovolená / zdravotní volno (schvaluje správce): ve vybraných dnech se služba (den/noc) nahradí kódem DOV / ZdV
+const VOLNO_LBL = {DOV:"dovolená", ZdV:"zdravotní volno"};
+const VOLNO_ACC = {DOV:"dovolenou", ZdV:"zdravotní volno"};
+function applyVolno(T, r){
+  const arr = T[r.od.jmeno]; if (!arr) return false;
+  let any = false;
+  (r.dny || []).forEach(x => {
+    const parts = (arr[x.den-1] || ".") === "." ? [] : arr[x.den-1].split("+");
+    const i = parts.findIndex(p => kindOf(p) === x.kind); if (i < 0) return;
+    parts.splice(i, 1);
+    if (!parts.some(p => p.replace(/\*$/, "") === r.druh)) parts.push(r.druh);
+    arr[x.den-1] = parts.join("+"); any = true;
+  });
+  return any;
+}
+// úprava dne správcem: celý den strážníka se nastaví na nový zápis (např. „D12*“, „N13+D2“, „DOV“, „.“)
+function applyUprava(T, r, len){
+  if (!r.od || !r.od.jmeno || !r.od.den) return false;
+  if (!T[r.od.jmeno]) T[r.od.jmeno] = Array(len).fill(".");
+  T[r.od.jmeno][r.od.den-1] = r.na || ".";
+  return true;
+}
+const tokLbl = t => !t || t === "." ? "volno" : t.split("+").map(p => p.endsWith("*") ? p.slice(0, -1) + " (stálá)" : p).join(" + ");
+const volnoDays = (mesic, r) => (r.dny || []).map(x => fmtS(mesic, x)).join(", ");
+const hasShift = (T, name, den, kind) => !!T[name] && (T[name][den-1] || ".").split("+").some(p => kindOf(p) === kind);
+const tsMs = x => (x && x.toMillis) ? x.toMillis() : Date.now();
+// měsíc služby kolegy – u výměny přes přelom měsíce (zaMesic) jiný než měsíc nabízené služby
+const zaM = r => (r && (r.zaMesic || (r.za && r.za.mesic))) || (r && r.mesic);
+const isCross = r => !!r && zaM(r) !== r.mesic;
+// mid = měsíc, pro který se plán počítá; výměna přes přelom se promítne do obou měsíců každá svou polovinou
+function applySwaps(plan, swaps, len, mid){
+  const T = tokensOf(plan), notes = {};
+  swaps.filter(r => r.stav === "prijato").sort((a,b) => tsMs(a.vyrizeno) - tsMs(b.vyrizeno)).forEach(r => {
+    if (mid && isCross(r) && r.typ === "vymena"){
+      if (!r.za || !r.za.jmeno) return;
+      if (r.mesic === mid && moveShift(T, r.od.jmeno, r.za.jmeno, r.od.den, r.od.kind, len)) notes[`${r.od.den}|${r.od.kind}|${r.za.jmeno}`] = `za ${zaTvar(r.od.jmeno)}`;
+      if (zaM(r) === mid && r.za.den && moveShift(T, r.za.jmeno, r.od.jmeno, r.za.den, r.za.kind, len)) notes[`${r.za.den}|${r.za.kind}|${r.od.jmeno}`] = `za ${zaTvar(r.za.jmeno)}`;
+      return;
+    }
+    if (mid && r.mesic !== mid) return;
+    if (r.typ === "volno"){ applyVolno(T, r); return; }
+    if (r.typ === "uprava"){ applyUprava(T, r, len); notes[`${r.od.den}|*|${r.od.jmeno}`] = "upraveno správcem"; return; }
+    if (r.typ === "presun"){ if (r.za && r.za.den && movePresun(T, r, len)) notes[`${r.za.den}|${r.za.kind}|${r.od.jmeno}`] = `přesun z ${r.od.den}.`; return; }
+    if (!r.za || !r.za.jmeno) return;
+    if (moveShift(T, r.od.jmeno, r.za.jmeno, r.od.den, r.od.kind, len)) notes[`${r.od.den}|${r.od.kind}|${r.za.jmeno}`] = `za ${zaTvar(r.od.jmeno)}`;
+    if (r.typ === "vymena" && r.za.den && moveShift(T, r.za.jmeno, r.od.jmeno, r.za.den, r.za.kind, len)) notes[`${r.za.den}|${r.za.kind}|${r.od.jmeno}`] = `za ${zaTvar(r.za.jmeno)}`;
+  });
+  return {T, notes};
+}
+
+/* --- kontroly: kolize, odpočinek, dovolená --- */
+const SPAN = {D12:[7,19,0], D8:[10,18,0], N12:[19,7,1], N13:[19,8,1], Nz7:[19,0,1], Nz8:[19,0,1], Nk8:[0,8,0], Nk7:[0,7,0]};
+function intervals(T, name, y, m){
+  const out = [];
+  (T[name] || []).forEach((tok, i) => {
+    if (tok === ".") return;
+    tok.split("+").forEach(p => {
+      const c = p.replace(/\*$/, ""), sp = SPAN[c]; if (!sp) return;
+      const s = new Date(y, m, i+1, sp[0]), e = new Date(y, m, i+1 + sp[2], sp[1]);
+      out.push({s, e, day:i+1, lbl:`${i+1}. ${isK(c) ? "dojezd noci" : KIND_LBL[kindOf(c)]} (${c})`});
+    });
+  });
+  return out.sort((a,b) => a.s - b.s);
+}
+function checkPerson(T, name, days, y, m, out, skipAbs){
+  const tok = n => (T[name] && T[name][n-1]) || ".";
+  if (!skipAbs) days.forEach(d => { if (/DOV|ZdV/.test(tok(d)) && tok(d).split("+").some(p => kindOf(p))) out.e.push(`${name} má ${d}. ${m+1}. ${/ZdV/.test(tok(d)) ? "zdravotní volno" : "dovolenou"}.`); });
+  const iv = intervals(T, name, y, m);
+  for (let k = 0; k < iv.length - 1; k++){
+    const a = iv[k], b = iv[k+1];
+    if (!days.has(a.day) && !days.has(b.day)) continue;
+    // služby po sobě jsou povolené, překryv do 1 hodiny (noc N13 do 8:00 → denní od 7:00) se zanedbává
+    if (a.e - b.s > 36e5){
+      const hm = d => `${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`;
+      out.e.push(`${name}: ${a.lbl} končí v ${hm(a.e)}, ale ${b.lbl} začíná už v ${hm(b.s)}.`);
+    }
+  }  // kolize s akcí, na kterou má strážník potvrzenou účast (jen varování – výměnu jde potvrdit)
+  if (typeof akceKolize === "function") akceKolize(name, iv.filter(x => days.has(x.day)), out);
+}
+/* výměna přes přelom měsíce: Tod = plán měsíce nabízené služby, Tza = plán měsíce služby kolegy */
+function simulateCross(Tod, Tza, req, accepter){
+  const [y1, m1] = ymOf(req.mesic), [y2, m2] = ymOf(zaM(req));
+  const A = {}, B = {}; for (const [n, a] of Object.entries(Tod || {})) A[n] = a.slice(); for (const [n, a] of Object.entries(Tza || {})) B[n] = a.slice();
+  const out = {e:[], w:[], i:[]}, od = req.od, za = req.za || {}, recv = za.jmeno || accepter;
+  if (!hasShift(A, od.jmeno, od.den, od.kind)) out.e.push(`${od.jmeno} už službu ${od.den}. ${m1+1}. nemá – mohla být mezitím vyměněna.`);
+  if (za.den && !hasShift(B, za.jmeno, za.den, za.kind)) out.e.push(`${za.jmeno} už službu ${za.den}. ${m2+1}. nemá – mohla být mezitím vyměněna.`);
+  if (recv === od.jmeno) out.e.push("Nemůžeš převzít vlastní službu.");
+  if (recv && hasShift(A, recv, od.den, od.kind)) out.e.push(`${recv} už v té službě je.`);
+  if (za.den && hasShift(B, od.jmeno, za.den, za.kind)) out.e.push(`${od.jmeno} už ve službě ${za.den}. ${m2+1}. je.`);
+  if (out.e.length || !recv) return out;
+  moveShift(A, od.jmeno, recv, od.den, od.kind, new Date(y1, m1 + 1, 0).getDate());
+  checkPerson(A, recv, new Set([od.den]), y1, m1, out);
+  if (za.den){ moveShift(B, za.jmeno, od.jmeno, za.den, za.kind, new Date(y2, m2 + 1, 0).getDate()); checkPerson(B, od.jmeno, new Set([za.den]), y2, m2, out, true); }
+  out.i.push("Výměna přes přelom měsíce – odpočinek mezi posledním dnem a prvním dnem dalšího měsíce zkontroluj sám.");
+  return out;
+}
+/* simulace žádosti nad stavem měsíce; accepter = kdo bere nabídku */
+function simulate(T0, req, accepter, y, m){
+  const len = new Date(y, m + 1, 0).getDate();
+  const T = {}; for (const [n, a] of Object.entries(T0)) T[n] = a.slice();
+  const out = {e:[], w:[], i:[]};
+  if (req.typ === "uprava"){
+    applyUprava(T, req, len);
+    checkPerson(T, req.od.jmeno, new Set([req.od.den]), y, m, out, true);
+    const kinds = (req.na || ".").split("+").map(kindOf).filter(Boolean);
+    if (new Set(kinds).size !== kinds.length) out.w.push("V jednom dni jsou dvě denní nebo dvě noční služby.");
+    return out;
+  }
+  if (req.typ === "volno"){
+    (req.dny || []).forEach(x => { if (!hasShift(T, req.od.jmeno, x.den, x.kind)) out.e.push(`${req.od.jmeno} už službu ${x.den}. ${m+1}. (${KIND_LBL[x.kind]}) nemá – mohla být mezitím vyměněna.`); });
+    if (!out.e.length) out.i.push(`${cap(VOLNO_LBL[req.druh] || "volno")} musí schválit správce.`);
+    return out;
+  }
+  if (!hasShift(T, req.od.jmeno, req.od.den, req.od.kind)) out.e.push(`${req.od.jmeno} už službu ${req.od.den}. ${m+1}. nemá – mohla být mezitím vyměněna.`);
+  if (req.typ === "presun"){
+    if (!req.za || !req.za.den) return out;
+    const same = req.za.den === req.od.den && req.za.kind === req.od.kind;
+    if (same) out.e.push("Služba už na tom dni je.");
+    else if (hasShift(T, req.od.jmeno, req.za.den, req.za.kind)) out.e.push(`${req.od.jmeno} už má ${req.za.den}. ${m+1}. ${KIND_LBL[req.za.kind]} službu.`);
+    if (out.e.length) return out;
+    movePresun(T, req, len);
+    checkPerson(T, req.od.jmeno, new Set([req.za.den]), y, m, out);
+    if (/\*$/.test(req.od.kod)) out.i.push(req.admin ? "Stálá služba se přesunem nepřenáší – na novém dni bude v hlídce (stálou jde nastavit přes Upravit den)." : "Stálá služba se přesunem nepřenáší – na novém dni budeš v hlídce.");
+    if (!req.admin) out.i.push("Přesun musí schválit správce.");
+    return out;
+  }
+  if (req.typ === "vymena" && !hasShift(T, req.za.jmeno, req.za.den, req.za.kind)) out.e.push(`${req.za.jmeno} už službu ${req.za.den}. ${m+1}. nemá – mohla být mezitím vyměněna.`);
+  const recv = req.typ === "nabidka" ? accepter : req.za && req.za.jmeno;
+  if (out.e.length || !recv) return out;
+  if (recv === req.od.jmeno){ out.e.push("Nemůžeš převzít vlastní službu."); return out; }
+  if (hasShift(T, recv, req.od.den, req.od.kind)) out.e.push(`${recv} už v té službě je.`);
+  if (req.typ === "vymena" && hasShift(T, req.od.jmeno, req.za.den, req.za.kind)) out.e.push(`${req.od.jmeno} už ve službě ${req.za.den}. ${m+1}. je.`);
+  if (out.e.length) return out;
+  moveShift(T, req.od.jmeno, recv, req.od.den, req.od.kind, len);
+  if (req.typ === "vymena") moveShift(T, req.za.jmeno, req.od.jmeno, req.za.den, req.za.kind, len);
+  checkPerson(T, recv, new Set([req.od.den]), y, m, out);
+  if (req.typ === "vymena") checkPerson(T, req.od.jmeno, new Set([req.za.den]), y, m, out, true);
+  if (/\*$/.test(req.od.kod)) out.i.push(`${recv} převezme i stálou službu ${req.od.den}. ${m+1}.`);
+  if (req.typ === "vymena" && /\*$/.test(req.za.kod)) out.i.push(`${req.od.jmeno} převezme i stálou službu ${req.za.den}. ${m+1}.`);
+  return out;
+}
+
+// datum a čas vytvoření (a vyřízení) žádosti, např. „Vytvořeno 11. 10. 17:20 · vyřízeno 11. 10. 17:25“
+function reqTimes(r){
+  const ms = x => !x ? 0 : x.toMillis ? x.toMillis() : x.seconds ? x.seconds * 1000 : 0;
+  const f = t => { const d = new Date(t), n = new Date(); return `${d.getDate()}. ${d.getMonth()+1}.${d.getFullYear() !== n.getFullYear() ? " " + d.getFullYear() : ""} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`; };
+  const a = ms(r.vytvoreno), b = ms(r.vyrizeno);
+  if (!a && !b) return "";
+  // kdo změnu vytvořil: u žádosti autor, u změny správcem jméno podle e-mailu (prijmeni.cislo@…)
+  const offs = (typeof OFFICERS !== "undefined" && OFFICERS) || {};
+  const byMail = e => { const c = String(e || "").split("@")[0].split(".")[1]; return Object.keys(offs).find(n => String(offs[n]) === c) || ""; };
+  if (r.admin){ const kdo = byMail(r.zmenil); return `${kdo ? `Provedl ${kdo} · ` : "Provedeno "}${f(a || b)}`; }
+  const autor = r.od && r.od.jmeno;
+  let t = a ? `${autor ? `Vytvořil ${autor} · ` : "Vytvořeno "}${f(a)}` : "";
+  if (b && r.stav !== "ceka" && r.stav !== "navrh" && Math.abs(b - a) > 60e3) t += `${t ? " · " : ""}${{prijato:"přijato", odmitnuto:"odmítnuto", zruseno:"zrušeno"}[r.stav] || "vyřízeno"} ${f(b)}`;
+  return t;
+}
+// kdo žádost viděl / nemá zájem (zapisují si to kolegové sami při zobrazení nabídky) – řádek pro autora
+function reqSeenLine(r){
+  const ms = x => !x ? 0 : x.toMillis ? x.toMillis() : x.seconds ? x.seconds * 1000 : 0;
+  const offs = (typeof OFFICERS !== "undefined" && OFFICERS) || {};
+  const nm = c => { const n = Object.keys(offs).find(k => String(offs[k]) === String(c)); return n ? surname(n) : "č. " + c; };
+  const f = t => { if (!t) return ""; const d = new Date(t), n = new Date(); return d.toDateString() === n.toDateString() ? `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}` : `${d.getDate()}. ${d.getMonth()+1}.`; };
+  const list = o => Object.entries(o || {}).sort((a, b) => ms(a[1]) - ms(b[1])).map(([c, t]) => `${nm(c)}${ms(t) ? " " + f(ms(t)) : ""}`);
+  const no = list(r.nezajem), noSet = new Set(Object.keys(r.nezajem || {}));
+  const seen = list(Object.fromEntries(Object.entries(r.videli || {}).filter(([c]) => !noSet.has(c))));
+  const out = [];
+  if (seen.length) out.push(`${ikona("oko")} Viděl${seen.length > 1 ? "i" : ""} (${seen.length}): ${seen.join(", ")}`);
+  if (no.length) out.push(`✕ Nemá zájem (${no.length}): ${no.join(", ")}`);
+  if (!out.length && r.stav === "ceka") out.push(`${ikona("oko")} Zatím nikdo neviděl`);
+  return out.join("<br>");
+}
+// zapíše „viděl jsem“ k cizím čekajícím žádostem (nabídky všem a žádosti pro mě) – jednou za relaci
+const SEEN_DONE = new Set();
+function markReqSeen(db, list, me){
+  if (!db || !me) return;
+  const FV = firebase.firestore.FieldValue;
+  list.forEach(r => {
+    if (!r || !r.id || r.stav !== "ceka" || String(r.odCislo) === String(me) || SEEN_DONE.has(r.id)) return;
+    if (r.zaCislo != null && String(r.zaCislo) !== String(me)) return;
+    SEEN_DONE.add(r.id);
+    if (r.videli && r.videli[me]) return;
+    db.collection("vymeny").doc(r.id).update({["videli." + me]: FV.serverTimestamp()}).catch(() => {});
+  });
+}
+const ymOf = id => { const [y, m] = id.split("-").map(Number); return [y, m - 1]; };
+
+function fmtS(mesic, x){
+  const [y, m] = ymOf((x && x.mesic) || mesic), d = new Date(y, m, x.den);
+  return `${DOW[d.getDay()]} ${x.den}. ${m+1}. ${KIND_LBL[x.kind]}${/\*$/.test(x.kod || "") ? " (stálá)" : ""}`;
+}
+
+const parseProp = t => { const [den, kind, kod] = String(t).split("|"); return {den:+den, kind, kod}; };
+
+const docId = (y, m) => `${y}-${String(m+1).padStart(2,"0")}`;
+
+const DLP = {2026:{"Hlaváček Michal":".DDN...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN.|..DDN...DDN....DN...DDN...DDN..|.DDN...DDN...DDN...DDN....DN..|..DN...DDN...DDN...DDN...DDN...|DDN....DN...DDN...DDN...DDN...|DDN...DDN...DDN....DN....DN...D|DN...DDN...DDN...DDN...DDN....D|N...DDN...DDN...DDN...DDN...DD|N...DDN....DN....DN...DDN...DDN|...DDN...DDN...DDN....DN...DDN|...DDN.DDN...DDN....DN...DDN...","Sehnal Petr":"..DDN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN|...DDN...DDN...DDN....DN...DDN.|..DDN...DDN...DDN...DDN...DDN.|...DN....DN...DDN...DDN...DDN..|.DDN...DDN....DN...DDN...DDN..|.DDN...DDN...DDN...DDN....DN...|.DN...DDN...DDN...DDN...DDN...D|DN....DN...DDN...DDN...DDN...D|DN...DDN...DDN....DN....DN...DD|N...DDN...DDN...DDN...DDN....D|N...DDN...DDN.DDN...DDN....DN..","Tesař Libor":"N...DDN....DN...DDN...DDN...DDN|...DDN...DDN...DDN....DN....|DN...DDN...DDN...DDN...DDN...DD|N....DN...DDN...DDN...DDN...DD|N...DDN...DDN....DN....DN...DDN|...DDN...DDN...DDN...DDN....DN|...DDN...DDN...DDN...DDN...DDN.|..DDN....DN....DN...DDN...DDN..|.DDN...DDN...DDN....DN...DDN..|.DDN...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN...|DDN...DDN....DN...DDN...DDN.DDN","Menšík Jaroslav":"DDN...DDN...DDN...DDN....DN...D|DN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN...|DDN...DDN...DDN....DN...DDN...|DDN...DDN...DDN...DDN...DDN....|DN....DN...DDN...DDN...DDN...D|DN...DDN....DN...DDN...DDN...DD|N...DDN...DDN...DDN....DN....DN|...DDN...DDN...DDN...DDN...DDN|....DN...DDN...DDN.DDN...DDN...|.DN...DDN...DDN...DDN...DDN...|DDN...DDN....DN....DN...DDN...D","Parolek Antonín":"....DN...DDN...DDN...DDN...DDN.|..DDN...DDN....DN....DN...DD|N...DDN...DDN...DDN...DDN....DN|...DDN...DDN...DDN...DDN...DDN|...DDN....DN....DN...DDN...DDN.|..DDN...DDN...DDN....DN...DDN.|..DDN...DDN...DDN...DDN...DDN..|..DN....DN...DDN...DDN...DDN...|DDN...DDN....DN...DDN...DDN...|DDN...DDN...DDN...DDN....DN....|DN...DDN...DDN...DDN...DDN...D|DN....DN...DDN...DDN.DDN...DDN.","Šenk Kamil":".DDN...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN.|..DDN...DDN....DN...DDN...DDN..|.DDN...DDN...DDN...DDN....DN..|..DN...DDN...DDN...DDN...DDN...|DDN....DN...DDN...DDN...DDN...|DDN...DDN...DDN....DN....DN...D|DN...DDN...DDN...DDN...DDN....D|N...DDN...DDN...DDN...DDN...DD|N...DDN....DN....DN...DDN...DDN|...DDN...DDN...DDN....DN...DDN|...DDN.DDN...DDN....DN...DDN...","Tóth Pavel":".DDN...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN.|..DDN...DDN....DN...DDN...DDN..|.DDN...DDN...DDN...DDN....DN..|..DN...DDN...DDN...DDN...DDN...|DDN....DN...DDN...DDN...DDN...|DDN...DDN...DDN....DN....DN...D|DN...DDN...DDN...DDN...DDN....D|N...DDN...DDN...DDN...DDN...DD|N...DDN....DN....DN...DDN...DDN|...DDN...DDN...DDN....DN...DDN|...DDN.DDN...DDN....DN...DDN...","Adámek Jaroslav":"N...DDN....DN...DDN...DDN...DDN|...DDN...DDN...DDN....DN....|DN...DDN...DDN...DDN...DDN...DD|N....DN...DDN...DDN...DDN...DD|N...DDN...DDN....DN....DN...DDN|...DDN...DDN...DDN...DDN....DN|...DDN...DDN...DDN...DDN...DDN.|..DDN....DN....DN...DDN...DDN..|.DDN...DDN...DDN....DN...DDN..|.DDN...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN...|DDN...DDN....DN...DDN...DDN.DDN","Juračka Lukáš":"....DN...DDN...DDN...DDN...DDN.|..DDN...DDN....DN....DN...DD|N...DDN...DDN...DDN...DDN....DN|...DDN...DDN...DDN...DDN...DDN|...DDN....DN....DN...DDN...DDN.|..DDN...DDN...DDN....DN...DDN.|..DDN...DDN...DDN...DDN...DDN..|..DN....DN...DDN...DDN...DDN...|DDN...DDN....DN...DDN...DDN...|DDN...DDN...DDN...DDN....DN....|DN...DDN...DDN...DDN...DDN...D|DN....DN...DDN...DDN.DDN...DDN.","Vašíček Zdeněk":".DDN.DDN...DDN....DN...DDN...DD|N...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN...D|DN...DDN....DN...DDN...DDN...D|DN...DDN...DDN...DDN....DN....D|N...DDN...DDN...DDN...DDN...DD|N....DN...DDN...DDN...DDN...DDN|...DDN...DDN....DN....DN...DDN.|..DDN...DDN...DDN...DDN....DN.|..DDN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN..|.DDN...DDN...DDN....DN...DDN...","Škvařil Libor":"....DN...DDN...DDN...DDN...DDN.|..DDN...DDN....DN....DN...DD|N...DDN...DDN...DDN...DDN....DN|...DDN...DDN...DDN...DDN...DDN|...DDN....DN....DN...DDN...DDN.|..DDN...DDN...DDN....DN...DDN.|..DDN...DDN...DDN...DDN...DDN..|..DN....DN...DDN...DDN...DDN...|DDN...DDN....DN...DDN...DDN...|DDN...DDN...DDN...DDN....DN....|DN...DDN...DDN...DDN...DDN...D|DN....DN...DDN...DDN.DDN...DDN.","Hofman Radek":"N...DDN....DN...DDN...DDN...DDN|...DDN...DDN...DDN....DN....|DN...DDN...DDN...DDN...DDN...DD|N....DN...DDN...DDN...DDN...DD|N...DDN...DDN....DN....DN...DDN|...DDN...DDN...DDN...DDN....DN|...DDN...DDN...DDN...DDN...DDN.|..DDN....DN....DN...DDN...DDN..|.DDN...DDN...DDN....DN...DDN..|.DDN...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN...|DDN...DDN....DN...DDN...DDN.DDN","Grénar Martin":".DDN.DDN...DDN....DN...DDN...DD|N...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN...D|DN...DDN....DN...DDN...DDN...D|DN...DDN...DDN...DDN....DN....D|N...DDN...DDN...DDN...DDN...DD|N....DN...DDN...DDN...DDN...DDN|...DDN...DDN....DN....DN...DDN.|..DDN...DDN...DDN...DDN....DN.|..DDN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN..|.DDN...DDN...DDN....DN...DDN...","Chalupa Martin":".DDN.DDN...DDN....DN...DDN...DD|N...DDN...DDN...DDN...DDN...|.DN....DN...DDN...DDN...DDN...D|DN...DDN....DN...DDN...DDN...D|DN...DDN...DDN...DDN....DN....D|N...DDN...DDN...DDN...DDN...DD|N....DN...DDN...DDN...DDN...DDN|...DDN...DDN....DN....DN...DDN.|..DDN...DDN...DDN...DDN....DN.|..DDN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN..|.DDN...DDN...DDN....DN...DDN...","Havel Radek":"DDN...DDN...DDN...DDN....DN...D|DN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN...|DDN...DDN...DDN....DN...DDN...|DDN...DDN...DDN...DDN...DDN....|DN....DN...DDN...DDN...DDN...D|DN...DDN....DN...DDN...DDN...DD|N...DDN...DDN...DDN....DN....DN|...DDN...DDN...DDN...DDN...DDN|....DN...DDN...DDN.DDN...DDN...|.DN...DDN...DDN...DDN...DDN...|DDN...DDN....DN....DN...DDN....","Přikryl Miroslav":"..DDN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN|...DDN...DDN...DDN....DN...DDN.|..DDN...DDN...DDN...DDN...DDN.|...DN....DN...DDN...DDN...DDN..|.DDN...DDN....DN...DDN...DDN..|.DDN...DDN...DDN...DDN....DN...|.DN...DDN...DDN...DDN...DDN...D|DN....DN...DDN...DDN...DDN...D|DN...DDN...DDN....DN....DN...DD|N...DDN...DDN...DDN...DDN....D|N...DDN...DDN.DDN...DDN....DN..","Liška Michal":"DDN...DDN...DDN...DDN....DN...D|DN...DDN...DDN...DDN...DDN..|.DDN....DN....DN...DDN...DDN...|DDN...DDN...DDN....DN...DDN...|DDN...DDN...DDN...DDN...DDN....|DN....DN...DDN...DDN...DDN...D|DN...DDN....DN...DDN...DDN...DD|N...DDN...DDN...DDN....DN....DN|...DDN...DDN...DDN...DDN...DDN|....DN...DDN...DDN.DDN...DDN...|.DN...DDN...DDN...DDN...DDN...|DDN...DDN....DN....DN...DDN...."}};
+
+const DLP_H = 11.5;
+
+const DLP_ANY = name => Object.values(DLP).some(r => r && r[name]);
+
+const capM = m => MONTHS[m].charAt(0).toUpperCase() + MONTHS[m].slice(1);
+
+const dkey = (y, m, d) => `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+
+const dparse = k => { const [y, m, d] = k.split("-").map(Number); return {y, m:m-1, d}; };
+
+// pořadí strážníků jako v originálním plánu: uložené pořadí z importu („poradi“),
+// jinak pořadí z papírového plánu (říjen 2026); kdo v něm chybí, jde na konec podle abecedy
+const PORADI_VYCHOZI = ["Hlaváček Michal","Šenk Kamil","Tóth Pavel","Sehnal Petr","Přikryl Miroslav","Tóth Ondřej","Menšík Jaroslav","Liška Michal","Havel Radek",
+  "Vašíček Zdeněk","Grénar Martin","Chalupa Martin","Tesař Libor","Adámek Jaroslav","Hofman Radek","Parolek Antonín","Juračka Lukáš","Škvařil Libor"];
+function planOrder(names, poradi, y){
+  const ref = Array.isArray(poradi) && poradi.length ? poradi : PORADI_VYCHOZI;
+  const pos = n => { const i = ref.indexOf(n); return i < 0 ? 1e6 : i; };
+  return names.slice().sort((a, b) => pos(a) - pos(b) || a.localeCompare(b, "cs"));
+}
+const dlpOf = (name, y, m) => { const r = DLP[y] && DLP[y][name]; return r ? (r.split("|")[m] || "") : null; };
+
+function volLoad(data){
+  if (Array.isArray(data.volnoPlany)) return data.volnoPlany.filter(e => e && Array.isArray(e.dny) && e.dny.length);
+  // převod z první verze (dny po měsících)
+  const old = data.volno || {}, out = [];
+  Object.keys(old).sort().forEach(ym => { const [y, m] = ym.split("-").map(Number);
+    const dny = (old[ym] || []).map(Number).sort((a, b) => a - b).map(d => dkey(y, m-1, d));
+    if (dny.length) out.push({id:"v" + ym, dny}); });
+  return out;
+}
+
+const dniTxt = n => n === 1 ? "den" : n >= 2 && n <= 4 ? "dny" : "dní";
+
+function volGroups(dny){
+  // souvislé úseky dnů → [{label, dny}], např. „9.–15. 11. 2026“, přes měsíc „28. 11.–5. 12. 2026“
+  const ks = [...dny].sort(), out = []; let cur = null;
+  const next = k => { const x = dparse(k), t = new Date(x.y, x.m, x.d + 1); return dkey(t.getFullYear(), t.getMonth(), t.getDate()); };
+  ks.forEach(k => { if (cur && next(cur[cur.length - 1]) === k) cur.push(k); else { cur = [k]; out.push(cur); } });
+  return out.map(g => { const x = dparse(g[0]), z = dparse(g[g.length - 1]);
+    const label = g.length === 1 ? `${x.d}. ${x.m+1}. ${x.y}`
+      : (x.m === z.m && x.y === z.y) ? `${x.d}.–${z.d}. ${x.m+1}. ${x.y}`
+      : `${x.d}. ${x.m+1}.–${z.d}. ${z.m+1}. ${z.y}`;
+    return {label, dny:g}; });
+}
+
+const volRanges = dny => volGroups(dny).map(g => g.label).join(", ");
+
+// den volna se službou podle dlouhodobého plánu = dovolená, bez služby = volno
+const volLine = st => { const sl = st.d + st.n, vo = st.dni - sl, out = [];
+  if (sl) out.push(`dovolená ${sl} (denní ${st.d}, noční ${st.n}) = ${fmtH(st.h)}\u00a0h`);
+  if (vo) out.push(`volno ${vo} ${dniTxt(vo)}`);
+  const t = out.join(" · "); return t.charAt(0).toUpperCase() + t.slice(1); };
+
+function fmtH(h){ return String(h).replace(".", ","); }
+
+/* --- volno pro konkrétního strážníka (desktop i mobil) --- */
+const dlpCodeFor = (name, k) => { const x = dparse(k), r = dlpOf(name, x.y, x.m) || ""; return r[x.d-1] || "."; };
+function volStatsFor(name, dny){
+  let d = 0, n = 0; dny.forEach(k => { const c = dlpCodeFor(name, k); if (c === "D") d++; else if (c === "N") n++; });
+  return {dni:dny.length, d, n, h:(d + n) * DLP_H};
+}
+
+/* =================== přítomnost uživatelů (online/{služební číslo}) ===================
+   Každá verze si při otevření a pak každé 2 minuty (jen když je na obrazovce) zapíše,
+   kdy byla aktivní. Čte jen administrátor (pravidla Firestore). */
+const ONLINE_COL = "online";
+const ONLINE_MS = 3 * 60 * 1000;      // „právě online“ = aktivita za poslední 3 minuty
+function devicePlatform(){
+  const ua = navigator.userAgent;
+  if (/iPhone|iPod/.test(ua)) return "iPhone";
+  if (/iPad/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) return "iPad";
+  if (/Android/.test(ua)) return "Android";
+  if (/Windows/.test(ua)) return "Windows";
+  if (/Mac/.test(ua)) return "Mac";
+  return "jiné";
+}
+function presenceStart(opts){
+  // opts: {db, firebase, cislo, email, jmeno:() => string, typ:"mobil"|"desktop", verze}
+  const ref = opts.db.collection(ONLINE_COL).doc(String(opts.cislo)), FV = opts.firebase.firestore.FieldValue;
+  const standalone = !!(navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches));
+  let last = 0;
+  const beat = force => {
+    if (!force && (document.hidden || Date.now() - last < 60e3)) return;
+    last = Date.now();
+    const jm = opts.jmeno() || "";
+    ref.set({
+      ...(jm ? {jmeno:jm} : {}), email:opts.email, prihlasen:true, posledni:FV.serverTimestamp(),
+      zarizeni:{[opts.typ]:{posledni:FV.serverTimestamp(), verze:opts.verze, platforma:devicePlatform(), naPlose:standalone}}
+    }, {merge:true}).catch(() => {});
+  };
+  beat(true);
+  const t = setInterval(() => beat(false), 120e3);
+  const vis = () => beat(true); // při odchodu i návratu zapsat čas aktivity
+  document.addEventListener("visibilitychange", vis);
+  return {
+    beat:() => beat(true),
+    stop(){ clearInterval(t); document.removeEventListener("visibilitychange", vis); },
+    async logout(){ clearInterval(t); document.removeEventListener("visibilitychange", vis);
+      try { await ref.set({prihlasen:false, odhlasen:FV.serverTimestamp()}, {merge:true}); } catch (e){} }
+  };
+}
+function fmtSeen(ms, now){
+  if (!ms) return "";
+  const d = new Date(ms), diff = now - ms, hm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+  if (diff < ONLINE_MS) return "teď";
+  if (diff < 60 * 60e3) return `před ${Math.max(1, Math.round(diff / 60e3))} min`;
+  const t0 = new Date(now); t0.setHours(0, 0, 0, 0);
+  if (ms >= t0.getTime()) return `dnes ${hm}`;
+  if (ms >= t0.getTime() - 864e5) return `včera ${hm}`;
+  return `${d.getDate()}. ${d.getMonth() + 1}.${d.getFullYear() !== new Date(now).getFullYear() ? " " + d.getFullYear() : ""} ${hm}`;
+}
+function presenceHTML(officers, online, now, verze){
+  // officers: {jméno: číslo}, online: {číslo: data}, verze: {mobil:"v4.43", desktop:"v1.1"}
+  const ms = x => (x && x.toMillis) ? x.toMillis() : 0;
+  const rows = Object.keys(officers).sort((a, b) => a.localeCompare(b, "cs")).map(name => {
+    const o = online[String(officers[name])] || null, last = o ? ms(o.posledni) : 0;
+    const on = !!o && o.prihlasen !== false && now - last < ONLINE_MS;
+    const t0 = new Date(now); t0.setHours(0, 0, 0, 0);
+    const st = !o ? "nikdy" : on ? "online" : o.prihlasen === false ? "odhlasen" : (last >= t0.getTime() ? "dnes" : "davno");
+    const dev = o && o.zarizeni ? Object.entries(o.zarizeni).map(([typ, z]) => ({typ, ...z, ms:ms(z.posledni)})).sort((a, b) => b.ms - a.ms) : [];
+    return {name, st, last, dev, on};
+  });
+  // aktuální verze = nejvyšší, kterou někdo má (zvlášť pro mobil a desktop); starší jsou červeně
+  const vnum = v => String(v || "").replace(/[^0-9.]/g, "").split(".").map(Number);
+  const newer = (a, b) => { const x = vnum(a), y = vnum(b); for (let i = 0; i < Math.max(x.length, y.length); i++){ if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
+  const top = {...(verze || {})};
+  rows.forEach(r => r.dev.forEach(z => { if (z.verze && (!top[z.typ] || newer(z.verze, top[z.typ]))) top[z.typ] = z.verze; }));
+  verze = top;
+  const cnt = k => rows.filter(r => r.st === k).length;
+  const logged = rows.filter(r => r.st !== "nikdy" && r.st !== "odhlasen").length;
+  const LBL = {online:"online", dnes:"aktivní dnes", davno:"přihlášen", odhlasen:"odhlášen", nikdy:"zatím bez záznamu"};
+  const sorted = rows.slice().sort((a, b) => (b.on - a.on) || (b.last - a.last) || a.name.localeCompare(b.name, "cs"));
+  return `<div class="pres-sum">
+      <div><b class="pres-on">${cnt("online")}</b><span>právě online</span></div>
+      <div><b>${logged}</b><span>přihlášeno z ${rows.length}</span></div>
+      <div><b>${cnt("nikdy")}</b><span>bez záznamu</span></div>
+    </div>
+    <div class="pres-list">${sorted.map(r => `<div class="pres-row">
+      <span class="pres-dot ${r.st}" aria-hidden="true"></span>
+      <div class="pres-main"><b>${esc(r.name)}</b><span>${LBL[r.st]}${r.last && !r.on ? " · " + fmtSeen(r.last, now) : ""}</span></div>
+      <div class="pres-dev">${r.dev.map(z => `<span class="${verze[z.typ] && z.verze && newer(verze[z.typ], z.verze) ? "old" : ""}" title="${esc(z.typ)} ${esc(z.verze || "")}">${z.typ === "desktop" ? "počítač" : "mobil"} · ${esc(z.platforma || "")}${z.typ === "mobil" && z.naPlose === false ? " (prohlížeč)" : ""} · ${esc(z.verze || "?")} · ${fmtSeen(z.ms, now)}</span>`).join("") || "<span>–</span>"}</div>
+    </div>`).join("")}</div>
+    <p class="pres-note">Online = aktivita za poslední 3 minuty. Údaje se sbírají od verze, která přítomnost zapisuje – kdo si ji ještě neotevřel, je „bez záznamu“. Červeně = stará verze aplikace.</p>`;
+}
+const PRES_CSS = `.pres-sum{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 14px}
+.pres-sum div{flex:1 1 100px;border-radius:12px;padding:10px 12px;background:rgba(127,140,170,.12);display:flex;flex-direction:column}
+.pres-sum b{font-size:28px;line-height:1.1}.pres-sum .pres-on{color:#2E9E5B}.pres-sum span{font-size:13px;opacity:.8}
+.pres-list{display:flex;flex-direction:column}
+.pres-row{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid rgba(127,140,170,.25);flex-wrap:wrap}
+.pres-dot{width:12px;height:12px;border-radius:50%;flex:none;background:#C3C8D2}
+.pres-dot.online{background:#2E9E5B;box-shadow:0 0 0 3px rgba(46,158,91,.25)}.pres-dot.dnes{background:#E3B341}.pres-dot.davno{background:#8C96B2}.pres-dot.odhlasen{background:transparent;border:2px solid #8C96B2}.pres-dot.nikdy{background:transparent;border:2px dashed #C3C8D2}
+.pres-main{flex:1 1 160px;display:flex;flex-direction:column;line-height:1.3}.pres-main span{font-size:13px;opacity:.8}
+.pres-dev{flex:2 1 220px;display:flex;flex-direction:column;font-size:13px;opacity:.85;line-height:1.35}.pres-dev .old{color:#C0392B;font-weight:600}
+.pres-note{font-size:12px;opacity:.75;margin:10px 0 0}`;
+
+/* ---------- jednobarevné ikony (linka 2 px, barva podle okolního textu) ---------- */
+const IKONY = {
+  kalendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4M8 14.5h3M8 17.5h6"/>',
+  anketa:'<rect x="4" y="11" width="4" height="9" rx="1"/><rect x="10" y="4" width="4" height="16" rx="1"/><rect x="16" y="14" width="4" height="6" rx="1"/>',
+  pocitac:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8"/>',
+  hra:'<path d="M7 7.5h10a4.5 4.5 0 0 1 4.5 4.5v2a3.5 3.5 0 0 1-6.4 2l-1.1-1.5h-4l-1.1 1.5a3.5 3.5 0 0 1-6.4-2v-2A4.5 4.5 0 0 1 7 7.5z"/><path d="M7.5 10.5v3M6 12h3"/><path d="M15.5 11h.01M17.5 13h.01" stroke-width="2.6"/>',
+  pisk:'<path d="M4 4l6 6M10 4l-6 6"/><circle cx="17" cy="17" r="3.4"/><path d="M12 2.5v19M2.5 12h19" stroke-width="1.2" opacity=".55"/>',
+  kotva:'<circle cx="12" cy="5" r="2"/><path d="M12 7v14M8 11h8"/><path d="M4.5 14a7.5 7.5 0 0 0 15 0"/><path d="M3 15.5l1.5-1.5 1.5 1.5M18 15.5l1.5-1.5 1.5 1.5"/>',
+  karty:'<rect x="4" y="6" width="11" height="15" rx="2"/><path d="M9 3h9a2 2 0 0 1 2 2v12"/><path d="M9.5 10.5l1.8 3-1.8 3-1.8-3z"/>',
+  jezdec:'<path d="M7.5 20h10c.6-6.5-.6-11-4.5-14l-1.2-2.5-1.6 2.6C8 7.8 6 10.2 6 13.3l2 .6 3.2-2.1C10.2 15 7.5 16.6 7.5 20z"/><path d="M6 21h13"/><path d="M10.5 9h.01" stroke-width="2.6"/>',
+  hvezda:'<path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.2 6-5.5-3-5.5 3 1.2-6-4.5-4.2 6.1-.8z"/>',
+  plamen:'<path d="M12 3c.6 3.6 5.8 5.8 5.8 11.2a5.8 5.8 0 0 1-11.6 0c0-2.8 1.6-4.3 2.2-6.6 1.3 1 2.2 2.4 2.3 4 .9-2.4 1.6-5.4 1.3-8.6z"/>',
+  pohar:'<path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 14v4M8 20h8"/>',
+  pozor:'<path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.2h.01"/>',
+  foto:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  oko:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+  kostka:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 8.5h.01M15.5 8.5h.01M12 12h.01M8.5 15.5h.01M15.5 15.5h.01" stroke-width="2.8"/>',
+  kapka:'<path d="M12 3.5s6 6.4 6 10.6a6 6 0 0 1-12 0c0-4.2 6-10.6 6-10.6z"/>',
+  slunce:'<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
+  mesic:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+  polojasno:'<path d="M8.5 4v1.2M3.6 8.8h1.2M5 5.3l.9.9M12.1 5.3l-.9.9"/><path d="M5.6 11.2A3.5 3.5 0 0 1 11.7 7.6"/><path d="M8 20h9.5a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.6.7A3.2 3.2 0 0 0 8 20z"/>',
+  oblak:'<path d="M7 19h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.6 12.1 3.5 3.5 0 0 0 7 19z"/>',
+  dest:'<path d="M7 15h10.5a3.8 3.8 0 0 0 .6-7.55A5.7 5.7 0 0 0 6.6 8.4 3.3 3.3 0 0 0 7 15z"/><path d="M8 18l-1 2.5M12 18l-1 2.5M16 18l-1 2.5"/>',
+  prehanky:'<path d="M5.5 7.2A3.3 3.3 0 0 1 11.3 5"/><path d="M8 15h9.5a3.5 3.5 0 0 0 .5-7 5 5 0 0 0-9.6.7A3.2 3.2 0 0 0 8 15z"/><path d="M10 18l-1 2.5M15 18l-1 2.5"/>',
+  snih:'<path d="M7 15h10.5a3.8 3.8 0 0 0 .6-7.55A5.7 5.7 0 0 0 6.6 8.4 3.3 3.3 0 0 0 7 15z"/><path d="M8 19h.01M12 18h.01M16 19h.01M10 21.5h.01M14 21.5h.01" stroke-width="2.6"/>',
+  bourka:'<path d="M7 15h10.5a3.8 3.8 0 0 0 .6-7.55A5.7 5.7 0 0 0 6.6 8.4 3.3 3.3 0 0 0 7 15z"/><path d="M12.5 15l-2 3.5h3l-2 3.5"/>',
+  mlha:'<path d="M4 8h16M3 12h13M6 16h15M4 20h12"/>',
+  chat:'<path d="M5 18.5V6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v7a2.5 2.5 0 0 1-2.5 2.5H9z"/>',
+  poznamka:'<path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5M8.5 12h7M8.5 16h5"/>',
+  ukol:'<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.5l3 3 5-6"/>',
+  zvonek:'<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>'
+};
+function ikona(n, cls){ return IKONY[n] ? `<svg class="ik${cls ? " " + cls : ""}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IKONY[n]}</svg>` : ""; }
+// emoji ve vlastních textech (hry, ankety, statistiky) → ikona; obsah zpráv a karty pexesa se nemění
+const EMO_IK = [["✕○", "pisk"], ["🖥️", "pocitac"], ["🖥", "pocitac"], ["⚓", "kotva"], ["🏆", "pohar"], ["📷", "foto"], ["📊", "anketa"], ["📅", "kalendar"], ["🎮", "hra"], ["🃏", "karty"], ["♞", "jezdec"], ["⚠️", "pozor"], ["⚠", "pozor"], ["⭐", "hvezda"], ["🔥", "plamen"], ["🎲", "kostka"], ["👁", "oko"], ["💧", "kapka"]];
+const EMO_MAP = Object.fromEntries(EMO_IK);
+const EMO_RE = new RegExp(EMO_IK.map(([e]) => e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
+const ikonyText = html => String(html).replace(EMO_RE, m => ikona(EMO_MAP[m]));
+// jen úvodní značka (náhled poslední zprávy – zbytek je text kolegy)
+const ikonaPrefix = html => { const s = String(html); for (const [e, n] of EMO_IK) if (s.startsWith(e)) return ikona(n) + s.slice(e.length); return s; };
+// v oknech her, nabídkách a kartách her se emoji převedou samy
+function ikonyIn(root){
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), list = [];
+  while (w.nextNode()){ const t = w.currentNode; EMO_RE.lastIndex = 0; if (EMO_RE.test(t.nodeValue)) list.push(t); }
+  list.forEach(t => {
+    const p = t.parentNode; if (!p || /^(TEXTAREA|INPUT|OPTION|TITLE|SCRIPT|STYLE)$/.test(p.nodeName) || p.closest(".ik-no")) return;
+    const tp = document.createElement("template"); tp.innerHTML = esc(t.nodeValue).replace(EMO_RE, m => ikona(EMO_MAP[m]));
+    p.replaceChild(tp.content, t);
+  });
+}
+if (typeof document !== "undefined" && typeof MutationObserver !== "undefined"){
+  const zone = el => el && el.closest && el.closest(".pk-ov, .ch-sheet, .pk-card, .ch-poll, .ik-zone");
+  const run = () => {
+    try { document.head.insertAdjacentHTML("beforeend", `<style>.ik{display:inline-block;width:1.15em;height:1.15em;vertical-align:-.2em;flex:none}.ik-tab .ik{width:20px;height:20px;vertical-align:middle}</style>`); } catch (e){}
+    new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {
+      if (n.nodeType === 3){ if (zone(n.parentElement)) ikonyIn(n.parentElement); }
+      else if (n.nodeType === 1 && zone(n)) ikonyIn(n);
+      else if (n.nodeType === 1 && n.querySelector) n.querySelectorAll(".pk-card, .ch-poll").forEach(ikonyIn);
+    }))).observe(document.body, {childList:true, subtree:true});
+  };
+  if (document.body) run(); else document.addEventListener("DOMContentLoaded", run);
+}
