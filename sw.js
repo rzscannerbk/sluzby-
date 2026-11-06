@@ -45,16 +45,16 @@ try {
 
 
 // Při každé změně souborů zvyš verzi, aby se stará cache smazala.
-const VERSION = "sluzby-v188";
+const VERSION = "sluzby-v190";
 const LIB_CACHE = "sluzby-knihovny";
 const CORE = [
   "./",
   "./index.html",
   "./desktop.html",
   "./sluzby-core.js",
-  "./sluzby-core.js?v=6.16",
+  "./sluzby-core.js?v=6.18",
   "./sluzby-chat.js",
-  "./sluzby-chat.js?v=6.16",
+  "./sluzby-chat.js?v=6.18",
   "./firebase-config.js",
   "./manifest.webmanifest",
   "./icon-192.png",

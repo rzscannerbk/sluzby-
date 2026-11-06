@@ -87,6 +87,8 @@ textarea.fi{height:84px;padding:9px 11px;resize:vertical;line-height:1.4}
 .m .del{font-style:italic;opacity:.6}
 .typ{display:inline-block;background:#FDECEC;color:#B23A3A;font-weight:800;font-size:12px;letter-spacing:.04em;text-transform:uppercase;border-radius:8px;padding:3px 8px;margin-bottom:6px}
 .done .typ{background:#EEF0F4;color:var(--ink2)}
+.nad{display:flex;align-items:center;gap:10px;color:#D63031;font-family:var(--f-cond);font-size:21px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;line-height:1.15;text-align:center;margin:12px 0 8px}
+.nad:before,.nad:after{content:"";flex:1;min-width:14px;height:3px;background:#D63031;border-radius:2px}
 .ad{display:flex;align-items:center;gap:10px;margin:2px 0 4px}.ad span{flex:1;font-weight:800;font-size:16.5px}
 .ad a{background:var(--blue);color:#fff;border-radius:10px;padding:5px 11px;font-weight:700;font-size:13px;text-decoration:none;white-space:nowrap}
 .m.me .ad a{background:#fff;color:var(--ink)}
@@ -175,7 +177,7 @@ textarea.fi{height:84px;padding:9px 11px;resize:vertical;line-height:1.4}
 <script>
 "use strict";
 /* Dozorčí služba – oznámení do chatu hlídky. Účet dozorci@rzscanner.cz píše do vláken hlídek jako „DS“. */
-const VER = "dozorčí v1.0";
+const VER = "dozorčí v1.2";
 const ME = "DS", MEJM = "Dozorčí služba", DZ_EMAIL = "dozorci@rzscanner.cz";
 const MAPY_KEY = "nY-91216wSSQ5waRO4ABMmtDldTuDGTPzp8kd8WcsQM";
 const BLANSKO = [49.3632, 16.6445];
@@ -302,8 +304,9 @@ function msgHTML(m, t){
   const oz = m.oznameni, a = m.adresa;
   let h = "";
   if (!mine) h += `<b>${esc(surname(m.od) || m.jmeno)}</b>`;
-  if (oz) h += `<span class="typ">${esc(oz.druh || "Oznámení")}</span>${m.vyrizeno ? ` <span class="typ" style="background:#E6F4EC;color:#1F7A45">✓ vyřízeno</span>` : ""}`;
+  if (oz && m.vyrizeno) h += `<span class="typ" style="background:#E6F4EC;color:#1F7A45">✓ vyřízeno</span>`;
   if (a) h += `<div class="ad"><span>${esc(String(a.adresa).replace(/, Blansko$/, ""))}${a.patro ? " · " + esc(a.patro) : ""}${oz && oz.byt ? " · " + esc(oz.byt) : ""}</span><a href="${esc(navUrl(a))}" target="_blank" rel="noopener">▲ Navigovat</a></div>`;
+  if (a || oz) h += `<span class="nad">${esc((oz && oz.druh) || "Oznámení")}</span>`;
   if (oz && (oz.oznamovatel || oz.telefon)) h += `<div class="ozk">Oznamovatel: ${esc(oz.oznamovatel || "")}${oz.telefon ? ` · tel. ${esc(oz.telefon)}` : ""}</div>`;
   if (m.image) h += `<img src="${esc(m.image)}" alt="Fotka" loading="lazy">`;
   if (m.anketa) h += `📊 ${esc(m.anketa.otazka || "Anketa")}`;
