@@ -486,6 +486,8 @@ const STYLE = `
 .hl-adr b{flex:1;font-size:15px;opacity:1;margin:0}
 .hl-adr a{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:10px;background:#2F6FDB;color:#fff !important;font-weight:700;font-size:13.5px;text-decoration:none;white-space:nowrap}
 .hl-bar .ch-bar{margin:8px 0 0}
+.hl-cmp.float{position:fixed;left:8px;right:8px;z-index:60;background:var(--sheet,#1A2030);border:1.5px solid rgba(127,127,127,.35);border-radius:18px;padding:2px 10px 10px;box-shadow:0 -6px 30px rgba(0,0,0,.45)}
+.hl-cmp.float .hl-in{margin-top:8px}
 .hl-in{display:flex;gap:8px;align-items:flex-end;margin-top:10px}
 .hl-in textarea{flex:1;min-width:0;min-height:42px;max-height:120px;resize:none;border-radius:21px;border:1.5px solid rgba(127,127,127,.5);background:rgba(0,0,0,.15);color:inherit;font:inherit;font-size:16px;padding:9px 14px;box-sizing:border-box;-webkit-user-select:text;user-select:text}
 .hl-in button{flex:none;width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:inherit}
@@ -3249,7 +3251,7 @@ CH.cardChat = function(el, tid){
   el.classList.add("hl-card");
   el.innerHTML = `<div class="hl-h">${HL_IC}<span>Chat hlídky</span><em hidden></em><button type="button" data-hlall>Celý chat ›</button></div>
     <div class="hl-ms"><p class="hl-empty">Načítám…</p></div>
-    ${ro ? `<p class="hl-ro">Archiv hlídky – jen ke čtení.</p>` : `<div class="hl-bar"></div><div class="hl-in"><button type="button" class="hl-pin" data-hlpin aria-label="Vložit adresu">${ADR_ICO}</button><textarea rows="1" maxlength="2000" placeholder="Zpráva hlídce…"></textarea><button type="button" class="hl-send" data-hlsend aria-label="Odeslat"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 20.5 21 12 3 3.5l2.4 7.1L14 12l-8.6 1.4z"/></svg></button></div>`}`;
+    ${ro ? `<p class="hl-ro">Archiv hlídky – jen ke čtení.</p>` : `<div class="hl-cmp"><div class="hl-bar"></div><div class="hl-in"><button type="button" class="hl-pin" data-hlpin aria-label="Vložit adresu">${ADR_ICO}</button><textarea rows="1" maxlength="2000" placeholder="Zpráva hlídce…"></textarea><button type="button" class="hl-send" data-hlsend aria-label="Odeslat"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 20.5 21 12 3 3.5l2.4 7.1L14 12l-8.6 1.4z"/></svg></button></div></div>`}`;
   const box = el.querySelector(".hl-ms"), em = el.querySelector(".hl-h em"), ta = el.querySelector("textarea"), bar = el.querySelector(".hl-bar");
   const draw = () => {
     const t = S.threads[tid] || t0, un = unreadOf(t);
@@ -3268,7 +3270,7 @@ CH.cardChat = function(el, tid){
     if (!ta || busy) return;
     const text = ta.value.trim(); if (!text && !adr) return;
     busy = true; const data = {text}, a = adr; if (a) data.adresa = a;
-    ta.value = ""; adr = null; sug = null; if (aw) aw.reset(); drawBar(); ta.style.height = ""; ta.blur();
+    ta.value = ""; adr = null; sug = null; if (aw) aw.reset(); drawBar(); ta.style.height = ""; ta.blur(); if (el._hlOff) el._hlOff();
     try { await writeMsg(data, tid); }
     catch (e){ ta.value = text; adr = a; drawBar(); toast(e.code === "permission-denied" ? "Odeslání zamítnuto pravidly Firestore." : "Zprávu se nepodařilo odeslat."); }
     finally { busy = false; }
@@ -3283,18 +3285,31 @@ CH.cardChat = function(el, tid){
     if (e.target.closest("[data-hlsend]")) send();
   });
   if (ta) ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 120) + "px"; });
-  // při psaní v kartě schovat spodní tlačítka (Poznámka/Úkol/✕) a držet pole nad klávesnicí
+  // při psaní v kartě: spodní tlačítka pryč a pole pro psaní přichycené těsně nad klávesnicí
+  // (iPhone klávesnici jen překryje – pole se proto drží podle viditelné části obrazovky)
   if (ta){
-    const vis = () => { const vv = window.visualViewport, r = ta.getBoundingClientRect(), h = vv ? vv.height + vv.offsetTop : innerHeight;
-      if (r.bottom > h - 8 || r.top < 0){ const sc = ta.closest(".full") || document.scrollingElement; sc.scrollTop += r.bottom - (h - 16); } };
-    ta.addEventListener("focus", () => { document.documentElement.classList.add("hl-typing"); [80, 300, 600].forEach(t => setTimeout(vis, t)); });
-    ta.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== ta) document.documentElement.classList.remove("hl-typing"); }, 250));
-    if (window.visualViewport) visualViewport.addEventListener("resize", () => { if (document.activeElement === ta) vis(); });
+    const cmp = el.querySelector(".hl-cmp"), ph = document.createElement("div");
+    const place = () => {
+      if (!cmp.classList.contains("float")) return;
+      const vv = window.visualViewport, top = vv ? vv.offsetTop + vv.height : innerHeight;
+      cmp.style.top = Math.max(8, top - cmp.offsetHeight - 6) + "px";
+    };
+    const on = () => {
+      document.documentElement.classList.add("hl-typing");
+      if (!cmp.classList.contains("float")){ ph.style.height = cmp.offsetHeight + "px"; cmp.before(ph); cmp.classList.add("float"); }
+      place(); [100, 300, 600].forEach(t => setTimeout(place, t));
+    };
+    const off = () => { document.documentElement.classList.remove("hl-typing"); cmp.classList.remove("float"); cmp.style.top = ""; ph.remove(); };
+    ta.addEventListener("focus", on);
+    ta.addEventListener("input", () => setTimeout(place, 0));
+    ta.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== ta) off(); }, 250));
+    if (window.visualViewport){ visualViewport.addEventListener("resize", place); visualViewport.addEventListener("scroll", place); }
+    el._hlOff = off;
   }
   if (ta && !ro) aw = adrWatch(ta, a => { const had = !!sug; sug = a && !adr ? a : null; if (had || sug) drawBar(); });
   el._hlDraw = draw;
   return () => {
-    unsub(); document.documentElement.classList.remove("hl-typing");
+    unsub(); if (el._hlOff) el._hlOff(); document.documentElement.classList.remove("hl-typing");
     // zprávy viděné v kartě = přečtené (když byla karta otevřená aspoň chvíli)
     const t = S && S.threads[tid];
     if (t && Date.now() - opened > 1500 && unreadOf(t)) tref(tid).set({videno:{[O.me]:t.pocet || 0}, lastSeen:{[O.me]:FV().serverTimestamp()}}, {merge:true}).catch(() => {});
