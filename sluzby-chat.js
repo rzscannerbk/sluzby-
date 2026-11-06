@@ -498,6 +498,11 @@ const STYLE = `
 .adr-sg-ok{flex:none;border:0;border-radius:10px;background:#2F6FDB;color:#fff;font:inherit;font-weight:700;font-size:13.5px;padding:8px 11px;cursor:pointer;white-space:nowrap}
 .adr-sg-x{flex:none;border:0;background:none;color:inherit;opacity:.6;font-size:16px;padding:4px;cursor:pointer}
 .hl-bar .adr-sg{margin:8px 0 0}
+.ozn-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 6px}
+.ozn-typ{display:inline-block;background:#FDECEC;color:#B23A3A;font-weight:800;font-size:12px;letter-spacing:.03em;text-transform:uppercase;border-radius:8px;padding:3px 8px}
+.ozn-ok{display:inline-block;background:#E6F4EC;color:#1F7A45;font-weight:800;font-size:12px;border-radius:8px;padding:3px 8px}
+.ozn-f{font-size:13.5px;opacity:.8;margin:2px 0 6px}
+.ozn-f a{color:inherit;font-weight:700}
 .adr-pz{display:flex;flex-direction:column;gap:6px;min-width:0}
 .adr-pz b{display:flex;align-items:center;height:44px;padding:0 11px;border:1.5px solid var(--line,#C9CED8);border-radius:10px;font-size:16px;font-weight:600}
 .adr-patra{display:flex;flex-wrap:wrap;gap:6px;padding:4px;margin:-2px -4px 0;border-radius:12px;transition:background .3s}
@@ -1108,7 +1113,7 @@ function renderMsgs(autoscroll, keepScroll){
       pics = `<div class="ch-grid n${Math.min(imgs.length, 4)}">${show.map((x, i) => `<button type="button" data-chgal="${m.id}" data-i="${i}" aria-label="Fotka ${i + 1} z ${imgs.length}"><img src="${x.image}" alt="" loading="lazy">${i === 3 && more > 0 ? `<span class="more">+${more}</span>` : ""}</button>`).join("")}</div>`;
     }
     const isPk = !!((m.hra || m.lode || m.pexeso || m.sachy) && !m.smazano), isPoll = !!(m.anketa && !m.smazano);
-    const body = isPoll ? pollHTML(m) : isPk ? (m.lode ? ldoCardHTML(m.lode, m) : m.pexeso ? pxCardHTML(m.pexeso, m) : m.sachy ? shCardHTML(m.sachy, m) : pkCardHTML(m.hra, m)) : allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.preposlano ? `<span class="ch-fwd">${ic(ICO.fwd, 14)}Přeposláno od ${esc(m.preposlano.jmeno || "")}</span>` : ""}${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.adresa && !m.smazano ? adrHTML(m.adresa) : ""}${m.text && !m.smazano ? linkify(m.text) : ""}`;
+    const body = isPoll ? pollHTML(m) : isPk ? (m.lode ? ldoCardHTML(m.lode, m) : m.pexeso ? pxCardHTML(m.pexeso, m) : m.sachy ? shCardHTML(m.sachy, m) : pkCardHTML(m.hra, m)) : allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.preposlano ? `<span class="ch-fwd">${ic(ICO.fwd, 14)}Přeposláno od ${esc(m.preposlano.jmeno || "")}</span>` : ""}${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.oznameni && !m.smazano ? oznHead(m) : ""}${m.adresa && !m.smazano ? adrHTML(m.adresa) : ""}${m.oznameni && !m.smazano ? oznFoot(m) : ""}${m.text && !m.smazano ? linkify(m.text) : ""}`;
     html += `<div class="ch-m${mine ? " mine" : ""}${hit ? " hit" : ""}${isPk ? " pk" : ""}" data-mid="${m.id}">${group && !mine && lastFrom !== m.od ? `<span class="ch-who">${esc(m.jmeno || nameOf(m.od))}</span>` : ""}
       <div class="ch-bub">${body}<div class="ch-meta">${imgs.length > 1 ? `${imgs.length} ${imgs.length < 5 ? "fotky" : "fotek"} · ` : ""}${m.upraveno && !m.smazano ? "upraveno · " : ""}${hm(ms(lastM.at))}</div></div>${rx ? `<div class="ch-rx">${rx}</div>` : ""}${allDel ? "" : `<button type="button" class="ch-more" data-chmore="${m.id}" aria-label="Možnosti zprávy">⋯</button>`}</div>`;
     const stM = it.list.includes(lastMine) ? lastMine : (mine && it.list.some(x => x.id === S.infoMid) ? lastM : null);
@@ -3130,6 +3135,12 @@ function adrWatch(ta, cb){
   return {dismiss:a => { if (a) no.add(a.adresa); cb(null); }, reset:() => { last = ""; no.clear(); }};
 }
 const adrSugHTML = a => `<div class="adr-sg">${ADR_ICO}<div><b>${esc(a.adresa)}</b>${a.patro ? ` · ${esc(a.patro)}` : ""}<small>Našel jsem adresu v textu</small></div><button type="button" class="adr-sg-ok" data-sgok>+ Navigace</button><button type="button" class="adr-sg-x" data-sgx aria-label="Nepřidávat">✕</button></div>`;
+/* oznámení od dozorčí služby (dozorci.html): druh, oznamovatel, telefon, vyřízeno */
+function oznHead(m){ const o = m.oznameni || {}; return `<div class="ozn-h"><span class="ozn-typ">🚨 ${esc(o.druh || "Oznámení")}</span>${m.vyrizeno ? `<span class="ozn-ok">✓ vyřízeno</span>` : ""}</div>`; }
+function oznFoot(m){ const o = m.oznameni || {}; const x = [];
+  if (o.byt) x.push(`Byt / vchod: ${esc(o.byt)}`);
+  if (o.oznamovatel || o.telefon) x.push(`Oznamovatel: ${esc(o.oznamovatel || "")}${o.telefon ? ` · <a href="tel:${esc(String(o.telefon).replace(/[^\d+]/g, ""))}">${esc(o.telefon)}</a>` : ""}`);
+  return x.length ? `<div class="ozn-f">${x.join("<br>")}</div>` : ""; }
 function adrHTML(a){
   const nav = esc(adrNav(a));
   return `<div class="ch-adr">${a.lat != null ? `<a class="adr-map" href="${nav}" target="_blank" rel="noopener" aria-label="Otevřít v Google Mapách"><img src="${esc(adrImg(a))}" alt="" loading="lazy" onerror="this.parentNode.remove()"></a>` : ""}
@@ -3224,6 +3235,7 @@ CH.hlidkaInfo = function(datum, kind){
 function hlBody(m){
   if (m.smazano) return `<i class="hl-del">Zpráva byla smazána</i>`;
   let h = "";
+  if (m.oznameni) h += `<span class="ozn-typ">🚨 ${esc(m.oznameni.druh || "Oznámení")}</span>${m.vyrizeno ? ` <span class="ozn-ok">✓ vyřízeno</span>` : ""}`;
   if (m.adresa) h += `<span class="hl-adr"><b>${esc(String(m.adresa.adresa || "").replace(/, Blansko$/, ""))}${m.adresa.patro ? " · " + esc(m.adresa.patro) : ""}</b><a href="${esc(adrNav(m.adresa))}" target="_blank" rel="noopener"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l8 19-8-4-8 4z"/></svg> Navigovat</a></span>`;
   if (m.anketa) return h + `📊 ${esc(m.anketa.otazka || "Anketa")}`;
   if (m.hra || m.lode || m.pexeso || m.sachy) return h + "🎮 Hra";
