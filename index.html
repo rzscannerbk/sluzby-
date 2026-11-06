@@ -477,6 +477,8 @@ button.cal-day{cursor:pointer}
 .sn-hint{margin:8px 0 0;font-size:12.5px;color:var(--ink2)}
 .sn-err{margin:8px 0 0;font-size:13.5px;color:#C0392B;font-weight:600}
 #fullBody .hl-new{display:none}
+:root.hl-typing .f-bar,:root.hl-typing #fullClose,:root.hl-typing #fullBody .swap-open{display:none}
+:root.hl-typing #fullBody{padding-bottom:12px}
 .hl-new{display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:4px 10px;border-radius:10px;background:rgba(214,48,49,.16);border:1px solid rgba(214,48,49,.5);font-size:13.5px;font-weight:700}
 .f-bar{position:fixed;left:14px;right:72px;bottom:calc(var(--fsab) + 16px);z-index:31;display:flex;gap:8px;align-items:center}
 :root.x3 .f-bar{bottom:var(--xb)}
@@ -875,7 +877,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v6.14</span>
+      <span class="ver" id="verDiag">v6.15</span>
     </div>
   </div>
 </header>
@@ -1010,8 +1012,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.14"></script>
-<script src="sluzby-chat.js?v=6.14"></script>
+<script src="sluzby-core.js?v=6.15"></script>
+<script src="sluzby-chat.js?v=6.15"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
