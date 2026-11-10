@@ -391,7 +391,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v6.18</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v6.19</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -402,8 +402,8 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.18"></script>
-<script src="sluzby-chat.js?v=6.18"></script>
+<script src="sluzby-core.js?v=6.19"></script>
+<script src="sluzby-chat.js?v=6.19"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -421,7 +421,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v6.18";
+const DESK_VER = "desktop v6.19";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:"", day:null, codes:[], st:{}, mvDay:null, mvKod:null};
@@ -1077,7 +1077,7 @@ function myCalHTML(){
     if (t.some(c => /^(N1[23]|Nz[78])/.test(c))) cN++;
     if (t.some(c => isP(c))) cP++;
     if (t.some(c => c.endsWith("*"))) cS++;
-    if (t.some(c => /^(DOV|ZdV)/.test(c))) cA++;
+    if (t.some(c => /^(DOV|ZdV|NEM|NES)/.test(c))) cA++;
   }
   const cal = calHTML(id, SELF, c => ({cls:c.today ? "today" : "", attr:`data-calday="${c.d}|${c.kind || (c.cls === "N" ? "N" : "D")}"`}));
   const sum = [["var(--day)", "Denní", cD], ["var(--night)", "Noční", cN], ["var(--pd)", "Porada", cP], ["var(--green)", "Stálá", cS], ["var(--absBg)", "Dovolená / ZdV", cA]]
@@ -1108,6 +1108,8 @@ function detHTML(){
     [...new Set(info.P.map(p => p.code))].forEach(c => { const d = CODES[c]; extra.push(`<p><b>${d.label || "Porada"} ${d.s[0]}:${String(d.s[1]).padStart(2, "0")}–${d.e[0]}:${String(d.e[1]).padStart(2, "0")}:</b> ${info.P.filter(p => p.code === c).map(p => esc(p.name)).join(", ")}</p>`); });
     if (info.A.DOV) extra.push(`<p><b>Dovolená:</b> ${info.A.DOV.map(esc).join(", ")}</p>`);
     if (info.A.ZdV) extra.push(`<p><b>Zdravotní volno:</b> ${info.A.ZdV.map(esc).join(", ")}</p>`);
+    if (info.A.NEM) extra.push(`<p><b>Nemoc:</b> ${info.A.NEM.map(esc).join(", ")}</p>`);
+    if (info.A.NES) extra.push(`<p><b>Neschopenka:</b> ${info.A.NES.map(esc).join(", ")}</p>`);
   }
   return `<div class="det-card ${k === "N" ? "night" : "day"}">
       <div class="det-top"><div><h2>${k === "N" ? "Noční služba" : "Denní služba"}</h2>${live ? `<span class="det-live">Probíhá</span>` : ""}</div>
@@ -1197,7 +1199,7 @@ function swT(){ return month(SW.id).T; }
 function shiftStarted(id, d, code){ const [y, m] = ymOf(id); return windowOf(new Date(y, m, d), code.replace(/\*$/, ""))[0] <= getNow(); }
 function canTakeMine(name){
   const p = tokens(swT(), name, SW.mine.den);
-  return !p.some(x => /^(DOV|ZdV)$/.test(x)) && !p.some(x => kindOf(x) === SW.mine.kind);
+  return !p.some(x => /^(DOV|ZdV|NEM|NES)$/.test(x)) && !p.some(x => kindOf(x) === SW.mine.kind);
 }
 const iCanTake = (d, kind) => !tokens(swT(), SELF, d).some(p => kindOf(p) === kind);
 function buildReqs(){
@@ -1436,8 +1438,8 @@ MAIN.addEventListener("click", async e => {
   }
 });
 /* ----- administrace ----- */
-const ADM_CODES = ["D12","D8","N12","N13","Nz8","Nk7","Nk8","D2","D4","D5","DOV","ZdV"];
-const ADM_CODE_LBL = {D12:"D12 7–19", D8:"D8 10–18", N12:"N12 19–7", N13:"N13 19–8", Nz7:"Nz7 19–24", Nz8:"Nz8 19–24", Nk7:"Nk7 0–7", Nk8:"Nk8 0–8", D2:"D2 porada", D4:"D4 8–12", D5:"D5 8–13", DOV:"Dovolená", ZdV:"Zdr. volno"};
+const ADM_CODES = ["D12","D8","N12","N13","Nz8","Nk7","Nk8","D2","D4","D5","DOV","ZdV","NEM","NES"];
+const ADM_CODE_LBL = {D12:"D12 7–19", D8:"D8 10–18", N12:"N12 19–7", N13:"N13 19–8", Nz7:"Nz7 19–24", Nz8:"Nz8 19–24", Nk7:"Nk7 0–7", Nk8:"Nk8 0–8", D2:"D2 porada", D4:"D4 8–12", D5:"D5 8–13", DOV:"Dovolená", ZdV:"Zdr. volno", NEM:"Nemoc", NES:"Neschopenka"};
 function admToken(){
   const c = ADM_CODES.filter(x => ADM.codes.includes(x));
   return c.length ? c.map(x => ADM.st[x] && kindOf(x) ? x + "*" : x).join("+") : ".";

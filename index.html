@@ -877,7 +877,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v6.18</span>
+      <span class="ver" id="verDiag">v6.19</span>
     </div>
   </div>
 </header>
@@ -1012,8 +1012,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.18"></script>
-<script src="sluzby-chat.js?v=6.18"></script>
+<script src="sluzby-core.js?v=6.19"></script>
+<script src="sluzby-chat.js?v=6.19"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1874,7 +1874,7 @@ function fillCal(){
     const hasD = parts.some(p => p.code === "D12");
     const hasN = parts.some(p => NIGHT.includes(p.code));
     const hasP = parts.some(p => isP(p.code));
-    const abs = parts.find(p => p.code === "DOV" || p.code === "ZdV");
+    const abs = parts.find(p => /^(DOV|ZdV|NEM|NES)$/.test(p.code));
     const st = parts.some(p => p.st);
     if (hasD) cD++; if (hasN && !parts.every(p => isK(p.code))) cN++; if (hasP) cP++; if (st) cS++; if (abs) cA++;
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
@@ -2788,7 +2788,9 @@ function saveHidden(){
   try { localStorage.setItem(HIDE_KEY, JSON.stringify([...HIDDEN])); } catch(e) {}
 }
 // nabídku všem nevidí ten, kdo má ten den stejnou službu (den/den, noc/noc) – nemůže ji vzít
-const sameShift = r => !!(r && r.od && SELF && EFF_T && r.mesic === docId(YEAR, MONTH) && hasShift(EFF_T, SELF, r.od.den, r.od.kind));
+// … ani ten, kdo je ten den v nemoci / na neschopence
+const sickOn = (T, nm, d) => ((T[nm] || [])[d - 1] || ".").split("+").some(p => /^(NEM|NES)\*?$/.test(p));
+const sameShift = r => !!(r && r.od && SELF && EFF_T && r.mesic === docId(YEAR, MONTH) && (hasShift(EFF_T, SELF, r.od.den, r.od.kind) || sickOn(EFF_T, SELF, r.od.den)));
 const incoming = () => PENDING.filter(r => SELF_NO && !(r.typ === "nabidka" && r.zaCislo == null && sameShift(r)) && (
   (r.stav === "ceka" && (r.typ === "presun" || r.typ === "volno") && isAdminUI()) ||
   (r.stav === "ceka" && r.zaCislo === SELF_NO && !r.souhlas) ||
@@ -3219,7 +3221,7 @@ function swapCalHTML(name, mine){
     const parts = tok === "." ? [] : tok.split("+");
     const codes = parts.map(p => p.replace(/\*$/, ""));
     const hasD = codes.includes("D12") || codes.includes("D8"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.some(isP);
-    const abs = codes.find(c => c === "DOV" || c === "ZdV");
+    const abs = codes.find(c => /^(DOV|ZdV|NEM|NES)$/.test(c));
     const shift = parts.find(p => kindOf(p));
     const kind = shift ? kindOf(shift) : null;
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
@@ -3247,7 +3249,7 @@ function canTakeMine(name){
   // v den mé služby nesmí mít dovolenou, zdravotní volno ani stejný typ služby
   const m = SW && SW.mine; if (!m) return true;
   const parts = ((EFF_T[name] || [])[m.den-1] || ".").split("+");
-  if (parts.some(p => /^(DOV|ZdV)$/.test(p))) return false;
+  if (parts.some(p => /^(DOV|ZdV|NEM|NES)$/.test(p))) return false;
   if (parts.some(p => kindOf(p) === m.kind)) return false;
   return true;
 }
@@ -3281,7 +3283,7 @@ function dayPickHTML(id, mine){
     const parts = (toks[d-1] || ".") === "." ? [] : toks[d-1].split("+");
     const codes = parts.map(p => p.replace(/\*$/, ""));
     const hasD = codes.includes("D12") || codes.includes("D8"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.some(isP);
-    const abs = codes.find(c => c === "DOV" || c === "ZdV");
+    const abs = codes.find(c => /^(DOV|ZdV|NEM|NES)$/.test(c));
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
     if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
@@ -3317,7 +3319,7 @@ function dayPickHTML(id, mine){
 function moveKinds(d, mine){
   const now = getNow();
   const parts = ((EFF_T[SELF] || [])[d-1] || ".") === "." ? [] : EFF_T[SELF][d-1].split("+");
-  if (parts.some(p => /^(DOV|ZdV)$/.test(p))) return [];
+  if (parts.some(p => /^(DOV|ZdV|NEM|NES)$/.test(p))) return [];
   const have = new Set(parts.filter(p => !(d === mine.den && kindOf(p) === mine.kind)).map(p => kindOf(p)).filter(Boolean));
   return ["D", "N"].filter(k => !have.has(k) && !(d === mine.den && k === mine.kind)
     && windowOf(new Date(YEAR, MONTH, d), k === "D" ? "D12" : "N12")[0] > now);
@@ -3333,7 +3335,7 @@ function moveCalHTML(id, mine){
     const parts = (toks[d-1] || ".") === "." ? [] : toks[d-1].split("+");
     const codes = parts.map(p => p.replace(/\*$/, ""));
     const hasD = codes.includes("D12") || codes.includes("D8"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.some(isP);
-    const abs = codes.find(c => c === "DOV" || c === "ZdV");
+    const abs = codes.find(c => /^(DOV|ZdV|NEM|NES)$/.test(c));
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
     if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs");
@@ -3644,7 +3646,7 @@ function mpHTML(){
       const parts = tok === "." ? [] : tok.split("+");
       const codes = parts.map(p => p.replace(/\*$/, ""));
       const kD = parts.find(p => kindOf(p) === "D"), kN = parts.find(p => kindOf(p) === "N");
-      const hasP = codes.some(isP), abs = codes.find(c => c === "DOV" || c === "ZdV"), k8 = codes.some(isK);
+      const hasP = codes.some(isP), abs = codes.find(c => /^(DOV|ZdV|NEM|NES)$/.test(c)), k8 = codes.some(isK);
       if (kD){ sD++; cntD[d]++; } if (kN){ sN++; cntN[d]++; }
       const cls = [wc(d).trim(), d === todayD ? "today" : ""].filter(Boolean).join(" ");
       const mk = nm === SELF ? mpMarks(YEAR, MONTH, d) : "";
@@ -3790,7 +3792,7 @@ async function mpxAll(btn){
   const id = MPX.mid, mine = MPX.mine, C = mpCtx(id);
   if (PENDING.some(r => r.odCislo === SELF_NO && r.mesic === id && r.od && r.od.den === mine.den && r.od.kind === mine.kind && (r.stav === "ceka" || r.stav === "navrh"))){
     MPX.msg = `<p class="e">Na tuhle službu už máš otevřenou žádost – najdeš ji ve Výměnách.</p>`; mpRedraw(); return; }
-  const kdo = Object.entries(C ? C.T : {}).filter(([n, a]) => n !== SELF && OFFICERS[n] && !(a[mine.den - 1] || ".").split("+").some(p => kindOf(p) === mine.kind)).map(([n]) => n);
+  const kdo = Object.entries(C ? C.T : {}).filter(([n, a]) => n !== SELF && OFFICERS[n] && !(a[mine.den - 1] || ".").split("+").some(p => kindOf(p) === mine.kind || /^(NEM|NES)\*?$/.test(p))).map(([n]) => n);
   const body = `<div class="ask-row"><i>NABÍZÍŠ</i><span>→ ${fmtS(id, mine)}</span></div>
     <p style="margin:8px 0 0;font-size:14px">Nabídku dostane <b>${kdo.length}</b> ${kdo.length === 1 ? "kolega" : kdo.length >= 2 && kdo.length <= 4 ? "kolegové" : "kolegů"} – všichni kromě těch, kdo mají ${mine.den}. ${C.m + 1}. také ${mine.kind === "N" ? "noční" : "denní"} službu. Službu převezme ten, kdo ji vezme první.</p>${/\*$/.test(mine.kod) ? `<p style="margin:6px 0 0;font-size:14px">Kdo nabídku vezme, převezme i stálou službu.</p>` : ""}`;
   if (!await askConfirm("Nabídnout službu všem?", body, "Ano, nabídnout")) return;
@@ -3917,7 +3919,7 @@ function admCalHTML(name, sel, mark, all){
     const parts = tok === "." ? [] : tok.split("+");
     const codes = parts.map(p => p.replace(/\*$/, ""));
     const hasD = codes.includes("D12") || codes.includes("D8"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.some(isP);
-    const abs = codes.find(c => c === "DOV" || c === "ZdV");
+    const abs = codes.find(c => /^(DOV|ZdV|NEM|NES)$/.test(c));
     const shift = parts.find(p => kindOf(p)), kind = shift ? kindOf(shift) : null;
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
@@ -3942,8 +3944,8 @@ function admCalHTML(name, sel, mark, all){
   }
   return `<div class="cal-grid">${html}</div>`;
 }
-const ADM_CODES = ["D12","D8","N12","N13","Nz8","Nk7","Nk8","D2","D4","D5","DOV","ZdV"];
-const ADM_CODE_LBL = {D12:"D12 7–19", D8:"D8 10–18", N12:"N12 19–7", N13:"N13 19–8", Nz7:"Nz7 19–24", Nz8:"Nz8 19–24", Nk7:"Nk7 0–7", Nk8:"Nk8 0–8", D2:"D2 porada", D4:"D4 8–12", D5:"D5 8–13", DOV:"Dovolená", ZdV:"Zdr. volno"};
+const ADM_CODES = ["D12","D8","N12","N13","Nz8","Nk7","Nk8","D2","D4","D5","DOV","ZdV","NEM","NES"];
+const ADM_CODE_LBL = {D12:"D12 7–19", D8:"D8 10–18", N12:"N12 19–7", N13:"N13 19–8", Nz7:"Nz7 19–24", Nz8:"Nz8 19–24", Nk7:"Nk7 0–7", Nk8:"Nk8 0–8", D2:"D2 porada", D4:"D4 8–12", D5:"D5 8–13", DOV:"Dovolená", ZdV:"Zdr. volno", NEM:"Nemoc", NES:"Neschopenka"};
 // nový zápis dne z vybraných kódů (stálá = hvězdička u denní / noční služby)
 function admToken(){
   const c = ADM_CODES.filter(x => ADM.codes.includes(x));
