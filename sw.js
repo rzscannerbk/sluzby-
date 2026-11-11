@@ -27,6 +27,16 @@ self.addEventListener("notificationclick", e => {
   }));
 });
 
+// --- odznak s počtem na ikoně (iPhone od iOS 16.4, Android, počítač) ---
+// Při každé notifikaci +1; aplikace po otevření nastaví skutečný počet nepřečtených (zpráva „badge“).
+// Počet se drží v cache, protože service worker se mezi notifikacemi uspává.
+const BADGE_C = "sluzby-odznak", BADGE_K = "./__odznak";
+const badgeGet = () => caches.open(BADGE_C).then(c => c.match(BADGE_K)).then(r => r ? r.text() : "0").then(t => +t || 0).catch(() => 0);
+const badgeSet = n => caches.open(BADGE_C).then(c => c.put(BADGE_K, new Response(String(n)))).catch(() => {})
+  .then(() => { if (!self.navigator || !navigator.setAppBadge) return; return n > 0 ? navigator.setAppBadge(n) : navigator.clearAppBadge(); }).catch(() => {});
+self.addEventListener("push", e => { e.waitUntil(badgeGet().then(n => badgeSet(n + 1))); });
+self.addEventListener("message", e => { if (e.data && e.data.type === "badge") e.waitUntil(badgeSet(Math.max(0, +e.data.n || 0))); });
+
 // --- notifikace (Firebase Cloud Messaging) ---
 self.window = self; // firebase-config.js zapisuje do window
 try {
@@ -45,16 +55,16 @@ try {
 
 
 // Při každé změně souborů zvyš verzi, aby se stará cache smazala.
-const VERSION = "sluzby-v192";
+const VERSION = "sluzby-v193";
 const LIB_CACHE = "sluzby-knihovny";
 const CORE = [
   "./",
   "./index.html",
   "./desktop.html",
   "./sluzby-core.js",
-  "./sluzby-core.js?v=6.20",
+  "./sluzby-core.js?v=6.21",
   "./sluzby-chat.js",
-  "./sluzby-chat.js?v=6.20",
+  "./sluzby-chat.js?v=6.21",
   "./firebase-config.js",
   "./manifest.webmanifest",
   "./icon-192.png",
@@ -75,7 +85,7 @@ self.addEventListener("install", e => {
 self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== VERSION && k !== LIB_CACHE).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => k !== VERSION && k !== LIB_CACHE && k !== BADGE_C).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

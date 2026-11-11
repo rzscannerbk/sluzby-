@@ -886,7 +886,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v6.20</span>
+      <span class="ver" id="verDiag">v6.21</span>
     </div>
   </div>
 </header>
@@ -1021,8 +1021,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.20"></script>
-<script src="sluzby-chat.js?v=6.20"></script>
+<script src="sluzby-core.js?v=6.21"></script>
+<script src="sluzby-chat.js?v=6.21"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1744,7 +1744,7 @@ function chatStart(){
   if (!window.SluzbyChat || !SELF_NO || !db) return;
   SluzbyChat.init({db, firebase, me:SELF_NO, meName:() => SELF || SELF_EMAIL, officers:() => OFFICERS, isAdmin:isAdminUI(), now:getNow, kolize:sluzbaVDobeAkce,
     onAllowed: ok => { document.getElementById("btnChat").hidden = !ok; },
-    onBadge: n => { const b = document.getElementById("chatBadge"); b.hidden = !n; b.textContent = n > 99 ? "99+" : n; },
+    onBadge: n => { const b = document.getElementById("chatBadge"); b.hidden = !n; b.textContent = n > 99 ? "99+" : n; BADGE_CHAT = n; appBadge(); },
     onAdminChange: () => { if (!adm.hidden && ADM.tab === "uziv") renderAdm(); },
     onHlidky: () => hlBadges()});
   SluzbyChat.mountMe(document.getElementById("menuAv"));
@@ -1757,7 +1757,7 @@ function stop(){
   if (PRES){ PRES.stop(); PRES = null; }
   unwatchAll();
   if (unsubOfficers){ unsubOfficers(); unsubOfficers = null; }
-  stopSwaps(); stopNotes(); SELF = null; SELF_NO = null; updateSelfLabel(); ui2Set(false); x3Apply();
+  stopSwaps(); stopNotes(); SELF = null; SELF_NO = null; updateSelfLabel(); ui2Set(false); x3Apply(); try { if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {}); if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({type:"badge", n:0}); } catch (e){} BADGE_LAST = -1;
   PLAN = null; EFF = null; OFFICERS = {};
   renderEmpty("Odhlášeno", "Přihlas se pro zobrazení plánu.");
 }
@@ -2806,9 +2806,21 @@ const incoming = () => PENDING.filter(r => SELF_NO && !(r.typ === "nabidka" && r
   (r.stav === "ceka" && r.odCislo === SELF_NO && r.souhlas) ||
   (r.stav === "navrh" && r.odCislo === SELF_NO) ||
   (r.stav === "ceka" && r.zaCislo == null && r.odCislo !== SELF_NO && !HIDDEN.has(r.id))));
+// odznak na ikoně aplikace = čekající výměny + nepřečtené zprávy v chatu
+var BADGE_CHAT = 0, BADGE_LAST = -1;
+function appBadge(){
+  if (!SELF_NO) return;
+  let n = BADGE_CHAT || 0;
+  try { n += incoming().length || 0; } catch (e){ return; } // výměny se ještě nenačetly
+  if (n === BADGE_LAST) return; BADGE_LAST = n;
+  try { if (navigator.setAppBadge) (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {}); } catch (e){}
+  try { if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({type:"badge", n}); } catch (e){}
+}
+// po návratu do aplikace přepsat počet, který mezitím zvyšovaly notifikace
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible"){ BADGE_LAST = -1; appBadge(); } });
 function updateBadge(){
   const b = document.getElementById("swapBadge"), n = incoming().length;
-  b.textContent = n; b.hidden = !n;
+  b.textContent = n; b.hidden = !n; appBadge();
   document.getElementById("btnSwap").setAttribute("aria-label", n ? `Výměny služeb, ${n} čeká` : "Výměny služeb");
 }
 
