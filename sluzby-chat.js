@@ -451,6 +451,12 @@ const STYLE = `
 .pq-del{flex:none;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--line,#C9CED8);background:transparent;color:inherit;font-size:14px}
 .pq-add{align-self:flex-start;border:0;background:none;color:#1E63C6;font:inherit;font-weight:700;padding:4px 2px;cursor:pointer}
 .pq-chk{display:flex;align-items:center;gap:8px;font-size:15px}
+.pq-foto{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pq-fb{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;border:1.5px solid var(--line,#C9CED8);font-size:15px;font-weight:600;cursor:pointer}
+.pq-fp{position:relative}
+.pq-fp img{display:block;height:64px;max-width:120px;object-fit:cover;border-radius:10px}
+.pq-fp button{position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;border:0;background:#1D2A4D;color:#fff;font-size:12px;cursor:pointer}
+.pq-img{display:block;width:100%;max-width:320px;max-height:260px;object-fit:cover;border-radius:12px;margin:0 0 8px;cursor:zoom-in}
 .pq-chk input{width:20px;height:20px}
 .pq-err{color:#D04848;font-weight:600;margin:0}
 .pq-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
@@ -1117,7 +1123,7 @@ function renderMsgs(autoscroll, keepScroll){
       pics = `<div class="ch-grid n${Math.min(imgs.length, 4)}">${show.map((x, i) => `<button type="button" data-chgal="${m.id}" data-i="${i}" aria-label="Fotka ${i + 1} z ${imgs.length}"><img src="${x.image}" alt="" loading="lazy">${i === 3 && more > 0 ? `<span class="more">+${more}</span>` : ""}</button>`).join("")}</div>`;
     }
     const isPk = !!((m.hra || m.lode || m.pexeso || m.sachy) && !m.smazano), isPoll = !!(m.anketa && !m.smazano);
-    const body = isPoll ? pollHTML(m) : isPk ? (m.lode ? ldoCardHTML(m.lode, m) : m.pexeso ? pxCardHTML(m.pexeso, m) : m.sachy ? shCardHTML(m.sachy, m) : pkCardHTML(m.hra, m)) : allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.preposlano ? `<span class="ch-fwd">${ic(ICO.fwd, 14)}Přeposláno od ${esc(m.preposlano.jmeno || "")}</span>` : ""}${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.oznameni && !m.smazano ? oznHead(m) : ""}${m.adresa && !m.smazano ? adrHTML(m.adresa) + `<span class="ozn-nad">${esc((m.oznameni && m.oznameni.druh) || "Oznámení")}</span>` : ""}${m.oznameni && !m.smazano ? oznFoot(m) : ""}${m.text && !m.smazano ? linkify(m.text) : ""}`;
+    const body = isPoll ? (m.image && !m.smazano ? `<img class="pq-img" src="${m.image}" alt="Fotka k anketě" data-chgal="${m.id}" data-i="0" loading="lazy">` : "") + pollHTML(m) : isPk ? (m.lode ? ldoCardHTML(m.lode, m) : m.pexeso ? pxCardHTML(m.pexeso, m) : m.sachy ? shCardHTML(m.sachy, m) : pkCardHTML(m.hra, m)) : allDel ? `<span class="ch-del">${it.list.length > 1 ? "Fotky byly smazány" : "Zpráva byla smazána"}</span>` : `${m.preposlano ? `<span class="ch-fwd">${ic(ICO.fwd, 14)}Přeposláno od ${esc(m.preposlano.jmeno || "")}</span>` : ""}${m.replyTo ? `<button type="button" class="ch-q" data-chgo="${esc(m.replyTo.id)}"><b>${esc(m.replyTo.jmeno || "")}</b>${esc(m.replyTo.text || "📷 Fotka")}</button>` : ""}${pics}${m.oznameni && !m.smazano ? oznHead(m) : ""}${m.adresa && !m.smazano ? adrHTML(m.adresa) + `<span class="ozn-nad">${esc((m.oznameni && m.oznameni.druh) || "Oznámení")}</span>` : ""}${m.oznameni && !m.smazano ? oznFoot(m) : ""}${m.text && !m.smazano ? linkify(m.text) : ""}`;
     html += `<div class="ch-m${mine ? " mine" : ""}${hit ? " hit" : ""}${isPk ? " pk" : ""}" data-mid="${m.id}">${group && !mine && lastFrom !== m.od ? `<span class="ch-who">${esc(m.jmeno || nameOf(m.od))}</span>` : ""}
       <div class="ch-bub">${body}<div class="ch-meta">${imgs.length > 1 ? `${imgs.length} ${imgs.length < 5 ? "fotky" : "fotek"} · ` : ""}${m.upraveno && !m.smazano ? "upraveno · " : ""}${hm(ms(lastM.at))}</div></div>${rx ? `<div class="ch-rx">${rx}</div>` : ""}${allDel ? "" : `<button type="button" class="ch-more" data-chmore="${m.id}" aria-label="Možnosti zprávy">⋯</button>`}</div>`;
     const stM = it.list.includes(lastMine) ? lastMine : (mine && it.list.some(x => x.id === S.infoMid) ? lastM : null);
@@ -3333,23 +3339,42 @@ function openPollSheet(){
   };
   s.innerHTML = `<div role="dialog" aria-label="Nová anketa"><h3>📊 Nová anketa</h3>
     <textarea id="pqQ" rows="2" maxlength="300" placeholder="Otázka – např. Kdo jde v pátek na školení?"></textarea>
+    <div class="pq-foto"><label class="pq-fb"><input type="file" id="pqF" accept="image/*" hidden>📷 <span id="pqFl">Přidat fotku</span></label><div id="pqFp" class="pq-fp" hidden><img alt=""><button type="button" data-pq="fx" aria-label="Odebrat fotku">✕</button></div></div>
     <label class="pq-chk"><input type="checkbox" id="pqAkce"> 📅 Akce s datem a časem</label>
     <div id="pqAk" class="pq-ak" hidden>
       <label>Datum<input type="date" id="pqDat"></label>
       <label class="pq-chk"><input type="checkbox" id="pqCd"> Celý den</label>
       <div class="pq-tm" id="pqTm"><label>Od<input type="time" id="pqOd" value="08:00"></label><label>Do<input type="time" id="pqDo" value="12:00"></label></div>
-      <p class="pq-info">Odpovědi budou <b>Přijdu · Možná · Nepřijdu</b>. Kdo dá „Přijdu“, uvidí akci ve svém plánu a den předem dostane připomínku. Kdo dá „Možná“, dostane každý třetí den dotaz na potvrzení.</p>
+      <label class="pq-chk"><input type="checkbox" id="pqMoz" checked> Nabídnout i odpověď „Možná“</label>
+      <p class="pq-info">Odpovědi budou <b>Přijdu · Možná · Nepřijdu</b> (bez „Možná“ jen Přijdu · Nepřijdu). Kdo dá „Přijdu“, uvidí akci ve svém plánu a den předem dostane připomínku. Kdo dá „Možná“, dostane každý třetí den dotaz na potvrzení.</p>
     </div>
     <div id="pqPl"><div id="pqOpts"></div>
     <button type="button" class="pq-add" data-pq="add">+ Přidat možnost</button>
     <label class="pq-chk"><input type="checkbox" id="pqMulti"> Lze vybrat víc možností</label></div>
+    <label class="pq-chk"><input type="checkbox" id="pqKon"> ⏱ Automaticky ukončit</label>
+    <div class="pq-tm" id="pqKonBox" hidden><label>Den<input type="date" id="pqKd"></label><label>Čas<input type="time" id="pqKt" value="18:00"></label></div>
     <p class="pq-err" id="pqErr" hidden></p>
     <div class="pq-btns"><button type="button" class="pq-b sec" data-pq="x">Zrušit</button><button type="button" class="pq-b" data-pq="send">Odeslat anketu</button></div></div>`;
+  let foto = null, fotoUrl = null;
+  const fotoSet = f => {
+    if (fotoUrl) URL.revokeObjectURL(fotoUrl); foto = f || null; fotoUrl = f ? URL.createObjectURL(f) : null;
+    const pv = s.querySelector("#pqFp"); pv.hidden = !f; if (f) pv.querySelector("img").src = fotoUrl;
+    s.querySelector("#pqFl").textContent = f ? "Změnit fotku" : "Přidat fotku";
+  };
+  // fotka do ankety se zmenší stejně jako fotky v chatu
+  const fotoData = async () => foto ? {image:await compress(foto)} : {};
   s.addEventListener("input", e => { const i = e.target.dataset.pqi; if (i != null) opts[+i] = e.target.value; });
   s.addEventListener("change", e => {
     if (e.target.id === "pqAkce"){ const on = e.target.checked; s.querySelector("#pqAk").hidden = !on; s.querySelector("#pqPl").hidden = on;
       if (on && !s.querySelector("#pqDat").value){ const t = new Date(now() + 864e5); s.querySelector("#pqDat").value = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`; } }
     if (e.target.id === "pqCd") s.querySelector("#pqTm").hidden = e.target.checked;
+    if (e.target.id === "pqKon"){ s.querySelector("#pqKonBox").hidden = !e.target.checked;
+      if (e.target.checked && !s.querySelector("#pqKd").value){ const ad = s.querySelector("#pqAkce").checked && s.querySelector("#pqDat").value, t = new Date(now() + 2 * 864e5);
+        // u akce předvyplnit den před akcí, jinak pozítří
+        let v = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+        if (ad){ const [y, mm, d] = ad.split("-").map(Number), p = new Date(y, mm - 1, d - 1); v = `${p.getFullYear()}-${String(p.getMonth() + 1).padStart(2, "0")}-${String(p.getDate()).padStart(2, "0")}`; }
+        s.querySelector("#pqKd").value = v; } }
+    if (e.target.id === "pqF"){ fotoSet(e.target.files && e.target.files[0]); e.target.value = ""; }
   });
   s.addEventListener("click", async e => {
     if (e.target === s){ closeSheet(); return; }
@@ -3357,16 +3382,25 @@ function openPollSheet(){
     const b = e.target.closest("[data-pq]"); if (!b) return;
     const a = b.dataset.pq;
     if (a === "x"){ closeSheet(); return; }
+    if (a === "fx"){ fotoSet(null); return; }
     if (a === "add"){ if (opts.length < 8){ opts.push(""); draw(); const ins = s.querySelectorAll("[data-pqi]"); ins[ins.length - 1].focus(); } return; }
     if (a === "send"){
       const q = s.querySelector("#pqQ").value.trim(), err = s.querySelector("#pqErr"), ak = s.querySelector("#pqAkce").checked;
+      let konec = null;
+      if (s.querySelector("#pqKon").checked){
+        const kd = s.querySelector("#pqKd").value, kt = s.querySelector("#pqKt").value || "00:00";
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(kd)){ err.textContent = "Vyber den, kdy se má anketa ukončit."; err.hidden = false; return; }
+        const [y, mm, d] = kd.split("-").map(Number), [h, mi] = kt.split(":").map(Number); konec = new Date(y, mm - 1, d, h, mi).getTime();
+        if (konec <= now()){ err.textContent = "Čas ukončení musí být v budoucnu."; err.hidden = false; return; }
+      }
+      const kx = konec ? {konec} : {};
       if (ak){
         const datum = s.querySelector("#pqDat").value, cd = s.querySelector("#pqCd").checked, od = s.querySelector("#pqOd").value, dd = s.querySelector("#pqDo").value;
         const bad = !q ? "Napiš název akce." : !/^\d{4}-\d{2}-\d{2}$/.test(datum) ? "Vyber datum akce." : !cd && (!od || !dd || dd <= od) ? "Čas „do“ musí být později než „od“." : "";
         if (bad){ err.textContent = bad; err.hidden = false; return; }
         const akce = {datum, celodenni:cd, od:cd ? null : od, do:cd ? null : dd};
         b.disabled = true;
-        try { await writeMsg({text:`📅 ${q} – ${akceKdy(akce)}`, anketa:{otazka:q, moznosti:["Přijdu", "Možná", "Nepřijdu"], vice:false, akce}, hlasy:{}}); closeSheet(); S.atBottom = true; stickBottom(); }
+        try { await writeMsg({text:`📅 ${q} – ${akceKdy(akce)}`, anketa:{otazka:q, moznosti:["Přijdu", "Možná", "Nepřijdu"], vice:false, akce, ...kx, ...(s.querySelector("#pqMoz").checked ? {} : {bezMozna:true})}, hlasy:{}, ...(await fotoData())}); closeSheet(); S.atBottom = true; stickBottom(); }
         catch (er){ b.disabled = false; err.textContent = "Akci se nepodařilo odeslat."; err.hidden = false; }
         return;
       }
@@ -3374,7 +3408,7 @@ function openPollSheet(){
       if (!q || mo.length < 2){ err.textContent = !q ? "Napiš otázku." : "Zadej aspoň dvě možnosti."; err.hidden = false; return; }
       if (new Set(mo.map(x => x.toLowerCase())).size !== mo.length){ err.textContent = "Možnosti se nesmí opakovat."; err.hidden = false; return; }
       b.disabled = true;
-      try { await writeMsg({text:"📊 " + q, anketa:{otazka:q, moznosti:mo, vice:s.querySelector("#pqMulti").checked}, hlasy:{}}); closeSheet(); S.atBottom = true; stickBottom(); }
+      try { await writeMsg({text:"📊 " + q, anketa:{otazka:q, moznosti:mo, vice:s.querySelector("#pqMulti").checked, ...kx}, hlasy:{}, ...(await fotoData())}); closeSheet(); S.atBottom = true; stickBottom(); }
       catch (er){ b.disabled = false; err.textContent = "Anketu se nepodařilo odeslat."; err.hidden = false; }
     }
   });
@@ -3382,8 +3416,11 @@ function openPollSheet(){
   setTimeout(() => { const q = s.querySelector("#pqQ"); if (q) q.focus(); }, 60);
 }
 const akceKdy = a => { const [y, mm, d] = String(a.datum).split("-").map(Number), t = new Date(y, mm - 1, d); return `${DOW_S[t.getDay()]} ${d}. ${mm}. ${a.celodenni ? "celý den" : `${a.od}–${a.do}`}`; };
+// anketa je ukončená ručně (uzavreno) nebo uplynul nastavený čas ukončení
+const pollClosed = m => !!m.uzavreno || !!(m.anketa && m.anketa.konec && now() >= m.anketa.konec);
+const konecTxt = t => { const d = new Date(t); return `${DOW_S[d.getDay()]} ${d.getDate()}. ${d.getMonth() + 1}. v ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`; };
 function pollHTML(m){
-  const a = m.anketa || {}, mo = a.moznosti || [], H = m.hlasy || {}, me = String(O.me), closed = !!m.uzavreno;
+  const a = m.anketa || {}, mo = a.moznosti || [], H = m.hlasy || {}, me = String(O.me), closed = pollClosed(m);
   if (a.akce) return akceHTML(m);
   const of = c => (H[c] || []).map(Number);
   const voters = Object.keys(H).filter(c => of(c).length), mine = of(me);
@@ -3391,26 +3428,27 @@ function pollHTML(m){
     const who = voters.filter(c => of(c).includes(i)), n = who.length, pct = voters.length ? Math.round(n / voters.length * 100) : 0, my = mine.includes(i);
     return `<button type="button" class="pq-o${my ? " my" : ""}" data-chvote="${esc(m.id)}:${i}"${closed ? " disabled" : ""} aria-pressed="${my}"><span class="pq-bar" style="width:${pct}%"></span><span class="pq-t"><i>${my ? "✓" : ""}</i><span class="ik-no">${esc(o)}</span></span><span class="pq-n">${n}</span>${n ? `<small class="pq-w">${esc(who.map(c => surname(nameOf(c))).join(", "))}</small>` : ""}</button>`;
   }).join("");
-  return `<div class="ch-poll"><b class="pq-q">📊 <span class="ik-no">${esc(a.otazka || "")}</span></b><small class="pq-sub">${closed ? "Anketa je ukončená" : a.vice ? "Můžeš vybrat víc možností" : "Vyber jednu možnost"}</small>${rows}
+  return `<div class="ch-poll"><b class="pq-q">📊 <span class="ik-no">${esc(a.otazka || "")}</span></b><small class="pq-sub">${closed ? "Anketa je ukončená" : a.vice ? "Můžeš vybrat víc možností" : "Vyber jednu možnost"}${!closed && a.konec ? ` · končí ${esc(konecTxt(a.konec))}` : ""}</small>${rows}
     <small class="pq-sum">${voters.length} ${hlasTxt(voters.length)}${String(m.od) === me && !closed ? ` · <button type="button" class="pq-end" data-chpollend="${esc(m.id)}">Ukončit anketu</button>` : ""}</small></div>`;
 }
 function akceHTML(m){
-  const a = m.anketa, ak = a.akce, H = m.hlasy || {}, me = String(O.me), closed = !!m.uzavreno;
+  const a = m.anketa, ak = a.akce, H = m.hlasy || {}, me = String(O.me), closed = pollClosed(m);
   const of = c => (H[c] || []).map(Number), voters = Object.keys(H).filter(c => of(c).length), mine = of(me)[0];
   const [y, mm, d] = String(ak.datum).split("-").map(Number), past = new Date(y, mm - 1, d + 1).getTime() <= now();
   const ICO_A = ["✓", "?", "✕"], CLS = ["yes", "may", "no"];
   const kol = mine === 0 && typeof O.kolize === "function" ? O.kolize(ak) : null;
   const rows = (a.moznosti || []).map((o, i) => {
+    if (i === 1 && a.bezMozna) return "";
     const who = voters.filter(c => of(c).includes(i)), my = mine === i;
     return `<button type="button" class="pq-o ak ${CLS[i]}${my ? " my" : ""}" data-chvote="${esc(m.id)}:${i}"${closed || past ? " disabled" : ""} aria-pressed="${my}"><span class="pq-t"><i>${ICO_A[i]}</i>${esc(o)}</span><span class="pq-n">${who.length}</span>${who.length ? `<small class="pq-w">${esc(who.map(c => surname(nameOf(c))).join(", "))}</small>` : ""}</button>`;
   }).join("");
   return `<div class="ch-poll"><b class="pq-q">📅 <span class="ik-no">${esc(a.otazka || "Akce")}</span></b><span class="pq-when">${esc(akceKdy(ak))}</span>
-    <small class="pq-sub">${past ? "Akce už proběhla" : closed ? "Přihlašování je ukončené" : mine === 0 ? "Přijdeš – akce je ve tvém plánu" : mine === 1 ? "Možná – budeme se ptát, jestli přijdeš" : "Dej vědět, jestli přijdeš"}</small>
+    <small class="pq-sub">${past ? "Akce už proběhla" : closed ? "Přihlašování je ukončené" : mine === 0 ? "Přijdeš – akce je ve tvém plánu" : mine === 1 ? "Možná – budeme se ptát, jestli přijdeš" : "Dej vědět, jestli přijdeš"}${!closed && !past && a.konec ? ` · přihlášky do ${esc(konecTxt(a.konec))}` : ""}</small>
     ${kol ? `<small class="pq-kol">⚠️ ${esc(kol)}</small>` : ""}${rows}
     <small class="pq-sum">${voters.length} ${voters.length === 1 ? "odpověď" : voters.length >= 2 && voters.length <= 4 ? "odpovědi" : "odpovědí"}${String(m.od) === me && !closed && !past ? ` · <button type="button" class="pq-end" data-chpollend="${esc(m.id)}">Ukončit přihlašování</button>` : ""}</small></div>`;
 }
 function pollVote(mid, i){
-  const m = (S.msgs || []).find(x => x.id === mid); if (!m || !m.anketa || m.uzavreno) return;
+  const m = (S.msgs || []).find(x => x.id === mid); if (!m || !m.anketa || pollClosed(m)){ if (m && m.anketa) renderMsgs(false); return; }
   if (m.anketa.akce){ const [y, mm, d] = String(m.anketa.akce.datum).split("-").map(Number); if (new Date(y, mm - 1, d + 1).getTime() <= now()) return; }
   const me = String(O.me); let cur = ((m.hlasy || {})[me] || []).map(Number);
   if (m.anketa.vice) cur = cur.includes(i) ? cur.filter(x => x !== i) : cur.concat(i).sort((a, b) => a - b);
