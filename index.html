@@ -399,6 +399,7 @@ button.cal-day{cursor:pointer}
 .vp-opts button[aria-pressed="true"] small{color:#FFE1E1}
 .cal-day .vne{position:absolute;left:3px;right:3px;bottom:3px;border-radius:5px;background:#D04848;color:#fff;font-family:var(--f-body);font-size:9.5px;font-weight:700;line-height:1;padding:2px 0;text-align:center}
 .cal-day.has-ne small{display:none}
+.cal-day .vne.ak{background:#2F6FDB}
 .cal-day .vne.v{background:#E07C7C;font-size:8.5px;letter-spacing:-.2px;left:1px;right:1px}
 .cal-day.has-ne{justify-content:flex-start;padding-top:8px;outline:2px dashed #D04848;outline-offset:-2px}
 .vol-ne{margin-top:18px;padding:10px 12px;border-radius:8px;background:rgba(224,124,124,.12);border-left:4px solid #D04848;font-size:15px;line-height:1.45;position:relative;padding-right:58px}
@@ -886,7 +887,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v6.23</span>
+      <span class="ver" id="verDiag">v6.24</span>
     </div>
   </div>
 </header>
@@ -1021,8 +1022,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.23"></script>
-<script src="sluzby-chat.js?v=6.23"></script>
+<script src="sluzby-core.js?v=6.24"></script>
+<script src="sluzby-chat.js?v=6.24"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1973,6 +1974,7 @@ function startNotes(){
     if (!vol.hidden) fillVol();
     render();
     if (!mplan.hidden) mpRedraw();
+    if (!vol.hidden) fillVol();
   }, () => {});
   startAkce();
 }
@@ -2538,8 +2540,8 @@ function fillVol(){
     if (c === "D") cD++; if (c === "N") cN++;
     const cls = c === "D" ? "k-d" : c === "N" ? "k-n" : (wd === 0 || wd === 6 ? "we" : "");
     const lbl = c === "D" ? "D12" : c === "N" ? "N12" : "";
-    const t = volTypeOf(k, V), dg = drag && drag.has(k);
-    html += `<button type="button" class="cal-day ${cls}${t ? " has-ne" : ""}${dg ? " vdrag" + (volDrag.rem ? " vrem" : "") : ""}" data-vk="${k}" aria-label="${d}. ${m+1}.${lbl ? " " + lbl : ""}${t ? ", " + volTag(t, k) : ""}">${d}${lbl ? `<small>${lbl}</small>` : ""}${t ? `<span class="vne${t === "V" || t === "F" ? " v" : ""}">${volTag(t, k)}</span>` : ""}</button>`;
+    const t = volTypeOf(k, V), dg = drag && drag.has(k), ak = !t && (AKCE || []).some(a => a.datum === k);
+    html += `<button type="button" class="cal-day ${cls}${t ? " has-ne" : ""}${dg ? " vdrag" + (volDrag.rem ? " vrem" : "") : ""}" data-vk="${k}" aria-label="${d}. ${m+1}.${lbl ? " " + lbl : ""}${t ? ", " + volTag(t, k) : ""}">${d}${lbl ? `<small>${lbl}</small>` : ""}${t ? `<span class="vne${t === "V" || t === "F" ? " v" : ""}">${volTag(t, k)}</span>` : ak ? `<span class="vne ak">akce</span>` : ""}</button>`;
   }
   const g = document.getElementById("volGrid");
   g.innerHTML = html; g.classList.toggle("picking", !!volMode);
@@ -2554,9 +2556,9 @@ function fillVol(){
     : volHintWarn ? "Nejdřív vyber tlačítkem nad tímto textem, co chceš zadat."
     : "Vyber druh tlačítkem (zčervená) a pak klepni na dny v kalendáři nebo táhni prstem od–do. Mazat můžeš tlačítkem ✕ Smazat. Vše se ukládá hned.";
   // shrnutí měsíce + sdílení, roční dovolená
-  const ym = `${y}-${String(m + 1).padStart(2, "0")}`, x = reqMonthData(ym), any = x.vd.length + x.F.length + x.Z.length + x.D.length + x.N.length;
+  const ym = `${y}-${String(m + 1).padStart(2, "0")}`, x = reqMonthData(ym), any = x.vd.length + x.F.length + x.Z.length + x.D.length + x.N.length + x.A.length;
   const volRows = volGroups(x.vd).map(g => `<p><b>${g.label.replace(/ \d{4}$/, "")}:</b> ${volLine(volStats(g.dny))}</p>`).join("");
-  const box = any ? `<div class="vol-ne"><h3>Požadavky – ${ymName(ym)}</h3>${volRows}${x.F.length ? `<p><b>Volno:</b> ${praniDays(x.F)}</p>` : ""}${x.Z.length ? `<p><b>ZdV:</b> ${praniDays(x.Z)}</p>` : ""}${x.D.length ? `<p><b>Ne den:</b> ${praniDays(x.D)}</p>` : ""}${x.N.length ? `<p><b>Ne noc:</b> ${praniDays(x.N)}</p>` : ""}
+  const box = any ? `<div class="vol-ne"><h3>Požadavky – ${ymName(ym)}</h3>${volRows}${x.F.length ? `<p><b>Volno:</b> ${praniDays(x.F)}</p>` : ""}${x.A.map(a => `<p><b>Akce:</b> ${praniDays([a.datum])} – ${esc(a.nazev || "akce")} (${esc(akceCas(a))})</p>`).join("")}${x.Z.length ? `<p><b>ZdV:</b> ${praniDays(x.Z)}</p>` : ""}${x.D.length ? `<p><b>Ne den:</b> ${praniDays(x.D)}</p>` : ""}${x.N.length ? `<p><b>Ne noc:</b> ${praniDays(x.N)}</p>` : ""}
       <button type="button" class="vol-share" data-pshare="${ym}" aria-label="Sdílet požadavky na ${ymName(ym)}">${SHARE_SVG}</button></div><button type="button" class="link-btn" data-vclr="${ym}" style="margin-top:8px">Smazat všechny požadavky na ${MONTHS[m].toLowerCase()}</button>`
     : `<p class="note-hint" style="margin-top:14px">Na ${MONTHS[m].toLowerCase()} zatím nemáš žádné požadavky.</p>`;
   const yr = [...V].filter(k => k.startsWith(y + "-")), t = volStats(yr), sl = t.d + t.n;
@@ -2573,11 +2575,14 @@ function reqMonths(){
   const set = new Set();
   MY_VOLP.forEach(e => e.dny.forEach(k => set.add(k.slice(0, 7))));
   Object.keys(MY_PRANI).forEach(k => set.add(k.slice(0, 7)));
+  (AKCE || []).forEach(a => { if (a.datum) set.add(a.datum.slice(0, 7)); });
   return [...set].sort();
 }
 function reqMonthData(ym){
   const vd = []; MY_VOLP.forEach(e => e.dny.forEach(k => { if (k.startsWith(ym)) vd.push(k); }));
-  return {vd:vd.sort(), F:praniKeys("F", ym), D:praniKeys("D", ym), N:praniKeys("N", ym), Z:praniKeys("Z", ym)};
+  // akce, na které se strážník přihlásil („Přijdu“) – patří do požadavků jako den, kdy nemůže sloužit
+  const A = (AKCE || []).filter(a => a.datum && a.datum.startsWith(ym));
+  return {vd:vd.sort(), F:praniKeys("F", ym), D:praniKeys("D", ym), N:praniKeys("N", ym), Z:praniKeys("Z", ym), A};
 }
 const ymName = ym => { const [y, m] = ym.split("-").map(Number); return `${MONTHS[m-1]} ${y}`; };
 // text ke sdílení – jen čísla dnů (vždy jeden měsíc), souvislé dny jako rozsah, podle dnů od 1. dál
@@ -2590,6 +2595,7 @@ function praniText(ym){
   volGroups(x.Z).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} ZdV`]));
   volGroups(x.D).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} ne den`]));
   volGroups(x.N).forEach(g => rows.push([g.dny[0], `${rng(g.dny)} ne noc`]));
+  x.A.forEach(a => rows.push([a.datum, `${dparse(a.datum).d}. akce – ${a.nazev || "akce"} (${akceCas(a)})`]));
   rows.sort((p, q) => p[0] < q[0] ? -1 : 1).forEach(r => lines.push(r[1]));
   return lines.join("\n");
 }
