@@ -19,7 +19,8 @@ const CODES = {
   DOV:{k:"A", label:"Dovolená"},
   ZdV:{k:"A", label:"Zdravotní volno"},
   NEM:{k:"A", label:"Nemoc"},
-  NES:{k:"A", label:"Neschopenka"}
+  NES:{k:"A", label:"Neschopenka"},
+  "hŘD":{k:"A", label:"Dobírání dovolené"}
 };
 const DOW = ["ne","po","út","st","čt","pá","so"];
 const DOW_FULL = ["neděle","pondělí","úterý","středa","čtvrtek","pátek","sobota"];
@@ -148,7 +149,7 @@ function intervals(T, name, y, m){
 }
 function checkPerson(T, name, days, y, m, out, skipAbs){
   const tok = n => (T[name] && T[name][n-1]) || ".";
-  if (!skipAbs) days.forEach(d => { if (/DOV|ZdV|NEM|NES/.test(tok(d)) && tok(d).split("+").some(p => kindOf(p))) out.e.push(`${name} má ${d}. ${m+1}. ${/NES/.test(tok(d)) ? "neschopenku" : /NEM/.test(tok(d)) ? "nemoc" : /ZdV/.test(tok(d)) ? "zdravotní volno" : "dovolenou"}.`); });
+  if (!skipAbs) days.forEach(d => { if (/DOV|ZdV|NEM|NES|hŘD/.test(tok(d)) && tok(d).split("+").some(p => kindOf(p))) out.e.push(`${name} má ${d}. ${m+1}. ${/NES/.test(tok(d)) ? "neschopenku" : /NEM/.test(tok(d)) ? "nemoc" : /ZdV/.test(tok(d)) ? "zdravotní volno" : /hŘD/.test(tok(d)) ? "dobírání dovolené" : "dovolenou"}.`); });
   const iv = intervals(T, name, y, m);
   for (let k = 0; k < iv.length - 1; k++){
     const a = iv[k], b = iv[k+1];

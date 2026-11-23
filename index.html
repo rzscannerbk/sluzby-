@@ -887,7 +887,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v6.24</span>
+      <span class="ver" id="verDiag">v6.25</span>
     </div>
   </div>
 </header>
@@ -1022,8 +1022,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.24"></script>
-<script src="sluzby-chat.js?v=6.24"></script>
+<script src="sluzby-core.js?v=6.25"></script>
+<script src="sluzby-chat.js?v=6.25"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1884,12 +1884,12 @@ function fillCal(){
     const hasD = parts.some(p => p.code === "D12");
     const hasN = parts.some(p => NIGHT.includes(p.code));
     const hasP = parts.some(p => isP(p.code));
-    const abs = parts.find(p => /^(DOV|ZdV|NEM|NES)$/.test(p.code));
+    const abs = parts.find(p => /^(DOV|ZdV|NEM|NES|hŘD)$/.test(p.code));
     const st = parts.some(p => p.st);
     if (hasD) cD++; if (hasN && !parts.every(p => isK(p.code))) cN++; if (hasP) cP++; if (st) cS++; if (abs) cA++;
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
-    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs", /^NE[MS]$/.test(abs) ? "sick" : "a-x");
+    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs", /^NE[MS]$/.test(abs.code || abs) ? "sick" : "a-x");
     if (st) cls.push("stala");
     if (wd === 0 || wd === 6) cls.push("we");
     if (date < today) cls.push("past");
@@ -3248,12 +3248,12 @@ function swapCalHTML(name, mine){
     const parts = tok === "." ? [] : tok.split("+");
     const codes = parts.map(p => p.replace(/\*$/, ""));
     const hasD = codes.includes("D12") || codes.includes("D8"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.some(isP);
-    const abs = codes.find(c => /^(DOV|ZdV|NEM|NES)$/.test(c));
+    const abs = codes.find(c => /^(DOV|ZdV|NEM|NES|hŘD)$/.test(c));
     const shift = parts.find(p => kindOf(p));
     const kind = shift ? kindOf(shift) : null;
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
-    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs", /^NE[MS]$/.test(abs) ? "sick" : "a-x");
+    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs", /^NE[MS]$/.test(abs.code || abs) ? "sick" : "a-x");
     if (parts.some(p => p.endsWith("*"))) cls.push("stala");
     if (wd === 0 || wd === 6) cls.push("we");
     if (date.getTime() === today.getTime()) cls.push("today");
@@ -3276,7 +3276,7 @@ function canTakeMine(name){
   // v den mé služby nesmí mít dovolenou, zdravotní volno ani stejný typ služby
   const m = SW && SW.mine; if (!m) return true;
   const parts = ((EFF_T[name] || [])[m.den-1] || ".").split("+");
-  if (parts.some(p => /^(DOV|ZdV|NEM|NES)$/.test(p))) return false;
+  if (parts.some(p => /^(DOV|ZdV|NEM|NES|hŘD)$/.test(p))) return false;
   if (parts.some(p => kindOf(p) === m.kind)) return false;
   return true;
 }
@@ -3310,10 +3310,10 @@ function dayPickHTML(id, mine){
     const parts = (toks[d-1] || ".") === "." ? [] : toks[d-1].split("+");
     const codes = parts.map(p => p.replace(/\*$/, ""));
     const hasD = codes.includes("D12") || codes.includes("D8"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.some(isP);
-    const abs = codes.find(c => /^(DOV|ZdV|NEM|NES)$/.test(c));
+    const abs = codes.find(c => /^(DOV|ZdV|NEM|NES|hŘD)$/.test(c));
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
-    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs", /^NE[MS]$/.test(abs) ? "sick" : "a-x");
+    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs", /^NE[MS]$/.test(abs.code || abs) ? "sick" : "a-x");
     if (parts.some(p => p.endsWith("*"))) cls.push("stala");
     if (wd === 0 || wd === 6) cls.push("we");
     if (date.getTime() === today.getTime()) cls.push("today");
@@ -3346,7 +3346,7 @@ function dayPickHTML(id, mine){
 function moveKinds(d, mine){
   const now = getNow();
   const parts = ((EFF_T[SELF] || [])[d-1] || ".") === "." ? [] : EFF_T[SELF][d-1].split("+");
-  if (parts.some(p => /^(DOV|ZdV|NEM|NES)$/.test(p))) return [];
+  if (parts.some(p => /^(DOV|ZdV|NEM|NES|hŘD)$/.test(p))) return [];
   const have = new Set(parts.filter(p => !(d === mine.den && kindOf(p) === mine.kind)).map(p => kindOf(p)).filter(Boolean));
   return ["D", "N"].filter(k => !have.has(k) && !(d === mine.den && k === mine.kind)
     && windowOf(new Date(YEAR, MONTH, d), k === "D" ? "D12" : "N12")[0] > now);
@@ -3362,10 +3362,10 @@ function moveCalHTML(id, mine){
     const parts = (toks[d-1] || ".") === "." ? [] : toks[d-1].split("+");
     const codes = parts.map(p => p.replace(/\*$/, ""));
     const hasD = codes.includes("D12") || codes.includes("D8"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.some(isP);
-    const abs = codes.find(c => /^(DOV|ZdV|NEM|NES)$/.test(c));
+    const abs = codes.find(c => /^(DOV|ZdV|NEM|NES|hŘD)$/.test(c));
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
-    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs", /^NE[MS]$/.test(abs) ? "sick" : "a-x");
+    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs", /^NE[MS]$/.test(abs.code || abs) ? "sick" : "a-x");
     if (parts.some(p => p.endsWith("*"))) cls.push("stala");
     if (wd === 0 || wd === 6) cls.push("we");
     if (date.getTime() === today.getTime()) cls.push("today");
@@ -3673,7 +3673,7 @@ function mpHTML(){
       const parts = tok === "." ? [] : tok.split("+");
       const codes = parts.map(p => p.replace(/\*$/, ""));
       const kD = parts.find(p => kindOf(p) === "D"), kN = parts.find(p => kindOf(p) === "N");
-      const hasP = codes.some(isP), abs = codes.find(c => /^(DOV|ZdV|NEM|NES)$/.test(c)), k8 = codes.some(isK);
+      const hasP = codes.some(isP), abs = codes.find(c => /^(DOV|ZdV|NEM|NES|hŘD)$/.test(c)), k8 = codes.some(isK);
       if (kD){ sD++; cntD[d]++; } if (kN){ sN++; cntN[d]++; }
       const cls = [wc(d).trim(), d === todayD ? "today" : ""].filter(Boolean).join(" ");
       const mk = nm === SELF ? mpMarks(YEAR, MONTH, d) : "";
@@ -3946,11 +3946,11 @@ function admCalHTML(name, sel, mark, all){
     const parts = tok === "." ? [] : tok.split("+");
     const codes = parts.map(p => p.replace(/\*$/, ""));
     const hasD = codes.includes("D12") || codes.includes("D8"), hasN = codes.some(c => NIGHT.includes(c)), hasP = codes.some(isP);
-    const abs = codes.find(c => /^(DOV|ZdV|NEM|NES)$/.test(c));
+    const abs = codes.find(c => /^(DOV|ZdV|NEM|NES|hŘD)$/.test(c));
     const shift = parts.find(p => kindOf(p)), kind = shift ? kindOf(shift) : null;
     const date = new Date(YEAR, MONTH, d), wd = date.getDay();
     const cls = ["cal-day"];
-    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs", /^NE[MS]$/.test(abs) ? "sick" : "a-x");
+    if (hasD && hasN) cls.push("k-dn"); else if (hasP && hasN) cls.push("k-pn"); else if (hasD) cls.push("k-d"); else if (hasN) cls.push("k-n"); else if (hasP) cls.push("k-p"); else if (abs) cls.push("abs", /^NE[MS]$/.test(abs.code || abs) ? "sick" : "a-x");
     if (parts.some(p => p.endsWith("*"))) cls.push("stala");
     if (wd === 0 || wd === 6) cls.push("we");
     if (date.getTime() === today.getTime()) cls.push("today");
@@ -3971,8 +3971,8 @@ function admCalHTML(name, sel, mark, all){
   }
   return `<div class="cal-grid">${html}</div>`;
 }
-const ADM_CODES = ["D12","D8","N12","N13","Nz8","Nk7","Nk8","D2","D4","D5","DOV","ZdV","NEM","NES"];
-const ADM_CODE_LBL = {D12:"D12 7–19", D8:"D8 10–18", N12:"N12 19–7", N13:"N13 19–8", Nz7:"Nz7 19–24", Nz8:"Nz8 19–24", Nk7:"Nk7 0–7", Nk8:"Nk8 0–8", D2:"D2 porada", D4:"D4 8–12", D5:"D5 8–13", DOV:"Dovolená", ZdV:"Zdr. volno", NEM:"Nemoc", NES:"Neschopenka"};
+const ADM_CODES = ["D12","D8","N12","N13","Nz8","Nk7","Nk8","D2","D4","D5","DOV","ZdV","NEM","NES","hŘD"];
+const ADM_CODE_LBL = {D12:"D12 7–19", D8:"D8 10–18", N12:"N12 19–7", N13:"N13 19–8", Nz7:"Nz7 19–24", Nz8:"Nz8 19–24", Nk7:"Nk7 0–7", Nk8:"Nk8 0–8", D2:"D2 porada", D4:"D4 8–12", D5:"D5 8–13", DOV:"Dovolená", ZdV:"Zdr. volno", NEM:"Nemoc", NES:"Neschopenka", "hŘD":"Dobírání dov."};
 // nový zápis dne z vybraných kódů (stálá = hvězdička u denní / noční služby)
 function admToken(){
   const c = ADM_CODES.filter(x => ADM.codes.includes(x));
