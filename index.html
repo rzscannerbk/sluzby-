@@ -891,7 +891,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v6.27</span>
+      <span class="ver" id="verDiag">v6.28</span>
     </div>
   </div>
 </header>
@@ -1026,8 +1026,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.27"></script>
-<script src="sluzby-chat.js?v=6.27"></script>
+<script src="sluzby-core.js?v=6.28"></script>
+<script src="sluzby-chat.js?v=6.28"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1169,7 +1169,7 @@ function wxHTML(win, kind){
   const codes = Object.keys(cnt).map(Number);
   const code = (codes.filter(c => cnt[c] >= 2).sort((a, b) => WX_SEV(b) - WX_SEV(a))[0]) ?? codes.sort((a, b) => cnt[b] - cnt[a])[0];
   const lo = Math.round(Math.min(...t)), hi = Math.round(Math.max(...t));
-  return `<span class="wxi">${wxIcon(code, kind === "N")}</span><span class="wxt">${lo === hi ? lo : `${lo}–${hi}`}°</span>${p >= 30 ? `<span class="wxp">${ikona("kapka")}${p} %</span>` : ""}`;
+  return `<span class="wxi">${wxIcon(code, kind === "N")}</span><span class="wxt">${lo === hi ? `${lo}°` : `${lo}° až ${hi}°`}</span>${p >= 30 ? `<span class="wxp">${ikona("kapka")}${p} %</span>` : ""}`;
 }
 function wxFill(){
   document.querySelectorAll(".card[data-start]").forEach(c => {
