@@ -65,7 +65,7 @@ button:disabled{opacity:.55;cursor:default}
       <p class="hint">Formát: <b>Jméno Příjmení: kód kód …</b>, jeden kód na každý den měsíce. Prázdný den je tečka, stálá služba má hvězdičku (D12*), dva kódy v jednom dni spoj plusem (D2+N13). Kódy: D12, D8 (10–18), N13, N12, Nz7/Nz8 (19–24), Nk7 (0–7), Nk8 (0–8), D2 (porada 8–10), D4 (8–12), D5 (8–13), DOV, ZdV.</p>
       <label for="events">Události – jeden řádek na den</label>
       <textarea id="events" rows="4" spellcheck="false"></textarea>
-      <p class="hint">Formát: <b>den: text</b>, třeba „14: Porada MP“.</p>
+      <p class="hint">Formát: <b>den: text</b>, třeba „14: Porada MP“. Jiný čas služby jen pro jeden den: <b>den: čas kód od-do</b>, třeba „17: čas D8 8:00-15:30“ nebo „17: čas D2 13:00-15:00“.</p>
       <div class="row">
         <button type="button" class="sec" id="checkBtn">Zkontrolovat</button>
         <button type="button" id="saveBtn">Uložit plán</button>
@@ -120,19 +120,27 @@ function parseAll(){
     if (D !== 1) warns.push(`${d+1}. den: denní stálá služba ${D === 0 ? "chybí" : D + "×"}.`);
     if (N !== 1) warns.push(`${d+1}. den: noční stálá služba ${N === 0 ? "chybí" : N + "×"}.`);
   }
-  const udalosti = {};
+  const udalosti = {}, casy = {};
   $("events").value.split("\n").forEach((line, li) => {
     if (!line.trim()) return;
     const k = line.indexOf(":"), day = parseInt(line.slice(0, k), 10), text = line.slice(k+1).trim();
-    if (k < 1 || !(day >= 1 && day <= days) || !text) errors.push(`Událost na řádku ${li+1} nemá tvar „den: text“.`);
-    else udalosti[String(day)] = text;
+    if (k < 1 || !(day >= 1 && day <= days) || !text) { errors.push(`Událost na řádku ${li+1} nemá tvar „den: text“.`); return; }
+    // mimořádný čas jen pro tento den: „17: čas D8 8:00-15:30“
+    const cm = text.match(/^čas\s+(\S+)\s+(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})$/i);
+    if (cm){
+      if (!KNOWN.includes(cm[1])) errors.push(`Řádek ${li+1}: neznámý kód „${cm[1]}“.`);
+      else (casy[String(day)] = casy[String(day)] || {})[cm[1]] = `${cm[2]}-${cm[3]}`;
+      return;
+    }
+    if (/^čas\b/i.test(text)) { errors.push(`Řádek ${li+1}: čas zapiš jako „${day}: čas D8 8:00-15:30“.`); return; }
+    udalosti[String(day)] = text;
   });
   const counts = Object.entries(plan).map(([name, str]) => {
     // jako sloupec „Směn“ v papírovém plánu: den se službou = 1 (porada D2 se nepočítá, D4/D5 ano)
     let c = 0; str.split(" ").forEach(t => { if (t.split("+").some(x => ["D12","D8","N12","N13","Nz7","Nz8","Nk7","Nk8","D4","D5"].includes(x.replace(/\*$/, "")))) c++; });
     return [name, c];
   });
-  return {counts, id: y && m ? `${y}-${String(m).padStart(2,"0")}` : "", plan, udalosti, errors, warns};
+  return {counts, id: y && m ? `${y}-${String(m).padStart(2,"0")}` : "", plan, udalosti, casy, errors, warns};
 }
 function report(el, r, okText){
   let h = "";
@@ -172,7 +180,7 @@ if (!cfg || !cfg.apiKey || cfg.apiKey === "DOPLNIT"){
     $("saveBtn").disabled = true;
     try {
       await db.collection(COLLECTION).doc(r.id).set({
-        plan: r.plan, poradi: Object.keys(r.plan), udalosti: r.udalosti,
+        plan: r.plan, poradi: Object.keys(r.plan), udalosti: r.udalosti, casy: r.casy,
         upraveno: firebase.firestore.FieldValue.serverTimestamp(),
         upravil: auth.currentUser.email
       });
@@ -190,7 +198,9 @@ if (!cfg || !cfg.apiKey || cfg.apiKey === "DOPLNIT"){
       const pl = d.plan || {}, ord = (d.poradi || []).filter(n => n in pl);
       const names = [...ord, ...Object.keys(pl).filter(n => !ord.includes(n))];
       $("plan").value = names.map(n => `${n}: ${pl[n]}`).join("\n");
-      $("events").value = Object.entries(d.udalosti || {}).sort((a,b) => a[0]-b[0]).map(([k, v]) => `${k}: ${v}`).join("\n");
+      const evL = Object.entries(d.udalosti || {}).map(([k, v]) => [+k, `${k}: ${v}`]);
+      Object.entries(d.casy || {}).forEach(([k, o]) => Object.entries(o).forEach(([c, t]) => evL.push([+k, `${k}: čas ${c} ${t}`])));
+      $("events").value = evL.sort((a, b) => a[0] - b[0]).map(x => x[1]).join("\n");
       $("planOut").innerHTML = `<p class="ok">Načten uložený plán na ${esc(id)}.</p>`;
     } catch (err) { $("planOut").innerHTML = `<p class="err">Načtení se nepovedlo (${esc(err.code)}).</p>`; }
   });

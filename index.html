@@ -891,7 +891,7 @@ button.cal-day{cursor:pointer}
     <div class="mrow">
       <button class="btn-out" id="logout" type="button">Odhlásit</button>
       <span class="mname"><span class="ch-me-av" id="menuAv"></span><span id="menuName"></span></span>
-      <span class="ver" id="verDiag">v6.26</span>
+      <span class="ver" id="verDiag">v6.27</span>
     </div>
   </div>
 </header>
@@ -1026,8 +1026,8 @@ button.cal-day{cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.26"></script>
-<script src="sluzby-chat.js?v=6.26"></script>
+<script src="sluzby-core.js?v=6.27"></script>
+<script src="sluzby-chat.js?v=6.27"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -1091,7 +1091,7 @@ function baseCode(slot, kind){
   return best ? best[0] : (kind === "D" ? "D12" : "N13");
 }
 function windowOf(date, code){
-  const c = CODES[code];
+  const c = codeAt(code, date);
   const s = new Date(date); s.setHours(c.s[0], c.s[1], 0, 0);
   const e = new Date(date); e.setHours(c.e[0], c.e[1], 0, 0);
   if (e <= s) e.setDate(e.getDate() + 1);
@@ -1115,10 +1115,17 @@ try { ME = localStorage.getItem(STORE_KEY) || ""; } catch(e) {}
 function nameBtn(n){
   return `<button type="button" class="pname${n === ME ? " me" : ""}" data-name="${esc(n)}">${esc(n)}</button>`;
 }
+// štítek u jména, když má strážník jiný čas než služba (D8 „do 18:00“, mimořádný čas „8:00–15:30“)
+let REND_DATE = null;
+function timeTag(code, base){
+  const c = codeAt(code, REND_DATE), b = codeAt(base, REND_DATE);
+  if (!c || !b || !c.s || !b.s) return "";
+  if (c.s[0] !== b.s[0] || c.s[1] !== b.s[1]) return ` <span class="tag">${tPlain(c.s)}–${tPlain(c.e)}</span>`;
+  return c.e[0] !== b.e[0] || c.e[1] !== b.e[1] ? ` <span class="tag">do ${tPlain(c.e)}</span>` : "";
+}
 function person(p, base, ctx){
   const me = p.name === ME ? "me" : "";
-  const c = CODES[p.code], b = CODES[base];
-  const tag = c && b && (c.e[0] !== b.e[0] || c.e[1] !== b.e[1]) ? ` <span class="tag">do ${tPlain(c.e)}</span>` : "";
+  const tag = timeTag(p.code, base);
   const sw = ctx && (ctx.notes || NOTES)[`${ctx.d}|${ctx.k}|${p.name}`];
   return `${nameBtn(p.name)}${tag}${sw ? ` <span class="swi" aria-hidden="true">${SWI_IC}</span> <span class="tag sw">${esc(sw)}</span>` : ""}`;
 }
@@ -1310,21 +1317,21 @@ function surNm(n){
   const p = String(n).split(" "); return p.length > 1 && SUR_DUP.has(p[0]) ? `${p[0]} ${p[1].charAt(0)}.` : p[0];
 }
 function person2(p, base, ctx, stala){
-  const c = CODES[p.code], b = CODES[base];
-  const tag = c && b && (c.e[0] !== b.e[0] || c.e[1] !== b.e[1]) ? ` <span class="tag">do ${tPlain(c.e)}</span>` : "";
+  const tag = timeTag(p.code, base);
   const sw = ctx && (ctx.notes || NOTES)[`${ctx.d}|${ctx.k}|${p.name}`];
   return `<span class="u2p${stala ? " st" : ""}${p.name === ME ? " me" : ""}"><button type="button" class="pname" data-name="${esc(p.name)}" title="${esc(p.name)}"><span class="nm-s">${esc(surNm(p.name))}</span><span class="nm-f">${esc(p.name)}</span></button>${tag}${sw ? ` <span class="swi" aria-hidden="true">${SWI_IC}</span><span class="tag sw">${esc(sw)}</span>` : ""}</span>`;
 }
 function cardHTML2(kind, g, slot, now){
   const base = baseCode(slot, kind);
   const ctx = g.prev ? null : {d:g.date.getDate(), k:kind, notes:(MS[g.mid] || {}).notes};
-  const win = windowOf(g.date, base), st = stateOf(win, now), c = CODES[base];
+  REND_DATE = g.date;
+  const win = windowOf(g.date, base), st = stateOf(win, now), c = codeAt(base, g.date);
   const live = st === "now" ? `<span class="live">Probíhá</span>` : "";
   const ppl = (slot.stala ? person2(slot.stala, base, ctx, true) : `<span class="u2p none">Stálá není v plánu</span>`) + slot.hl.map(p => person2(p, base, ctx)).join("");
   const tags = [];
   if (kind === "D"){
     if (slot.ev) String(slot.ev).split(/\s*·\s*/).filter(Boolean).forEach(t => tags.push(`<span class="u2t ev">${esc(t)}</span>`));
-    if (slot.P && slot.P.length) [...new Set(slot.P.map(p => p.code))].forEach(cd => tags.push(`<span class="u2t por">${CODES[cd].label || "Porada"} ${tPlain(CODES[cd].s)}–${tPlain(CODES[cd].e)}: ${slot.P.filter(p => p.code === cd).map(p => esc(shortNm(p.name))).join(", ")}</span>`));
+    if (slot.P && slot.P.length) [...new Set(slot.P.map(p => p.code))].forEach(cd => tags.push(`<span class="u2t por">${CODES[cd].label || "Porada"} ${tPlain(codeAt(cd, g.date).s)}–${tPlain(codeAt(cd, g.date).e)}: ${slot.P.filter(p => p.code === cd).map(p => esc(shortNm(p.name))).join(", ")}</span>`));
     for (const [cd, names] of Object.entries(slot.A || {})) tags.push(`<span class="u2t abs${/^NE[MS]$/.test(cd) ? " sick" : ""}">${CODES[cd].label}: ${names.map(n => esc(shortNm(n))).join(", ")}</span>`);
     if (!g.prev) akceOn(g.date).forEach(a => tags.push(`<span class="u2t ak">${ikona("kalendar")} ${esc(a.nazev)} · ${esc(akceCas(a))}</span>`));
   }
@@ -1345,9 +1352,10 @@ function cardHTML(kind, g, slot, now){
   if (UI2()) return cardHTML2(kind, g, slot, now);
   const base = baseCode(slot, kind);
   const ctx = g.prev ? null : {d:g.date.getDate(), k:kind, notes:(MS[g.mid] || {}).notes};
+  REND_DATE = g.date;
   const win = windowOf(g.date, base);
   const st = stateOf(win, now);
-  const c = CODES[base];
+  const c = codeAt(base, g.date);
   const when = `<span class="wd">${DOW_FULL[g.date.getDay()]}</span><span class="wdt">${g.date.getDate()}. ${g.date.getMonth()+1}.</span>`;
   const title = kind === "D" ? "Denní služba" : "Noční služba";
   const chip = "";
@@ -1365,7 +1373,7 @@ function cardHTML(kind, g, slot, now){
     if (slot.ev) String(slot.ev).split(/\s*·\s*/).filter(Boolean).forEach(t => parts.push(`<p class="evt">${esc(t)}</p>`));
     if (slot.P && slot.P.length){
       // porady a dopolední služby (D2, D4, D5…) – každý kód zvlášť s vlastním časem
-      [...new Set(slot.P.map(p => p.code))].forEach(c => parts.push(`<p><b class="por">${CODES[c].label || "Porada"} ${tPlain(CODES[c].s)}–${tPlain(CODES[c].e)}:</b> ${slot.P.filter(p => p.code === c).map(p => nameBtn(p.name)).join(", ")}</p>`));
+      [...new Set(slot.P.map(p => p.code))].forEach(c => parts.push(`<p><b class="por">${CODES[c].label || "Porada"} ${tPlain(codeAt(c, g.date).s)}–${tPlain(codeAt(c, g.date).e)}:</b> ${slot.P.filter(p => p.code === c).map(p => nameBtn(p.name)).join(", ")}</p>`));
     }
     for (const [code, names] of Object.entries(slot.A || {})) parts.push(`<p><b>${CODES[code].label}:</b> ${names.map(n => nameBtn(n)).join(", ")}</p>`);
     if (parts.length) aside = `<div class="aside">${parts.join("")}</div>`;
@@ -1677,7 +1685,7 @@ function watchMonth(y, m){
     if (shown && js === last) { if (!ms.ready){ ms.ready = true; monthChanged(ms); } return; }
     shown = true; last = js;
     const d = snap.data() || {};
-    ms.exists = snap.exists; ms.plan = d.plan || {}; ms.order = d.poradi || null; ms.events = d.udalosti || {};
+    ms.exists = snap.exists; ms.plan = d.plan || {}; ms.order = d.poradi || null; ms.events = d.udalosti || {}; CASY[ms.mid] = d.casy || {};
     ms.fromCache = snap.metadata.fromCache; ms.ready = true;
     monthChanged(ms);
   }, err => { ms.ready = true; ms.err = err.code; monthChanged(ms); });

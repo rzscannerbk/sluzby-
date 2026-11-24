@@ -23,6 +23,16 @@ const CODES = {
   "hŘD":{k:"A", label:"Dobírání dovolené"}
 };
 const DOW = ["ne","po","út","st","čt","pá","so"];
+// mimořádné časy služby jen pro konkrétní den (pole „casy“ v plánu měsíce), např. {"17": {"D2":"13:00-15:00", "D8":"8:00-15:30"}}
+// kód zůstává stejný (D2, D8…), mění se jen čas zobrazení, průběhu a připomínek
+const CASY = {}; // id měsíce (2026-12) → casy
+const parseCas = s => { const m = String(s || "").match(/^\s*(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})\s*$/); return m ? [[+m[1], +m[2]], [+m[3], +m[4]]] : null; };
+function codeAt(code, date){
+  const c = CODES[code]; if (!c || !date || !c.s) return c;
+  const mid = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  const m = CASY[mid], o = m && m[date.getDate()] && m[date.getDate()][code], p = o && parseCas(o);
+  return p ? Object.assign({}, c, {s:p[0], e:p[1]}) : c;
+}
 const DOW_FULL = ["neděle","pondělí","úterý","středa","čtvrtek","pátek","sobota"];
 const DOW_T = ["Ne","Po","Út","St","Čt","Pá","So"];
 

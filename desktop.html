@@ -391,7 +391,7 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
         <a href="index.html">Mobilní verze</a>
         <button type="button" id="logout">Odhlásit</button>
       </div>
-      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v6.26</span>
+      <span style="font-size:12px;color:#8C96B2" id="deskVer">desktop v6.27</span>
     </div>
   </nav>
   <main class="main" id="main"></main>
@@ -402,8 +402,8 @@ textarea{width:100%;border-radius:10px;border:1.5px solid var(--ink);background:
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="sluzby-core.js?v=6.26"></script>
-<script src="sluzby-chat.js?v=6.26"></script>
+<script src="sluzby-core.js?v=6.27"></script>
+<script src="sluzby-chat.js?v=6.27"></script>
 <script>
 // pojistka: kdyby se načetlo starší jádro bez přítomnosti uživatelů, stránka se nesmí zaseknout
 if (typeof PRES_CSS === "undefined") window.PRES_CSS = "";
@@ -421,7 +421,7 @@ if (typeof zaTvar === "undefined") window.zaTvar = n => String(n).split(" ")[0];
    ===================================================================== */
 const SWAP_COL = "vymeny";
 const ADMINS = ["juracka.1048@rzscanner.cz"]; // jen zobrazení – oprávnění hlídají pravidla Firestore
-const DESK_VER = "desktop v6.26";
+const DESK_VER = "desktop v6.27";
 const isAdmin = () => ADMINS.includes(SELF_EMAIL);
 let PRES = null, ONLINE = {}, unsubOnline = null;
 let ADM = {tab:"zmeny", y:0, m:0, typ:"prevzeti", from:"", fromShift:null, to:"", toShift:null, pozn:"", day:null, codes:[], st:{}, mvDay:null, mvKod:null};
@@ -459,7 +459,7 @@ const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() ==
 const idOf = d => docId(d.getFullYear(), d.getMonth());
 const shortName = n => { const p = String(n).split(" "); return p.length > 1 ? p[0] + " " + p[1][0] + "." : n; };
 function windowOf(date, code){
-  const c = CODES[code]; if (!c || !c.s) return [date, date];
+  const c = codeAt(code, date); if (!c || !c.s) return [date, date];
   const s = new Date(date.getFullYear(), date.getMonth(), date.getDate(), c.s[0], c.s[1]);
   let e = new Date(date.getFullYear(), date.getMonth(), date.getDate(), c.e[0], c.e[1]);
   if (e <= s) e = new Date(e.getTime() + 864e5);
@@ -555,7 +555,7 @@ function month(id){
   const merge = () => { const ids = new Set(own.map(x => x.id)); o.swaps = [...own, ...cross.filter(x => !ids.has(x.id))]; o.okS = true; recalc(); };
   o.unsub.push(db.collection(COLLECTION).doc(id).onSnapshot(s => {
     o.exists = s.exists; const d = s.exists ? s.data() : {};
-    o.plan = d.plan || {}; o.poradi = d.poradi || null; o.ev = d.udalosti || {}; o.okP = true; recalc();
+    o.plan = d.plan || {}; o.poradi = d.poradi || null; o.ev = d.udalosti || {}; CASY[id] = d.casy || {}; o.okP = true; recalc();
   }, () => { o.okP = true; render(); }));
   o.unsub.push(db.collection(SWAP_COL).where("mesic", "==", id).onSnapshot(s => { own = s.docs.map(d => ({id:d.id, ...d.data()})); merge(); }, () => {}));
   o.unsub.push(db.collection(SWAP_COL).where("zaMesic", "==", id).onSnapshot(s => { cross = s.docs.map(d => ({id:d.id, ...d.data()})); merge(); }, () => {}));
@@ -845,7 +845,7 @@ function weekHTML(){
       const absTxt = k === "D" ? [info.A.DOV ? "DOV " + info.A.DOV.map(n => n.split(" ")[0]).join(", ") : "", info.A.ZdV ? "ZdV " + info.A.ZdV.map(n => n.split(" ")[0]).join(", ") : "", info.A["hŘD"] ? "hŘD " + info.A["hŘD"].map(n => n.split(" ")[0]).join(", ") : "", info.P.length ? [...new Set(info.P.map(p => p.code || "D2"))].map(c => (CODES[c] && CODES[c].label || "Porada") + " " + c + ": " + info.P.filter(p => (p.code || "D2") === c).length + "×").join(" · ") : ""].filter(Boolean).join(" · ") : "";
       const canSwap = mine && ws > now;
       return `<div class="card ${k === "D" ? "day" : "night"}${live ? " live" : mine ? " mine" : ""}" data-det="${idOf(dt)}|${dt.getDate()}|${k}" tabindex="-1" role="button" aria-label="Detail – ${k === "D" ? "denní" : "noční"} služba ${dt.getDate()}. ${dt.getMonth() + 1}.">
-        <div class="ch"><b>${k === "D" ? "Den" : "Noc"}</b><span>${k === "D" ? (code === "D8" ? "10–18" : "7–19") : (NTIME[code] || "19–8")}</span></div>
+        <div class="ch"><b>${k === "D" ? "Den" : "Noc"}</b><span>${k === "D" ? `${ws.getHours()}${ws.getMinutes() ? ":" + String(ws.getMinutes()).padStart(2, "0") : ""}–${we2.getHours()}${we2.getMinutes() ? ":" + String(we2.getMinutes()).padStart(2, "0") : ""}` : (NTIME[code] || "19–8")}</span></div>
         ${live ? `<div class="prog"><i style="width:${pct}%"></i></div>` : ""}
         ${s.stala ? `<span class="st">${esc(shortName(s.stala.name))}${s.stala.note ? ` <span class="sw">⇄ ${esc(s.stala.note)}</span>` : ""}</span>` : ""}
         ${s.hl.map(personHTML).join("")}
@@ -1105,7 +1105,7 @@ function detHTML(){
   const extra = [];
   if (k === "D"){
     if (info.ev) String(info.ev).split(/\s*·\s*/).filter(Boolean).forEach(t => extra.push(`<p class="dev">${esc(t)}</p>`));
-    [...new Set(info.P.map(p => p.code))].forEach(c => { const d = CODES[c]; extra.push(`<p><b>${d.label || "Porada"} ${d.s[0]}:${String(d.s[1]).padStart(2, "0")}–${d.e[0]}:${String(d.e[1]).padStart(2, "0")}:</b> ${info.P.filter(p => p.code === c).map(p => esc(p.name)).join(", ")}</p>`); });
+    [...new Set(info.P.map(p => p.code))].forEach(c => { const d = codeAt(c, date); extra.push(`<p><b>${d.label || "Porada"} ${d.s[0]}:${String(d.s[1]).padStart(2, "0")}–${d.e[0]}:${String(d.e[1]).padStart(2, "0")}:</b> ${info.P.filter(p => p.code === c).map(p => esc(p.name)).join(", ")}</p>`); });
     if (info.A.DOV) extra.push(`<p><b>Dovolená:</b> ${info.A.DOV.map(esc).join(", ")}</p>`);
     if (info.A.ZdV) extra.push(`<p><b>Zdravotní volno:</b> ${info.A.ZdV.map(esc).join(", ")}</p>`);
     if (info.A.NEM) extra.push(`<p><b>Nemoc:</b> ${info.A.NEM.map(esc).join(", ")}</p>`);
